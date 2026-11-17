@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Not So Fast</title>
-<meta name="description" content="Three maths questions a day. Three guesses each. Your first answer is usually wrong.">
+<meta name="description" content="Three maths questions a day. One guess each. Your first answer is usually wrong.">
 <meta property="og:title" content="Not So Fast">
-<meta property="og:description" content="Three maths questions a day. Three guesses each. Your first answer is usually wrong.">
+<meta property="og:description" content="Three maths questions a day. One guess each. Your first answer is usually wrong.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://playnotsofast.com/">
 <meta property="og:image" content="https://playnotsofast.com/og.png">
@@ -75,12 +75,21 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
 .steps i.now { border-color: var(--ink); }
 .steps i.ok { background: var(--green); border-color: var(--green); }
 .steps i.no { background: var(--grey); border-color: var(--grey); }
-.count { margin: 8px 0 0; text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.steps i.trap { background: var(--amber); border-color: var(--amber); }
+.bar { display: flex; align-items: baseline; justify-content: space-between; margin-top: 12px; }
+.count { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.clock { font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock.low { color: var(--amber); }
+.clock.stop { color: var(--muted); }
+.drain { height: 3px; margin-top: 6px; background: var(--line); }
+.drain i { display: block; height: 100%; background: var(--ink); transition: width 0.2s linear; }
+.drain i.low { background: var(--amber); }
 .q { margin: 14px 0 18px; font-size: 1.1875rem; line-height: 1.38; text-align: center; text-wrap: balance; }
 .q.long { text-align: left; font-size: 1.0625rem; text-wrap: pretty; }
 .board { display: grid; gap: 6px; max-width: 340px; width: 100%; margin: 0 auto; }
 .row { display: grid; grid-template-columns: 1fr 58px; gap: 6px; --c: var(--grey); }
 .row.f-right { --c: var(--green); } .row.f-bait { --c: var(--amber); }
+.row.f-right.reveal { animation: hop 0.45s ease 0.55s; }
 .tile, .mark { height: 58px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--line); font-weight: 700; text-transform: uppercase; }
 .tile { gap: 6px; font-size: 1.75rem; font-variant-numeric: tabular-nums; }
 .tile .u { font-size: 0.8125rem; letter-spacing: 0.04em; }
@@ -98,15 +107,21 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
   55% { transform: rotateX(90deg); background: var(--c); color: var(--on); border-color: var(--c); }
   100% { transform: rotateX(0); background: var(--c); color: var(--on); border-color: var(--c); }
 }
+@keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14px); } 70% { transform: translateY(3px); } }
 @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
 @keyframes pop { 0% { transform: scale(0.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
 .foot { margin-top: auto; padding-top: 18px; }
+.foot.done { margin-top: 0; padding-top: 22px; }
 .keys { display: grid; gap: 8px; }
 .keys div { display: flex; gap: 6px; }
 .keys button { flex: 1; height: 54px; border-radius: 4px; background: var(--key); font-weight: 700; font-size: 1.25rem; text-transform: uppercase; }
 .keys button.w { flex: 1.6; font-size: 0.8125rem; }
 .keys button:active { opacity: 0.7; }
 .after { max-width: 340px; margin: 0 auto; text-align: center; }
+.verdict { margin: 0 0 6px; font-size: 1.75rem; font-weight: 700; color: var(--green); }
+.verdict span { margin-left: 8px; font-size: 1rem; font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; }
+.note { margin: 0 0 6px; font-size: 0.9375rem; font-weight: 700; }
+.crowd { margin: 0 0 10px; min-height: 1.4em; font-size: 0.9375rem; color: var(--muted); }
 .ans { margin: 0 0 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .ans b { display: block; margin-top: 2px; font-size: 1.75rem; letter-spacing: 0; text-transform: none; color: var(--ink); }
 .why { margin: 0 0 16px; text-align: left; font-size: 0.9375rem; }
@@ -117,9 +132,9 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
 .end { padding-top: 22px; text-align: center; }
 .end h2, .sheet h2 { margin: 0 0 12px; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .score { margin: 0 0 12px; font-size: 2.25rem; font-weight: 700; }
-.grid { display: grid; gap: 5px; justify-content: center; margin-bottom: 22px; }
-.grid div { display: flex; gap: 5px; }
-.grid i { width: 34px; height: 34px; background: var(--grey); }
+.grid { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.grid i { width: 44px; height: 44px; background: var(--grey); }
+.total { margin: 0 0 22px; font-variant-numeric: tabular-nums; }
 .grid i.right { background: var(--green); } .grid i.bait { background: var(--amber); }
 .nums { display: flex; justify-content: center; gap: 6px; margin-bottom: 18px; }
 .nums div { width: 78px; }
@@ -139,7 +154,8 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
 .recap li { padding: 12px 0; border-top: 1px solid var(--line); }
 .recap p { margin: 0; font-size: 0.9375rem; }
 .recap .ra { margin-top: 4px; font-weight: 700; }
-.recap .mini { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: -2px; }
+.recap .mini { display: inline-flex; gap: 3px; margin-right: 8px; vertical-align: -2px; }
+.recap .rt { margin-left: 8px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
 .recap .mini i { width: 14px; height: 14px; background: var(--grey); }
 .recap .mini i.right { background: var(--green); } .recap .mini i.bait { background: var(--amber); }
 .endbtns { display: grid; gap: 10px; max-width: 340px; margin: 18px auto 0; }
@@ -150,6 +166,7 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
 .sheet-top { display: flex; justify-content: flex-end; }
 .sheet .big { margin: 0 0 4px; font-size: 1.5rem; font-weight: 700; text-align: left; letter-spacing: 0; text-transform: none; }
 .sheet p { margin: 0 0 12px; }
+.sheet .small { font-size: 0.8125rem; color: var(--muted); margin: 0; }
 .sheet ul { margin: 0 0 14px; padding-left: 1.2em; }
 .sheet li { margin-bottom: 4px; }
 .eg { margin: 14px 0; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -166,7 +183,8 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
 .linkish { justify-self: start; padding: 4px 0; text-decoration: underline; font-size: 0.9375rem; }
 
 @media (max-height: 640px) { .tile, .mark { height: 48px; } .row { grid-template-columns: 1fr 48px; } .keys button { height: 46px; } .q { margin: 10px 0 12px; } }
-@media (prefers-reduced-motion: reduce) { .row.reveal .tile, .row.reveal .mark, .row.shake, .tile.pop { animation: none; } }
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+@media (prefers-reduced-motion: reduce) { .row.reveal .tile, .row.reveal .mark, .row.shake, .tile.pop, .row.f-right.reveal { animation: none; } }
 </style>
 </head>
 <body>
@@ -181,6 +199,7 @@ main { flex: 1; display: flex; flex-direction: column; padding: 0 16px 16px; }
   <main id="view"></main>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
+<canvas id="fx" aria-hidden="true"></canvas>
 <div id="veil" class="veil" hidden></div>
 
 <script>
