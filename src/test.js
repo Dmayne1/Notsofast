@@ -57,6 +57,8 @@ const verify = {
   intervals(v) {
     if (v.mode === 'posts') { let n = 0; for (let x = 0; x <= v.L; x += v.g) n++; return n; }
     if (v.mode === 'pills') { let t = 0; for (let i = 1; i < v.n; i++) t += v.m; return t; }
+    if (v.mode === 'circle') { const ring = []; for (let i = 0; i < v.n; i++) ring.push(i); let gaps = 0; for (let i = 0; i < v.n; i++) if (ring[(i + 1) % v.n] !== undefined) gaps++; return gaps; }
+    if (v.mode === 'length') { let x = 0; for (let i = 1; i < v.n; i++) x += v.g; return x; }
     const per = v.time / (v.a - 1); let t = 0; for (let i = 1; i < v.b; i++) t += per; return t;
   },
   downup(v) { let x = 100; if (v.fallFirst) { x *= 1 - v.p / 100; x *= 1 + v.p / 100; } else { x *= 1 + v.p / 100; x *= 1 - v.p / 100; } return 100 - x; },
@@ -149,16 +151,27 @@ const verify = {
   cube(v) { let c = 0; const n = v.n; for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) for (let z = 0; z < n; z++) { let f = 0; for (const a of [x, y, z]) { if (a === 0) f++; if (a === n - 1) f++; } if (f === v.k) c++; } return c; },
   classic(v) {
     if (v.id === 'ants') { let hit = 0; for (let m = 0; m < 8; m++) { const d = [m & 1, (m >> 1) & 1, (m >> 2) & 1]; if (!(d[0] === d[1] && d[1] === d[2])) hit++; } return hit / 8 * 100; }
-    if (v.id === 'rope') return Math.round(2 * Math.PI * 1);
+    if (v.id === 'rope') { const R = 6371000; return 2 * Math.PI * (R + 1) - 2 * Math.PI * R; }
+    if (v.id === 'birthday') { let p = 1; for (let n = 1; n < 366; n++) { p *= (365 - (n - 1)) / 365; if (1 - p > 0.5) return n; } }
+    if (v.id === 'billion') return 1e9 / (86400 * 365.25);
+    if (v.id === 'coinroll') { const r = 1, R = 1; return (2 * Math.PI * (R + r)) / (2 * Math.PI * r); }
+    if (v.id === 'twokids') { let all = 0, both = 0; for (const a of 'BG') for (const b of 'BG') if (a === 'B' || b === 'B') { all++; if (a === 'B' && b === 'B') both++; } return all / both; }
+    if (v.id === 'monty') { let wins = 0, games = 0; for (let car = 0; car < 3; car++) for (let pick = 0; pick < 3; pick++) { games++; const opened = [0, 1, 2].find(d => d !== pick && d !== car); const other = [0, 1, 2].find(d => d !== pick && d !== opened); if (other === car) wins++; } return wins / games * 100; }
     if (v.id === 'sum') { let s = 0; for (let i = 1; i <= 100; i++) s += i; return s; }
     if (v.id === 'cable') { const half = 80 / 2, drop = 50 - 10; return 2 * Math.sqrt(Math.max(0, half * half - drop * drop)); }
     if (v.id === 'chess') { let c = 0; for (let s = 1; s <= 8; s++) c += (9 - s) * (9 - s); return c; }
     if (v.id === 'monty100') { let wins = 0; for (let car = 0; car < 100; car++) { const pick = 0; if (pick !== car) wins++; } return wins; }
   },
+  corners(v) { let pts = v.n; pts -= 1; pts += 2; return pts; },
+  hands(v) { let c = 0; for (let h = 0; h < v.n; h++) for (let f = 0; f < 5; f++) c++; return c; },
+  divhalf(v) { let fit = 0; for (let x = 0.5; x <= v.a + 1e-9; x += 0.5) fit++; return fit + v.b; },
+  dry(v) { const each = v.each; return Math.max(each, each, each); },
+  family(v) { const kids = new Set(); for (let i = 0; i < v.s; i++) kids.add('sister' + i); for (let i = 0; i < v.s; i++) for (let j = 0; j < v.b; j++) kids.add('brother' + j); return kids.size; },
+  refill(v) { let full = v.n, empty = 0, drunk = 0; while (full > 0) { full--; drunk++; empty++; if (empty === v.k) { empty = 0; full++; } } return drunk; },
   jointwork(v) { let done = 0, t = 0; const step = 1 / 1000; while (done < 1 - 1e-9) { done += step / v.x + step / v.y; t += step; } return Math.round(t * 1000) / 1000; }
 };
 
-const variants = {};
+const variants = {}; let longest = 0, lenSum = 0;
 for (const f of E.families) {
   const seen = new Set();
   for (let i = 0; i < 4000; i++) {
@@ -170,14 +183,16 @@ for (const f of E.families) {
     if (!near(q.a * 100, Math.round(q.a * 100))) fail('answer has more than 2 decimals', q);
     if (!q.why || q.why.length < 20) fail('no explanation', q);
     if (E.judge(q, String(q.a)) !== 'right') fail('judge rejects the answer', q);
-    if (!E.hasBait(q) && q.fam !== 'classic') fail('no trap answer', q);
-    const far = E.judge(q, String(q.a + 0.5)); if (far !== 'high' && far !== 'bait') fail('a guess above the answer should read as too high', q);
+    if (!E.hasBait(q) && q.fam !== 'classic' && q.fam !== 'paradox') fail('no trap answer', q);
+    if (q.q.length > 190) fail('too long to say out loud (' + q.q.length + ' characters)', q);
+    longest = Math.max(longest, q.q.length); lenSum += q.q.length;
+    const far = E.judge(q, String(q.a + (q.tol || 0) + 0.5)); if (far !== 'high' && far !== 'bait') fail('a guess above the answer should read as too high', q);
     for (const b of q.baits) if (E.judge(q, String(Math.round(b * 100) / 100)) !== 'bait') fail('bait not recognised: ' + b, q);
     if (String(q.a).replace('.', '').length > 7) fail('answer too long to type', q);
     const fn = verify[q.v.t];
     if (!fn) { fail('no verifier for ' + q.v.t, q); continue; }
     const want = fn(q.v, q);
-    if (want === undefined || !near(want, q.a)) fail('answer mismatch: independent check says ' + want, q);
+    if (want === undefined || Math.abs(want - q.a) > (q.tol || 0) + 1e-6) fail('answer mismatch: independent check says ' + want, q);
   }
   variants[f.id] = seen.size;
 }
@@ -211,6 +226,7 @@ if (E.judge(q0, '') !== 'bad' || E.judge(q0, '.') !== 'bad') fail('empty input')
 
 const totalVariants = Object.values(variants).reduce((a, b) => a + b, 0);
 console.log('questions checked:', checked);
+console.log('longest question:', longest, 'characters; average', Math.round(lenSum / checked));
 console.log('distinct question texts found:', totalVariants);
 console.log('fewest variants in a family:', Object.entries(variants).sort((a, b) => a[1] - b[1]).slice(0, 5).map(e => e.join('=')).join(', '));
 console.log('days with a family repeated from the day before (of 1095):', back);
