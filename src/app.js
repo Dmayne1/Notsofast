@@ -8,7 +8,7 @@
   var LIMIT = 120;                     // seconds per question on your own
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
-  var SETV = 'v6';                     // bump when the question bank changes: today's set restarts and counts never mix
+  var SETV = 'v7';                     // bump when the question bank changes: today's set restarts and counts never mix
 
   // Live counters: anonymous tallies on a free public counting service.
   // Set STATS to '' to switch them off. Nothing about the player is sent.
@@ -18,14 +18,14 @@
   var MIN_CROWD = 10;                  // do not show a percentage until this many have answered
 
   var EMOJI = { right: '🟢', bait: '🛑', wrong: '❌', time: '🐌' };
-  var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of time' };
+  var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of fuel' };
   // The score is a distance. A right answer moves your snail on, further for a harder question,
   // plus a metre for every second left on the clock; anything else moves it nowhere.
   // So speed pays, but only if you are right, and the last question is worth the most.
   var BASE = { 1: 100, 2: 150, 3: 200 };
   var LEVEL = { 1: 'Warm-up', 2: 'Trickier', 3: 'The hard one' };
   var DAY_MAX = BASE[1] + BASE[2] + BASE[3] + 3 * LIMIT;
-  var PLACES = [[700, 'The open road'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
+  var PLACES = [[1000, 'Over the horizon'], [700, 'The open road'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
   var view = document.getElementById('view');
@@ -191,11 +191,12 @@
   function replay(el, cls) { if (!el || calm) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
   function flash(colour) { flashEl.style.background = colour; replay(flashEl, 'go'); }
   // For most of a second the sign owns the whole screen. Then it clears and the road reacts.
-  function cheer(f, m) {
+  function cheer(f, m, floored, plain) {
     SFX[f]();
     if (!calm) {
+      var word = f === 'right' ? (plain ? 'CORRECT' : '+' + m + ' m') : floored && m < 0 ? '\u2212' + (-m) + ' m' : f === 'bait' ? 'THE TRAP' : f === 'time' ? 'OUT OF FUEL' : 'WRONG';
       takeEl.style.setProperty('--tc', TONE[f]);
-      takeEl.innerHTML = '<div class="tk"><div class="sg">' + sign(f, true) + '</div><p>' + (f === 'right' ? '+' + m + ' m' : f === 'bait' ? 'THE TRAP' : f === 'time' ? 'OUT OF TIME' : 'WRONG') + '</p></div>';
+      takeEl.innerHTML = '<div class="tk"><div class="sg">' + sign(f, true) + '</div>' + (floored ? '<p class="sub">FLOORED IT</p>' : '') + '<p>' + word + '</p></div>';
       replay(takeEl, 'go');
     }
     if (f === 'right') buzz([15, 40, 25]);
@@ -219,7 +220,7 @@
 
   // The road ahead, filling the screen behind everything. Lane dashes and roadside reflectors sit
   // on a geometric series from the vanishing point, so scaling the group by one step loops perfectly.
-  var GLOW = ['#ffb347', '#ffa23c', '#ff7d3c', '#6fa3ff', '#4fd6c4'];
+  var GLOW = ['#ffb347', '#ffa23c', '#ff7d3c', '#6fa3ff', '#4fd6c4', '#c58bff'];
   var bgEl = document.getElementById('bg');
   bgEl.innerHTML = (function () {
     var flow = '', a = 1.2, r = 1.9, len = 1.45, n, f = function (v) { return v.toFixed(2); };
@@ -264,7 +265,11 @@
       var z = document.getElementById('zone');
       if (z && zone) { z.textContent = place(to); bgEl.style.setProperty('--glow', GLOW[placeIndex(to)]); }
     };
-    if (to <= from) { if (f === 'bait' && !calm) { bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); } return; }
+    if (to <= from) {   // nothing gained: brake lights for the trap, and the odometer rolls back if you floored it
+      if ((f === 'bait' || to < from) && !calm) { bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); }
+      if (to < from) { if (calm) arrive(); else seq.push(setTimeout(arrive, 700)); }
+      return;
+    }
     if (calm) { arrive(); return; }
     seq.push(setTimeout(function () { bgEl.classList.add('fast'); arrive(); SFX.crawl(); }, 700));
     setTimeout(function () { bgEl.classList.remove('fast'); }, 1750);
@@ -350,8 +355,8 @@
   }
   function readLink() {
     var h = (location.hash || '').slice(1), m, v = null;
-    if ((m = /^d(\d{1,5})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 'd' + m[1], n: +m[2], m: +m[3] };
-    else if ((m = /^t([A-Z0-9]{1,8})-(\d{1,2})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 't' + m[1] + '-' + m[2], code: m[1], round: +m[2], n: +m[3], m: +m[4] };
+    if ((m = /^d(\d{1,5})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: 'd' + m[1], n: +m[2], m: +m[3] };
+    else if ((m = /^t([A-Z0-9]{1,8})-(\d{1,2})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: 't' + m[1] + '-' + m[2], code: m[1], round: +m[2], n: +m[3], m: +m[4] };
     if (v) { store.rival = v; save(); }
     if (h && h !== 'numbers') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } }
     return h;
@@ -378,7 +383,7 @@
     night(false); bgEl.style.setProperty('--glow', GLOW[0]);
     if (store.rival && (typeof store.rival.m !== 'number' || (!store.rival.code && store.rival.key !== 'd' + today()))) { store.rival = null; save(); }   // yesterday's challenge has expired
     var state = dailyState(), streak = liveStreak();
-    var label = state === 'done' ? 'See my score' : state === 'going' ? 'Carry on' : 'Play today’s three';
+    var label = state === 'done' ? 'See how far I got' : state === 'going' ? 'Back on the road' : 'Hit the road';
     view.innerHTML =
       '<section class="home">' +
         '<div class="hero" aria-hidden="true"><div class="sg">' + sign('bait', true) + '</div></div>' +
@@ -392,6 +397,32 @@
         '<p class="meta"><span>No. ' + today() + '</span><span>' + esc(dateLine()) + '</span></p>' +
       '</section>';
     if (STATS && window.fetch) readField(today(), -1).then(function (c) { var el = document.getElementById('today'); if (el) el.innerHTML = todayLine(c); }).catch(function () { /* fine without */ });
+  }
+
+  /* ---------- First visit: no title page, no rules. One trap, and the sign does the explaining. ---------- */
+  function demo() {
+    night(true);
+    var todayFirst = E.buildDaily(today())[0].fam, id = todayFirst === 'race' ? 'hands' : 'race';
+    game = { mode: 'demo', cur: E.make(E.families.filter(function (f) { return f.id === id; })[0], 'first-visit', 0), res: null };
+    demoPlay();
+  }
+  function demoPlay() {
+    stopTimers(); ask = null;
+    var q = game.cur, r = game.res, body;
+    if (r) {
+      var said = r.f === 'right' ? 'You dodged it. ' + E.show(q, q.baits[0]) + ' is the answer that jumps out.' : r.f === 'bait' ? 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' : 'You said ' + E.show(q, parseFloat(r.t)) + '.';
+      body = '<div class="result">' +
+        '<div class="verdict"><div class="sg f-' + r.f + '" id="sg">' + sign(r.f, true) + '</div>' +
+          '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big">' + esc(E.show(q, q.a)) + '</p><p class="you">' + esc(said) + '</p></div></div>' +
+        '<p class="why">' + esc(q.why) + '</p>' +
+        '<p class="crowd">That is the whole game. Every question has an answer that jumps out, and it is usually the trap. Three new ones a day, each harder than the last.</p>' +
+        '<div class="btns"><button class="btn plate" data-act="help">How it works</button><button class="btn" data-act="daily" data-enter>Hit the road</button></div></div>';
+    } else body = entryHtml(true);
+    view.innerHTML = '<section class="play"><div class="plate-q' + (r ? '' : ' solo') + '"><p class="lvl">One question before you start</p><p class="q">' + esc(q.q) + '</p></div>' + body + '</section>';
+    if (r) return;
+    beginAsk({ q: q, limit: 3600, start: Date.now(), beat: true,
+      commit: function (res) { res.m = 0; game.res = res; store.demo = 1; save(); },
+      reveal: function (res) { demoPlay(); cheer(res.f, 0, false, true); } });
   }
 
   /* ---------- Starting ---------- */
@@ -417,18 +448,26 @@
     return (q.pre ? '<span class="u">' + esc(q.pre.trim()) + '</span>' : '') + '<b>' + esc(text) + '</b>' + (suf ? '<span class="u">' + esc(suf) + '</span>' : '');
   }
   function keyBtn(k) { return '<button data-act="key" data-k="' + k + '">' + k + '</button>'; }
-  function entryHtml() {
+  function entryHtml(plain) {
     if (desk) return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
-      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.</p><button class="btn" data-act="enter">Lock it in</button></div></div>';
+      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.' + (plain ? '' : ' Shift and Enter floors it.') + '</p>' + (plain ? '' : '<button class="btn hot" data-act="floor">Floor it \u00D72</button>') + '<button class="btn" data-act="enter">Lock it in</button></div></div>';
     return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
       '<div class="pad">' +
         keyBtn(1) + keyBtn(2) + keyBtn(3) + '<button data-act="key" data-k="del" aria-label="Delete">' + ICON.del + '</button>' +
         keyBtn(4) + keyBtn(5) + keyBtn(6) + '<button data-act="key" data-k="." aria-label="Decimal point">.</button>' +
-        keyBtn(7) + keyBtn(8) + keyBtn(9) + '<button class="lock" data-act="enter">Lock<br>it in</button>' +
+        keyBtn(7) + keyBtn(8) + keyBtn(9) + '<button class="lock' + (plain ? ' tall' : '') + '" data-act="enter">Lock' + (plain ? '<br>' : ' ') + 'it in</button>' +
         '<button class="zero" data-act="key" data-k="0">0</button>' +
+        (plain ? '' : '<button class="floor" data-act="floor" aria-label="Floor it: double the distance if you are right, lose this question\u2019s worth if you are wrong">Floor it <b>\u00D72</b></button>') +
       '</div></div>';
   }
   // Every plate says where the question sits on the day's climb, and what it is worth.
+  // Time is fuel: the needle falls from F to E, and every second left in the tank is a metre.
+  function fuelHtml(limit, left) {
+    return '<span class="fuel' + (left <= 15 ? ' low' : '') + '" id="fuel" style="--f:' + Math.max(0, Math.min(1, left / limit)) + '">' +
+      '<svg viewBox="0 0 60 40" aria-hidden="true"><path class="arc" d="M4.250 30.400A26 26 0 0 1 55.750 30.400"/><path class="red" d="M4.250 30.400A26 26 0 0 1 10.100 17.300"/>' +
+      '<text x="1.500" y="39.500">E</text><text x="53.500" y="39.500">F</text><g class="needle"><path d="M30 34V11.500"/></g><circle cx="30" cy="34" r="3.300"/></svg>' +
+      '<b class="clock" id="clock" role="timer" aria-label="Fuel left, as time">' + mmss(left) + '</b></span>';
+  }
   function plateHtml(q, solo) {
     return '<div class="plate-q' + (solo ? ' solo' : '') + '">' +
       '<p class="lvl"><span class="bars l' + q.level + '" aria-hidden="true"><i></i><i></i><i></i></span>' + LEVEL[q.level] + '<b>worth ' + BASE[q.level] + ' m</b></p>' +
@@ -450,7 +489,8 @@
     if (!c) return;
     var whole = Math.ceil(left);
     c.textContent = mmss(whole);
-    c.className = 'clock' + (left <= 15 ? ' low' : '');
+    var fuel = document.getElementById('fuel');
+    if (fuel) { fuel.style.setProperty('--f', Math.max(0, left / ask.limit)); fuel.className = 'fuel' + (left <= 15 ? ' low' : ''); }
     if (whole <= 10 && whole !== lastBeep) { lastBeep = whole; SFX.beep(); }
   }
   function paintTyped(pop) {
@@ -470,7 +510,7 @@
     buzz(8);
     paintTyped(k !== 'del');
   }
-  function lock(timeout) {
+  function lock(timeout, floored) {
     if (!ask) return;
     var a = ask, f = timeout ? 'time' : E.judge(a.q, typed);
     if (f === 'bad') {
@@ -480,8 +520,12 @@
     }
     if (f === 'low' || f === 'high') f = 'wrong';
     var used = Math.min(a.limit, Math.max(0, (Date.now() - a.start) / 1000));
-    var r = { t: timeout ? '' : String(parseFloat(typed)), f: f, secs: Math.round(used) };
-    r.m = f === 'right' ? BASE[a.q.level] + Math.max(0, a.limit - r.secs) : 0;
+    var r = { t: timeout ? '' : String(parseFloat(typed)), f: f, secs: Math.round(used) }, base = BASE[a.q.level] || 100;
+    floored = !!floored && !timeout && !!a.bank;
+    if (floored) r.fl = 1;
+    // Right: the question's worth plus a metre per second of fuel left, doubled if you floored it.
+    // Wrong after flooring it: you lose the question's worth, though never more than you have.
+    r.m = f === 'right' ? (base + Math.max(0, a.limit - r.secs)) * (floored ? 2 : 1) : floored ? -Math.min(base, a.bank()) : 0;
     ask = null; typed = '';
     stopTimers();
     a.commit(r);             // stored at once, so a reload cannot buy a second guess
@@ -495,16 +539,17 @@
   /* ---------- Playing on your own ---------- */
   function resultHtml(q, r, i, nextLabel) {
     var ans = E.show(q, q.a), you;
-    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + '. That is ' + mOf(r) + ' m further down the road.';
-    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.';
-    else if (r.f === 'time') you = 'The clock ran out.';
-    else you = 'You said ' + E.show(q, parseFloat(r.t)) + '.';
+    var cost = r.fl && mOf(r) < 0 ? ' You floored it, so ' + (-mOf(r)) + ' m is gone.' : r.fl && r.f !== 'right' ? ' You floored it, with nothing in the tank to lose.' : '';
+    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + (r.fl ? ', and you floored it. ' : '. ') + 'That is ' + mOf(r) + ' m further down the road.';
+    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' + cost;
+    else if (r.f === 'time') you = 'You ran out of fuel.';
+    else you = 'You said ' + E.show(q, parseFloat(r.t)) + '.' + cost;
     return '<div class="result">' +
       '<div class="verdict"><div class="sg f-' + r.f + '" id="sg">' + sign(r.f, true) + '</div>' +
         '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big' + (ans.length > 8 ? ' sm' : '') + '">' + esc(ans) + '</p><p class="you">' + esc(you) + '</p></div></div>' +
       '<p class="crowd" id="crowd" role="status">' + esc(crowdLine(r)) + '</p>' +
       '<p class="why">' + esc(q.why) + '</p>' +
-      '<div class="btns"><button class="btn plate" data-act="friend" data-i="' + i + '">Ask a friend</button><button class="btn" data-act="next" data-enter>' + (nextLabel || (i < 2 ? 'Next question' : 'See my score')) + '</button></div>' +
+      '<div class="btns"><button class="btn plate" data-act="friend" data-i="' + i + '">Ask a friend</button><button class="btn" data-act="next" data-enter>' + (nextLabel || (i < 2 ? 'Drive on' : 'See how far I got')) + '</button></div>' +
     '</div>';
   }
   function play() {
@@ -514,15 +559,15 @@
     for (var k = 0; k < 3; k++) { var p = st.res[k]; hud += p ? sign(p.f, false) : '<i class="dot' + (k === i ? ' now' : '') + '">' + (k + 1) + '</i>'; }
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud">' + hud + '<span class="clock" id="clock" aria-label="Time left">' + mmss(r ? LIMIT - r.secs : LIMIT) + '</span></div>' +
+        '<div class="hud">' + hud + fuelHtml(LIMIT, r ? LIMIT - r.secs : LIMIT) + '</div>' +
         sceneHtml(shown, DAY_MAX, true, true) + plateHtml(q, !r) +
         (r ? resultHtml(q, r, i) : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
-    beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
+    beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true, bank: function () { return totalM(st); },
       commit: function (res) { st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
-      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res)); crawl(totalM(st) - mOf(res), totalM(st), DAY_MAX, res.f, true); } });
+      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res), res.fl); crawl(totalM(st) - mOf(res), totalM(st), DAY_MAX, res.f, true); } });
   }
   function next() {
     var st = game.st;
@@ -562,7 +607,7 @@
   function shareText() {
     var st = game.st, daily = game.mode === 'daily';
     return (daily ? NAME + ' #' + game.day : NAME + ', a private round') + '\n' +
-      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  \uD83D\uDC0C ' + totalM(st) + ' m\n' +
+      st.res.map(function (r) { return r.fl ? (r.f === 'right' ? '\u26A1' : '\uD83D\uDCA5') : EMOJI[r.f]; }).join('') + '  \uD83D\uDC0C ' + totalM(st) + ' m\n' +
       (daily ? 'Beat me: ' : 'Same three questions: ') + myLink();
   }
   function friendText(q, r) {
@@ -600,7 +645,7 @@
       signs += '<div class="sg f-' + r.f + '">' + sign(r.f, true) + '</div>';
       recap += '<li><p class="rq">' + esc(q.q) + '</p>' +
         '<p class="ra">' + sign(r.f, false) + '<b>' + esc(E.show(q, q.a)) + '</b><span class="rt">' +
-          esc(r.f === 'right' ? 'in ' + mmss(r.secs) + ', ' + mOf(r) + ' m' : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
+          esc(r.f === 'right' ? 'in ' + mmss(r.secs) + (r.fl ? ', floored' : '') + ', ' + mOf(r) + ' m' : r.f === 'time' ? 'out of fuel' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
         '<button class="linkish" data-act="friend" data-i="' + i + '">Ask a friend this one</button></li>';
     }
     view.innerHTML =
@@ -662,14 +707,14 @@
     var shown = game.m - (fresh && r ? r.m : 0);
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud"><span role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' wrong turns used" style="display:contents">' + hud + '</span><span class="hudn">Question ' + game.n + '</span><span class="clock" id="clock" aria-label="Time left">' + mmss(r ? RUN_LIMIT - r.secs : RUN_LIMIT) + '</span></div>' +
+        '<div class="hud"><span role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' wrong turns used" style="display:contents">' + hud + '</span><span class="hudn">Question ' + game.n + '</span>' + fuelHtml(RUN_LIMIT, r ? RUN_LIMIT - r.secs : RUN_LIMIT) + '</div>' +
         sceneHtml(shown, runGoal(), false, true) + plateHtml(q, !r) +
-        (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Next question' : 'See how far I got') : entryHtml()) +
+        (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Drive on' : 'See how far I got') : entryHtml()) +
       '</section>';
     if (r) return;
-    beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
+    beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true, bank: function () { return game.m; },
       commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); },
-      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m); crawl(game.m - res.m, game.m, runGoal(), res.f, false); } });
+      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m, res.fl); crawl(game.m - res.m, game.m, runGoal(), res.f, false); } });
   }
   function runEnd() {
     stopTimers(); ask = null;
@@ -730,10 +775,10 @@
     var k = game.k, pi = order()[game.turn], q = game.set[k];
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span><span class="clock" id="clock" aria-label="Time left">' + mmss(PARTY_LIMIT) + '</span></div>' +
+        '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span>' + fuelHtml(PARTY_LIMIT, PARTY_LIMIT) + '</div>' +
         sceneHtml(game.players[pi].m, partyMax(), false, true) + plateHtml(q, true) + entryHtml() +
       '</section>';
-    beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false,
+    beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false, bank: function () { return game.players[pi].m; },
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; },
       reveal: function () { SFX.lock(); game.turn++; if (game.turn < game.players.length) partyPass(); else partyGather(); } });
   }
@@ -761,8 +806,8 @@
     }
     var rows = ord.map(function (pi) {
       var r = a[pi];
-      var said = r.f === 'time' ? 'ran out of time' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '');
-      return '<div class="prow hid" data-f="' + r.f + '"><div class="sg f-' + r.f + '">' + sign(r.f, true) + '</div><p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p><span class="pt">' + (r.m ? '+' + r.m + ' m' : '') + '</span></div>';
+      var said = r.f === 'time' ? 'ran out of fuel' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '') + (r.fl ? ', floored it' : '');
+      return '<div class="prow hid" data-f="' + r.f + '"><div class="sg f-' + r.f + '">' + sign(r.f, true) + '</div><p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p><span class="pt">' + (r.m ? (r.m > 0 ? '+' : '\u2212') + Math.abs(r.m) + ' m' : '') + '</span></div>';
     }).join('');
     view.innerHTML =
       '<section class="rev">' +
@@ -770,7 +815,7 @@
         '<p class="answer"><span>The answer</span><b>' + esc(E.show(q, q.a)) + '</b></p>' +
         rows +
         '<div class="after hid" id="after"><p class="why">' + esc(q.why) + '</p>' + standings(false) +
-          '<button class="btn" data-act="pnext" data-enter>' + (last ? 'Final scores' : 'Next question') + '</button></div>' +
+          '<button class="btn" data-act="pnext" data-enter>' + (last ? 'The finish line' : 'Drive on') + '</button></div>' +
       '</section>';
     window.scrollTo(0, 0);
     var els = view.querySelectorAll('.prow'), after = document.getElementById('after');
@@ -822,7 +867,7 @@
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves you down the road: 100 m, 150 m, then 200 m, plus a metre for every second left on the clock. The trap moves you nowhere.</li></ul>' +
+      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes of fuel.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves you down the road: 100 m, 150 m, then 200 m, plus a metre for every second of fuel left. The trap moves you nowhere.</li><li>Sure of yourself? Floor it. Right, and the distance doubles. Wrong, and you lose what the question was worth.</li></ul>' +
       '<div class="eg"><p class="egq">A bat and a ball cost €1.10. The bat costs €1.00 more than the ball. How much is the ball?</p>' +
         eg('right', '5 cents', 'Correct. It takes a second look.') +
         eg('bait', '10 cents', 'The trap. It is the answer that jumps out first.') +
@@ -853,7 +898,7 @@
       stepper('Players', cfg.names.length, 'pn-', 'pn+') +
       '<div class="names">' + inputs + '</div>' +
       stepper('Questions', cfg.count, 'pq-', 'pq+') +
-      '<p class="small">The questions go from easiest to hardest. A right answer is worth 100 to 200 m, plus a metre for every second you had left. Blurt out the trap and you get nothing.</p>' +
+      '<p class="small">The questions go from easiest to hardest. A right answer is worth 100 to 200 m, plus a metre for every second you had left. Floor it to double that, or lose the question\u2019s worth if you are wrong.</p>' +
       '<button class="btn" data-act="pstart">Start</button>');
   }
   function partyStart() {
@@ -918,6 +963,7 @@
     var act = t.getAttribute('data-act');
     if (act === 'key') key(t.getAttribute('data-k'));
     else if (act === 'enter') lock(false);
+    else if (act === 'floor') lock(false, true);
     else if (act === 'next') { if (game.mode === 'run') { if (game.lives > 0) runNext(); else runEnd(); } else next(); }
     else if (act === 'run') { closeSheet(); startRun(); }
     else if (act === 'runshare') send(NAME + ', the long road\n\uD83D\uDC0C ' + game.m + ' m before three wrong turns\n' + SITE, 'Copied. Paste it anywhere.');
@@ -960,7 +1006,7 @@
       if (/^[0-9]$/.test(e.key)) key(e.key);
       else if (e.key === '.' || e.key === ',') key('.');
       else if (e.key === 'Backspace') { key('del'); e.preventDefault(); }
-      else if (e.key === 'Enter') { lock(false); e.preventDefault(); }
+      else if (e.key === 'Enter') { lock(false, e.shiftKey); e.preventDefault(); }
     } else if (e.key === 'Enter' && !pending) {
       var b = view.querySelector('[data-enter]');
       if (b && !(b.closest('.hid'))) { b.click(); e.preventDefault(); }
@@ -971,7 +1017,9 @@
   function start(snap) {
     if (!hadLocal && snap && snap.store && snap.store.stats && snap.store.stats.dist) { store = snap.store; if (typeof store.sound !== 'boolean') store.sound = false; }
     paintSound();
-    if (readLink() === 'numbers') numbers(); else home();
+    if (readLink() === 'numbers') numbers();
+    else if (!hadLocal && !store.demo && !store.rival) demo();   // brand new here: straight into a trap
+    else home();
   }
   var hot = window.claude && window.claude.hot;
   if (hot && hot.snapshot) hot.snapshot(function () { return { store: store }; });

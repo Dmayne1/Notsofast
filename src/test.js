@@ -113,6 +113,7 @@ const verify = {
     return dist;
   },
   clock(v) {
+    if (v.mode === 'opposite') { let count = 0, prev = null; for (let s = 0; s <= v.H * 3600; s++) { const rel = ((s * (360 / 3600 - 30 / 3600)) + 180) % 360; if (prev !== null && rel < prev) count++; prev = rel; } return count; }
     if (v.mode === 'overlap') { let count = 0, prev = 0; for (let s = 1; s <= v.H * 3600; s++) { const rel = (s * (360 / 3600 - 30 / 3600)) % 360; if (rel < prev) count++; prev = rel; } return count; }
     const mins = (v.h % 12) * 60 + v.m; const hour = mins * 0.5, minute = v.m * 6; let d = Math.abs(hour - minute) % 360; return Math.min(d, 360 - d); },
   weighted(v) { let sum = 0, n = 0; for (let i = 0; i < v.n1; i++) { sum += v.a1; n++; } for (let i = 0; i < v.n2; i++) { sum += v.a2; n++; } return sum / n; },
@@ -126,7 +127,11 @@ const verify = {
   },
   race(v) { const arr = []; for (let i = 1; i <= 10; i++) arr.push('r' + i); arr.splice(v.k, 0, 'you'); const me = arr.indexOf('you'); arr[me] = arr[me - 1]; arr[me - 1] = 'you'; return arr.indexOf('you') + 1; },
   paperfold(v) { let layers = 1; for (let i = 0; i < v.n; i++) layers *= 2; return layers; },
-  pigeon(v) { const seen = new Set(); let people = 0; for (let c = 0; c < v.k; c++) { seen.add(c); people++; } return people + 1; },
+  baserate(v) { let scams = 0, flagged = 0; const N = 1000000; scams = N * v.prior / 100; flagged = scams + (N - scams) * v.f / 100; return scams / flagged * 100; },
+  cuts(v) {   // count regions the hard way: each new line in general position adds one piece per line it crosses, plus one
+    let pieces = 1; for (let line = 1; line <= v.n; line++) { let crossed = 0; for (let earlier = 1; earlier < line; earlier++) crossed++; pieces += crossed + 1; } return pieces; },
+  pigeon(v) { if (v.mode === 'coins') { let hit = 0; for (let m = 0; m < 8; m++) { const f = [m & 1, (m >> 1) & 1, (m >> 2) & 1]; if (f[0] === f[1] || f[1] === f[2] || f[0] === f[2]) hit++; } return hit / 8 * 100; }
+    const seen = new Set(); let people = 0; for (let c = 0; c < v.k; c++) { seen.add(c); people++; } return people + 1; },
   squares(v) { let c = 0; for (let s = 1; s <= v.n; s++) for (let x = 0; x + s <= v.n; x++) for (let y = 0; y + s <= v.n; y++) c++; return c; },
   monty(v) { let wins = 0, games = 0; for (let car = 0; car < 3; car++) for (let pick = 0; pick < 3; pick++) { games++; const opened = [0, 1, 2].find(d => d !== pick && d !== car); const other = [0, 1, 2].find(d => d !== pick && d !== opened); if (other === car) wins++; } return v.G * wins / games; },
   bookworm(v) { const firstPageVol1 = v.c + v.P; const vol2Start = 2 * v.c + v.P; const lastPageVol2 = vol2Start + v.c; return lastPageVol2 - firstPageVol1; },
@@ -154,6 +159,7 @@ const verify = {
     if (v.id === 'rope') { const R = 6371000; return 2 * Math.PI * (R + 1) - 2 * Math.PI * R; }
     if (v.id === 'birthday') { let p = 1; for (let n = 1; n < 366; n++) { p *= (365 - (n - 1)) / 365; if (1 - p > 0.5) return n; } }
     if (v.id === 'billion') return 1e9 / (86400 * 365.25);
+    if (v.id === 'cards') { let red = 0, both = 0; for (const card of ['RR', 'BB', 'RB']) for (const side of [0, 1]) if (card[side] === 'R') { red++; if (card[1 - side] === 'R') both++; } return both / red * 100; }
     if (v.id === 'coinroll') { const r = 1, R = 1; return (2 * Math.PI * (R + r)) / (2 * Math.PI * r); }
     if (v.id === 'twokids') { let all = 0, both = 0; for (const a of 'BG') for (const b of 'BG') if (a === 'B' || b === 'B') { all++; if (a === 'B' && b === 'B') both++; } return all / both; }
     if (v.id === 'monty') { let wins = 0, games = 0; for (let car = 0; car < 3; car++) for (let pick = 0; pick < 3; pick++) { games++; const opened = [0, 1, 2].find(d => d !== pick && d !== car); const other = [0, 1, 2].find(d => d !== pick && d !== opened); if (other === car) wins++; } return wins / games * 100; }

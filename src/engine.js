@@ -157,7 +157,9 @@
   fam('doubling', 2, function (r) {
     const s = pick(r, [['A patch of lily pads', 'pond', 'day', 'days', [20, 30, 48, 100]], ['A bloom of algae', 'lake', 'day', 'days', [20, 30, 48, 100]], ['A colony of bacteria', 'jar', 'minute', 'minutes', [60]]]);
     const D = pick(r, s[4]);
-    if (r() < 0.65) return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. After how many ' + s[3] + ' was the ' + s[1] + ' half full?', suf: s[3], a: D - 1, baits: [D / 2], why: 'It doubles each ' + s[2] + ', so one ' + s[2] + ' before it was full, it was half full.', v: { t: 'doubling', mode: 'half', D: D } };
+    const roll = r();
+    if (roll < 0.2) return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. After how many ' + s[3] + ' was the ' + s[1] + ' a quarter full?', suf: s[3], a: D - 2, baits: [D / 4, D / 2], why: 'Work backwards. Half full one ' + s[2] + ' before the end, a quarter full the ' + s[2] + ' before that.', v: { t: 'doubling', mode: 'quarter', D: D } };
+    if (roll < 0.7) return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. After how many ' + s[3] + ' was the ' + s[1] + ' half full?', suf: s[3], a: D - 1, baits: [D / 2], why: 'It doubles each ' + s[2] + ', so one ' + s[2] + ' before it was full, it was half full.', v: { t: 'doubling', mode: 'half', D: D } };
     return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. If you start with two of them, how many ' + s[3] + ' does it take?', suf: s[3], a: D - 1, baits: [D / 2], why: 'Starting with two is the same as starting one ' + s[2] + ' later. You save one ' + s[2] + ', not half the time.', v: { t: 'doubling', mode: 'two', D: D } };
   });
 
@@ -250,6 +252,7 @@
   });
 
   fam('pigeon', 2, function (r, turn) {
+    if (typeof turn === 'number' ? turn % 5 === 4 : r() < 0.2) return { q: 'You flip a coin 3 times. What is the % chance that at least two of the flips match?', suf: '%', a: 100, baits: [50, 75, 25], why: 'There are only two faces. With three flips, two of them have to land the same way.', v: { t: 'pigeon', mode: 'coins' } };
     const p = walk(r, turn, [['were born in the same month', 12, 'a different month'], ['were born on the same day of the week', 7, 'a different day'], ['have the same star sign', 12, 'a different sign'], ['have a first name starting with the same letter', 26, 'a different letter']]);
     return { q: 'How many people do you need in a room to be certain that two of them ' + p[0] + '?', suf: 'people', a: p[1] + 1, baits: [p[1], 2], why: p[1] + ' people could each have ' + p[2] + '. Person ' + (p[1] + 1) + ' has to match somebody.', v: { t: 'pigeon', k: p[1] } };
   });
@@ -306,7 +309,12 @@
   });
 
   fam('clock', 3, function (r) {
-    if (r() < 0.35) {
+    const kind = r();
+    if (kind < 0.18) {
+      const H = pick(r, [12, 24]);
+      return { q: 'How many times do the hands of a clock point in exactly opposite directions in ' + H + ' hours?', suf: 'times', a: 11 * H / 12, baits: [H, H + 1], why: 'It happens a little less than once an hour: 11 times in 12 hours, not 12. Around 6 o\u2019clock the hour either side shares the one moment.', v: { t: 'clock', mode: 'opposite', H: H } };
+    }
+    if (kind < 0.42) {
       const H = pick(r, [12, 24]);
       return { q: 'How many times do the hands of a clock pass over each other in ' + H + ' hours?', suf: 'times', a: 11 * H / 12, baits: [H, H + 1], why: 'The minute hand catches the hour hand every 65 minutes or so, not every 60. That fits 11 times into 12 hours.', v: { t: 'clock', mode: 'overlap', H: H } };
     }
@@ -338,6 +346,22 @@
     return { q: 'You ' + s[0] + ' at ' + a + ' km/h and ' + s[1] + ' the same way at ' + b + ' km/h. What is your average speed for the whole trip?', suf: 'km/h', a: 2 * L / hrs, baits: [(a + b) / 2], why: 'You spend longer on the slow leg, so it counts for more. Say it is ' + L + ' km each way: ' + (L / a) + ' ' + pl(L / a, 'hour', 'hours') + ' out, ' + (L / b) + ' back, ' + (2 * L) + ' km in ' + hrs + ' hours.', v: { t: 'speed', mode: 'avg', a: a, b: b } };
   });
 
+  fam('lockers', 3, function (r) {
+    const N = pick(r, [100, 100, 49, 64, 30]), open = Math.floor(Math.sqrt(N));
+    return { q: N + ' lockers are closed. Person 1 flips every locker, person 2 every 2nd, person 3 every 3rd, and so on up to person ' + N + '. How many lockers end up open?', suf: 'lockers', a: open, baits: [N / 2, N, 0], why: 'A locker is flipped once for each number that divides it. Only square numbers have an odd count of those: 1, 4, 9 and so on. There are ' + open + ' up to ' + N + '.', v: { t: 'lockers', N: N } };
+  });
+
+  fam('baserate', 3, function (r) {
+    const p = pick(r, [[9, 10], [4, 20], [19, 5]]);
+    return { q: '1% of emails are scams. A filter catches every scam, but it also flags ' + p[0] + '% of honest emails. An email gets flagged. What is the % chance it is a scam? (nearest whole number)', suf: '%', a: p[1], tol: 0.5, baits: [100 - p[0], 99, 90], why: 'Take 100 emails: 1 scam, and it is flagged. But about ' + p[0] + ' of the 99 honest ones are flagged too. So only 1 flagged email in ' + (p[0] + 1) + ' is a scam.', v: { t: 'baserate', prior: 1, f: p[0] } };
+  });
+
+  fam('cuts', 3, function (r) {
+    const n = pick(r, [3, 4, 4, 5]), parts = [1]; let total = 1;
+    for (let k = 1; k <= n; k++) { total += k; parts.push(k); }
+    return { q: 'What is the most pieces you can cut a pizza into with ' + n + ' straight cuts?', suf: 'pieces', a: total, baits: [2 * n, n + 1], why: 'Each new cut can cross every earlier one, so cut number ' + n + ' adds ' + n + ' pieces: ' + parts.join(' + ') + ' = ' + total + '.', v: { t: 'cuts', n: n } };
+  });
+
   // One-off classics. Each appears once per pass through the list, in order.
   fam('classic', 3, function (r, turn) {
     const list = [
@@ -345,6 +369,7 @@
       { q: 'Two 50 m poles hold up an 80 m cable. At its lowest point the cable is 10 m above the ground. How far apart are the poles?', suf: 'm', a: 0, baits: [], why: 'The cable drops 40 m and climbs 40 m, which uses all 80 m. It hangs straight down, so the poles are touching.', v: { t: 'classic', id: 'cable' } },
       { q: 'One of 3 doors hides a car. You pick one. The host, who knows where the car is, opens an empty door from the other two. What is your % chance if you switch?', suf: '%', a: 66.67, tol: 0.7, baits: [50, 33], why: 'Your first pick is right 1 time in 3. The other 2 times, the host has just shown you where the car is.', v: { t: 'classic', id: 'monty' } },
       { q: 'A family has two children and at least one is a boy. The chance that both are boys is 1 in what?', pre: '1 in ', a: 3, baits: [2, 4], why: 'Boy-boy, boy-girl and girl-boy are all equally likely. Only one of those three is two boys.', v: { t: 'classic', id: 'twokids' } },
+      { q: 'One card is red on both sides, one is blue on both sides and one has a side of each. You draw a card and see a red side. What is the % chance the other side is red too?', suf: '%', a: 66.67, tol: 0.7, baits: [50, 33], why: 'There are three red sides you could be looking at, and two of them belong to the all-red card.', v: { t: 'classic', id: 'cards' } },
       { q: 'A rope fits snugly around the Earth. How many extra metres of rope do you need to lift it 1 metre off the ground all the way round? (nearest metre)', suf: 'metres', a: 6, tol: 0.3, baits: [], baitAbove: 100, why: 'The extra is 2 × π × 1 metre, about 6.3 metres. The size of the Earth makes no difference at all.', v: { t: 'classic', id: 'rope' } }
     ];
     return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
@@ -360,7 +385,7 @@
     const fams = BY[level], days = fams.length;
     let prev = null, sh = null;
     for (let c = 0; c <= target; c++) {
-      sh = shuffle(rngFrom('v5-cycle-' + level + '-' + c), fams);
+      sh = shuffle(rngFrom('v6-cycle-' + level + '-' + c), fams);
       if (prev && sh[0] === prev) sh = sh.slice(1).concat(sh[0]);
       prev = sh[days - 1];
     }
@@ -379,17 +404,17 @@
     const i = Math.max(0, day - 1);
     return [1, 2, 3].map(function (level, n) {
       const days = BY[level].length, turn = Math.floor(i / days);
-      return make(cycleOrder(level, turn)[i % days], 'v5-daily-' + day + '-' + n, turn);
+      return make(cycleOrder(level, turn)[i % days], 'v6-daily-' + day + '-' + n, turn);
     });
   }
   function buildTable(code, round) {
-    const key = 'v5-table-' + code + '-' + round, r = rngFrom(key);
+    const key = 'v6-table-' + code + '-' + round, r = rngFrom(key);
     return [pick(r, BY[1]), pick(r, BY[2]), pick(r, BY[3])].map(function (f, n) { return make(f, key + '-' + n); });
   }
 
   // A longer set for one phone passed round a group: easy first, hardest last, no family twice.
   function buildParty(seed, n) {
-    const key = 'v5-party-' + seed, r = rngFrom(key);
+    const key = 'v6-party-' + seed, r = rngFrom(key);
     const plan = n <= 3 ? [1, 2, 3] : n <= 5 ? [1, 2, 2, 3, 3] : [1, 2, 2, 2, 3, 3, 3];
     const pool = { 1: shuffle(r, BY[1]), 2: shuffle(r, BY[2]), 3: shuffle(r, BY[3]) };
     return plan.map(function (level, i) { return make(pool[level].pop(), key + '-' + i); });

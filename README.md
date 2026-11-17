@@ -25,7 +25,13 @@ meant to be playable in a lecture.
 The score is a distance. A right answer moves your snail on: 100 m for the warm-up, 150 m for
 the trickier one and 200 m for the hard one, plus a metre for every second left on the clock
 (two minutes on your own, one minute when a phone is passed round). The trap, a wrong answer or
-running out of time moves it nowhere. A perfect day is 810 m. Every question plate shows its
+running out of time moves it nowhere. A perfect day is 810 m, or 1,620 m if every answer is floored.
+
+Time is shown as a fuel gauge. Instead of locking an answer in, a player can floor it: right, and
+the distance doubles; wrong, and they lose what the question was worth (never more than they have).
+
+A first-time visitor skips the front page and lands on one trap question, so the first thing the
+game does is catch them. Every question plate shows its
 level and what it is worth, so players can see the day goes from easiest to hardest.
 
 ## Questions
