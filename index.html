@@ -849,7 +849,7 @@ body.desk .read { height: 70px; }
   var BASE = { 1: 100, 2: 150, 3: 200 };
   var LEVEL = { 1: 'Warm-up', 2: 'Trickier', 3: 'The hard one' };
   var DAY_MAX = BASE[1] + BASE[2] + BASE[3] + 3 * LIMIT;
-  var PLACES = [[700, 'The open road'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
+  var PLACES = [[700, 'Under the stars'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
   var view = document.getElementById('view');
@@ -1044,7 +1044,8 @@ body.desk .read { height: 70px; }
   var bgEl = document.getElementById('bg'), cv = document.createElement('canvas'), g2 = cv.getContext && cv.getContext('2d');
   bgEl.appendChild(cv);
   var road = { d: 0, from: 0, to: 0, t0: 0, ms: 0, cb: null, W: 0, H: 0, dpr: 1, last: 0, dirty: true, car: 0, nextCar: 0 };
-  var STARS = (function () { var r = E.rngFrom('stars'), a = []; for (var i = 0; i < 46; i++) a.push([r(), r(), 0.6 + r() * 1.1, r() * 6.3]); return a; })();
+  var STARS = (function () { var r = E.rngFrom('stars'), a = []; for (var i = 0; i < 230; i++) a.push([r(), r(), i < 46 ? 0.6 + r() * 1.1 : 0.5 + r() * 0.9, r() * 6.3]); return a; })();
+  var DUST = (function () { var r = E.rngFrom('dust'), a = []; for (var i = 0; i < 170; i++) a.push([r() * 2 - 1, (r() + r() + r() - 1.5) * 0.11, 0.2 + r() * 0.55]); return a; })();
   function rnd(k) { var x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }   // the same "random" value for the same object every frame
   function rgba(hex, a) { return 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) + ',' + a + ')'; }
   function placeIndex(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES.length - 1 - i; return 0; }
@@ -1062,20 +1063,72 @@ body.desk .read { height: 70px; }
     var glow = GLOW[Math.min(GLOW.length - 1, placeIndex(Math.max(0, d)))];
     var near = function (zz) { return road.ms ? 1 : Math.max(0, Math.min(1, (zz - 11) / 14)); };   // stopped: fade out whatever is right beside you
 
-    // sky, stars, moon, the glow on the horizon, far hills
+    // The sky is where the road is taking you. In town the street lights wash it out. The further
+    // you get, the darker the ground and the more the sky opens: more stars, the Milky Way,
+    // then planets and an aurora once you are far from any lamp.
+    var dark = Math.max(0, Math.min(1, (d - 300) / 420)), deep = Math.max(0, Math.min(1, (d - 620) / 180));
     var sky = c.createLinearGradient(0, 0, 0, hy); sky.addColorStop(0, '#04060c'); sky.addColorStop(1, '#182139');
     c.fillStyle = sky; c.fillRect(0, 0, W, hy + 2);
+    if (dark > 0.03) {
+      c.save(); c.translate(cx + S * 0.08, hy * 0.42); c.rotate(-0.55);
+      c.save(); c.scale(1, 0.2);
+      var mw = c.createRadialGradient(0, 0, 0, 0, 0, S * 1.05); mw.addColorStop(0, 'rgba(178,190,255,' + (0.22 * dark) + ')'); mw.addColorStop(1, 'rgba(178,190,255,0)');
+      c.fillStyle = mw; c.beginPath(); c.arc(0, 0, S * 1.05, 0, 6.3); c.fill(); c.restore();
+      c.fillStyle = '#fff';
+      for (k = 0; k < DUST.length; k++) { c.globalAlpha = dark * DUST[k][2]; c.fillRect(DUST[k][0] * S, DUST[k][1] * S, 1, 1); }
+      c.restore();
+    }
     c.fillStyle = '#fff';
-    for (k = 0; k < STARS.length; k++) { c.globalAlpha = calm ? 0.7 : 0.45 + 0.4 * Math.sin(now / 900 + STARS[k][3]); c.fillRect(STARS[k][0] * W, STARS[k][1] * hy * 0.9, STARS[k][2], STARS[k][2]); }
+    for (k = 0; k < STARS.length; k++) {   // the first few show even in town; the rest come out as it gets darker
+      c.globalAlpha = (calm ? 0.75 : 0.5 + 0.4 * Math.sin(now / 900 + STARS[k][3])) * (k < 46 ? 1 : dark);
+      c.fillRect(STARS[k][0] * W, STARS[k][1] * hy * 0.92, STARS[k][2], STARS[k][2]);
+    }
     c.globalAlpha = 1;
     var mr = Math.max(7, S * 0.024), mx = cx - S * 0.36, my = hy * 0.62;
     c.fillStyle = '#ece8d6'; c.beginPath(); c.arc(mx, my, mr, 0, 6.3); c.fill();
     c.fillStyle = '#131a2f'; c.beginPath(); c.arc(mx + mr * 0.5, my - mr * 0.3, mr * 0.9, 0, 6.3); c.fill();
+    if (deep > 0) {
+      // the aurora: a curtain of thin rays with a sharp lower edge, green low down and violet above
+      c.save(); c.globalCompositeOperation = 'lighter';
+      if (!road.aur) { road.aur = c.createLinearGradient(0, 0, 0, 1); road.aur.addColorStop(0, 'rgba(150,110,255,0)'); road.aur.addColorStop(0.4, 'rgba(140,120,255,0.3)'); road.aur.addColorStop(0.8, 'rgba(70,255,170,0.75)'); road.aur.addColorStop(0.93, 'rgba(120,255,190,0.95)'); road.aur.addColorStop(1, 'rgba(70,255,170,0)'); }
+      c.fillStyle = road.aur;
+      var tm = calm ? 0 : now / 3200, sw = Math.max(3, Math.round(W / 280));
+      for (var au = 0; au < 2; au++) for (x = 0; x < W; x += sw) {
+        var ux = x / S, wave = Math.sin(ux * 3.1 + tm + au * 2.2) + 0.5 * Math.sin(ux * 7.3 - tm * 1.4 + au);
+        var ray = 0.5 + 0.5 * Math.sin(ux * 46 + tm * 3 + 4 * Math.sin(ux * 5 + au * 3)), fold = 0.5 + 0.5 * Math.sin(ux * 2.3 - tm * 0.7 + au * 1.7);
+        var bot = hy * (0.66 - au * 0.2 + 0.09 * wave), tall = hy * (0.3 + 0.16 * ray);
+        c.globalAlpha = deep * (au ? 0.2 : 0.42) * (0.25 + 0.75 * ray) * (0.2 + 0.8 * fold);
+        c.save(); c.translate(x, bot - tall); c.scale(1, tall); c.fillRect(0, 0, sw, 1); c.restore();
+      }
+      c.restore();
+      // a ringed planet and a small red one, lit from the left, sitting in the gap the dials leave clear
+      var px = cx + S * 0.05, py = hy * 0.4, pr = Math.max(4.5, S * 0.023);
+      c.globalAlpha = deep;
+      c.strokeStyle = 'rgba(232,214,176,0.8)'; c.lineWidth = Math.max(1, pr * 0.16);
+      c.beginPath(); c.ellipse(px, py, pr * 2, pr * 0.5, -0.35, Math.PI, 2 * Math.PI); c.stroke();
+      var pg = c.createRadialGradient(px - pr * 0.4, py - pr * 0.35, pr * 0.1, px, py, pr); pg.addColorStop(0, '#f3dfb4'); pg.addColorStop(0.7, '#c9a56c'); pg.addColorStop(1, '#6d5536');
+      c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, 6.3); c.fill();
+      c.beginPath(); c.ellipse(px, py, pr * 2, pr * 0.5, -0.35, 0, Math.PI); c.stroke();
+      var qx = cx - S * 0.2, qy = hy * 0.36, qr = Math.max(2, S * 0.006);
+      var qg = c.createRadialGradient(qx, qy, 0, qx, qy, qr * 4); qg.addColorStop(0, 'rgba(255,150,110,0.55)'); qg.addColorStop(1, 'rgba(255,150,110,0)');
+      c.fillStyle = qg; c.beginPath(); c.arc(qx, qy, qr * 4, 0, 6.3); c.fill();
+      c.fillStyle = '#ffb08e'; c.beginPath(); c.arc(qx, qy, qr, 0, 6.3); c.fill();
+      c.globalAlpha = 1;
+    }
+    if (road.shoot) {   // a shooting star
+      var sk = (now - road.shoot[0]) / 480;
+      if (sk >= 1) road.shoot = null;
+      else {
+        var sx = road.shoot[1] * W + sk * S * 0.3, sy = road.shoot[2] * hy * 0.5 + sk * S * 0.13, sg = c.createLinearGradient(sx, sy, sx - S * 0.12, sy - S * 0.052);
+        sg.addColorStop(0, 'rgba(255,255,255,' + (1 - sk) + ')'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+        c.strokeStyle = sg; c.lineWidth = 1.6; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - S * 0.12, sy - S * 0.052); c.stroke();
+      }
+    }
     c.save(); c.translate(cx, hy); c.scale(1, 0.26);
-    var gr = c.createRadialGradient(0, 0, 0, 0, 0, S * 0.95); gr.addColorStop(0, rgba(glow, 0.85)); gr.addColorStop(1, rgba(glow, 0));
+    var gr = c.createRadialGradient(0, 0, 0, 0, 0, S * 0.95); gr.addColorStop(0, rgba(glow, 0.85 - 0.45 * dark)); gr.addColorStop(1, rgba(glow, 0));
     c.fillStyle = gr; c.beginPath(); c.arc(0, 0, S * 0.95, 0, 6.3); c.fill(); c.restore();
     c.fillStyle = '#070910'; c.beginPath(); c.moveTo(0, hy + 2);
-    for (x = 0; x <= W + 8; x += 8) { var u = (x - cx) / S + d * 0.00012; c.lineTo(x, hy - S * (0.014 + 0.024 * (Math.sin(u * 5.1 + 1) + 1) + 0.012 * (Math.sin(u * 11.3 + 2) + 1)) * (0.3 + Math.min(1, Math.abs((x - cx) / S) * 2.4))); }
+    for (x = 0; x <= W + 8; x += 8) { var u = (x - cx) / S + d * 0.00012; c.lineTo(x, hy - S * (1 + 1.1 * dark) * (0.014 + 0.024 * (Math.sin(u * 5.1 + 1) + 1) + 0.012 * (Math.sin(u * 11.3 + 2) + 1)) * (0.3 + Math.min(1, Math.abs((x - cx) / S) * 2.4))); }
     c.lineTo(W, hy + 2); c.fill();
 
     // ground and tarmac
@@ -1176,6 +1229,7 @@ body.desk .read { height: 70px; }
       else {
         if (now - road.last < 45 && !road.dirty) return;   // idle: about 20 frames a second is plenty for stars and the odd car
         if (!road.car && now > road.nextCar) { road.car = road.nextCar ? 240 : 0; road.nextCar = now + 7000 + Math.random() * 9000; }
+        if (!road.shoot && road.d > 420 && now > (road.nextShoot || 0)) { if (road.nextShoot) road.shoot = [now, 0.1 + Math.random() * 0.6, 0.2 + Math.random() * 0.9]; road.nextShoot = now + 6000 + Math.random() * 9000; }
         if (road.car > 0) { road.car -= 240 * Math.min(100, now - road.last) / 2200; if (road.car < 2.5) road.car = 0; }
       }
     }

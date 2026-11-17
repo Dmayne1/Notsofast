@@ -31,7 +31,9 @@ Time is shown as a fuel gauge.
 
 The background is the road itself, drawn on a canvas from wherever the player has got to. Yellow
 boards count off every 100 m, name signs stand where each stretch begins, and houses give way to
-street lamps and then trees. Pressing "Drive on" clears the screen and drives the distance the
+street lamps and then trees. The sky is the reward for distance: the street lights wash it out in
+town, and the further out the player gets the more of it shows, from a few stars to the Milky Way
+and then planets and an aurora past 620 m. Pressing "Drive on" clears the screen and drives the distance the
 last answer earned. There is no separate progress bar.
 
 A first-time visitor skips the front page and lands on one trap question, so the first thing the
