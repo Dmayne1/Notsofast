@@ -1,6 +1,6 @@
 # Not So Fast
 
-A daily game: three trick questions, one guess each, and the obvious answer is the trap.
+A daily game: three trick questions, one guess each. Get three green lights.
 
 Live at https://playnotsofast.com
 
@@ -15,35 +15,40 @@ Live at https://playnotsofast.com
 - The daily three, the same for everyone. A shared score carries a link, so a friend who plays the same three sees who won.
 - One phone passed round a group: everyone answers in secret, then the results are revealed together.
 - A private three on your own phones, by code or by link.
-- The long road: once today's three are done, questions keep coming until three wrong turns.
+- Endless mode: once today's three are done, questions keep coming until three reds.
 
 Sound is off until the player turns it on, and on a laptop the answer is typed, because this is
 meant to be playable in a lecture.
 
-## Scoring
+## The one idea
 
-The score is a distance. A right answer moves your snail on: 100 m for the warm-up, 150 m for
-the trickier one and 200 m for the hard one, plus a metre for every second left on the clock
-(two minutes on your own, one minute when a phone is passed round). The trap, a wrong answer or
-running out of time moves it nowhere. A perfect day is 810 m.
+Three lights. A right answer turns a light green; the trap, a wrong answer or running out of
+time turns it red. The goal is three greens, and the score is how many you got, with total time
+to break a tie (two minutes a question on your own, one minute when a phone is passed round).
 
-Time is shown as a fuel gauge.
+Every screen is built around that:
 
-The background is the road itself, drawn on a canvas from wherever the player has got to. Yellow
-boards count off every 100 m, name signs stand where each stretch begins, and houses give way to
-street lamps and then trees. The sky is the reward for distance: the street lights wash it out in
-town, and the further out the player gets the more of it shows, from a few stars to the Milky Way
-and then planets and an aurora past 620 m. Pressing "Drive on" clears the screen and drives the distance the
-last answer earned. There is no separate progress bar.
+- The front page says the goal, shows the three lights and has one yellow button.
+- A question shows the lights on the left, the time in large digits on the right and a bar under
+  both that runs down. The question never moves.
+- After an answer the same screen stays. The light changes, the verdict takes the clock's place,
+  and under the question sit the answer, one line on why, and one yellow button.
+- The score is the same three lights, large, and one number.
+
+Yellow always means the thing to act on: the live light, and the single primary button.
+
+The night road behind is only a backdrop. It moves on a stretch each time a light turns green,
+from street lamps in town out to open country, so three greens end under a full sky. Nothing on
+it carries a number, and no animation ever holds up the next question.
 
 ## What a refresh does
 
 Every answer is saved the moment it is locked in, and the page reopens where it was left:
 
-- mid-question, back on the question with the fuel that is left (a refresh buys neither time nor a
+- mid-question, back on the question with the time that is left (a refresh buys neither time nor a
   second guess);
 - on a verdict, the verdict again;
-- the long road, a pass-the-phone party and a private round are saved step by step and resume;
+- endless mode, a pass-the-phone party and a private round are saved step by step and resume;
 - two tabs share one game: an answer given in one shows in the other, and counts once.
 
 Saved data is rebuilt and checked every time it is read, so a damaged or hand-edited save cannot
@@ -55,9 +60,8 @@ in that app's own browser. `404.html` sends a mistyped address to the game.
 
 `python3 src/journeys.py` plays all of this in a real browser; the top of that file says how.
 
-A first-time visitor skips the front page and lands on one trap question, so the first thing the
-game does is catch them. Every question plate shows its
-level and what it is worth, so players can see the day goes from easiest to hardest.
+A first-time visitor starts on the front page like everyone else. Every question shows which of
+the three it is and whether it is the easy, tricky or hard one.
 
 ## Questions
 

@@ -1,4 +1,4 @@
-/* Screens, the clock, signs, sounds, sharing, friends and the live counters. Game state lives in this browser. */
+/* Screens, the lights, the clock, sounds, sharing, friends and the live counters. Game state lives in this browser. */
 (function () {
   'use strict';
   var E = window.BaitEngine;
@@ -17,24 +17,19 @@
   var BUCKETS = [10, 20, 40, 70, 121]; // upper edge, in seconds, of each solve-time band
   var MIN_CROWD = 10;                  // do not show a percentage until this many have answered
 
-  var EMOJI = { right: '🟢', bait: '🛑', wrong: '❌', time: '🐌' };
-  var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of fuel' };
-  // The score is a distance. A right answer moves your snail on, further for a harder question,
-  // plus a metre for every second left on the clock; anything else moves it nowhere.
-  // So speed pays, but only if you are right, and the last question is worth the most.
-  var BASE = { 1: 100, 2: 150, 3: 200 };
-  var LEVEL = { 1: 'Warm-up', 2: 'Trickier', 3: 'The hard one' };
-  var DAY_MAX = BASE[1] + BASE[2] + BASE[3] + 3 * LIMIT;
+  var EMOJI = { right: '🟢', bait: '🔴', wrong: '🔴', time: '🔴' };
+  var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of time' };
+  // The whole game is three lights. A right answer turns one green; anything else turns it red.
+  // The goal is three greens. Time only breaks a tie.
+  var LEVEL = { 1: 'Easy', 2: 'Tricky', 3: 'Hard' };
+  var STEP = 270;                      // metres the road behind the screen moves on for each green light
   var FS = { right: 1, bait: 1, wrong: 1, time: 1 };   // the four verdicts
   var RIVAL_D = /^d(\d{1,5})$/, RIVAL_T = /^t([A-Z0-9]{1,8})-([1-9]\d?)$/;   // the two kinds of game a friend's link can point at
-  var PLACES = [[700, 'Under the stars'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
   var view = document.getElementById('view');
   var veil = document.getElementById('veil');
   var toastEl = document.getElementById('toast');
-  var flashEl = document.getElementById('flash');
-  var themeMeta = document.querySelector('meta[name="theme-color"]');
   document.getElementById('brand').textContent = NAME;
   document.title = NAME;
 
@@ -47,7 +42,7 @@
   var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   var desk = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;   // a laptop: type the answer
   if (desk) document.body.classList.add('desk');
-  var RUN_LIMIT = 60, RUN_LIVES = 3;   // the long road: a minute a question, three wrong turns and you are out
+  var RUN_LIMIT = 60, RUN_LIVES = 3;   // endless mode: a minute a question, three reds and you are out
   var kindTotal = 0;
   var quiet = 0;       // taps are ignored until this time: a second tap must not land on the screen the first one opened
   var broke = false;
@@ -66,7 +61,7 @@
     if (!r || typeof r !== 'object' || FS[r.f] !== 1) return null;
     var t = r.f === 'time' ? '' : String(r.t == null ? '' : r.t).slice(0, 12);
     if (r.f !== 'time' && !isFinite(parseFloat(t))) return null;
-    var o = { t: t, f: r.f, secs: int(r.secs, 0, limit, 0), m: r.f === 'right' ? int(r.m, 1, 200 + limit, 100) : 0 }, c = r.crowd;
+    var o = { t: t, f: r.f, secs: int(r.secs, 0, limit, 0) }, c = r.crowd;
     if (c && typeof c === 'object' && isFinite(c.n) && c.n >= 0) o.crowd = { n: int(c.n, 0, 1e9, 0), r: int(c.r, 0, 1e9, 0), t: int(c.t, 0, 1e9, 0), slower: int(c.slower, 0, 1e9, 0) };
     return o;
   }
@@ -83,12 +78,12 @@
     var st = okSt(d, LIMIT);
     if (!st || typeof d.v !== 'string' || !isFinite(d.day)) return null;
     st.v = d.v.slice(0, 8); st.day = int(d.day, 1, 1e6, 1);
-    if (Array.isArray(d.field) && d.field.length === 9) st.field = d.field.map(function (x) { return int(x, 0, 1e9, 0); });
+    if (Array.isArray(d.field) && d.field.length === 4) st.field = d.field.map(function (x) { return int(x, 0, 1e9, 0); });
     return st;
   }
   function okRival(v) {
     if (!v || typeof v !== 'object' || typeof v.key !== 'string') return null;
-    var o = { key: v.key, n: int(v.n, 0, 3, 0), m: int(v.m, 0, DAY_MAX, 0), at: int(v.at, 1, Date.now(), Date.now()) }, m;
+    var o = { key: v.key, n: int(v.n, 0, 3, 0), s: int(v.s, 0, 999, 0), at: int(v.at, 1, Date.now(), Date.now()) }, m;
     if (RIVAL_D.test(v.key)) return o;
     if (!(m = RIVAL_T.exec(v.key))) return null;
     o.code = m[1]; o.round = +m[2]; if (v.played) o.played = 1;
@@ -99,8 +94,7 @@
     b.sound = s.sound === true; if (s.demo) b.demo = 1;
     ['played', 'perfect', 'streak', 'best', 'lastDay'].forEach(function (k) { b.stats[k] = int(st[k], 0, 1e6, 0); });
     for (i = 0; i < 4; i++) b.stats.dist[i] = int(st.dist && st.dist[i], 0, 1e6, 0);
-    b.stats.far = int(st.far, 0, 1e6, 0); if (b.stats.far > DAY_MAX) b.stats.far = 0;
-    b.stats.metres = int(st.metres, 0, 1e9, 0); b.stats.runBest = int(st.runBest, 0, 1e8, 0);
+    b.stats.runTop = int(st.runTop, 0, 1e5, 0);
     if (Array.isArray(s.names)) b.names = s.names.slice(0, 6).map(function (n) { return String(n == null ? '' : n).slice(0, 10); });
     if (s.seen && typeof s.seen === 'object') Object.keys(s.seen).slice(0, 500).forEach(function (k) { if (/^[a-z0-9]{3,40}$/.test(k)) b.seen[k] = 1; });
     b.daily = okDaily(s.daily); b.rival = okRival(s.rival);
@@ -129,7 +123,7 @@
     if (!p) return false;
     b = p.stats;
     if (a.played > b.played || (a.played === b.played && a.lastDay > b.lastDay)) { p.stats = a; b = a; fix = true; }
-    else { k = Math.max(a.runBest || 0, b.runBest || 0); if (k !== b.runBest) { b.runBest = k; fix = true; } }
+    else { k = Math.max(a.runTop || 0, b.runTop || 0); if (k !== b.runTop) { b.runTop = k; fix = true; } }
     for (k in store.seen) if (!p.seen[k]) { p.seen[k] = 1; fix = true; }
     if (rank(store.daily) >= rank(p.daily)) { if (rank(store.daily) > rank(p.daily)) fix = true; p.daily = store.daily; }
     if (game && (game.mode === 'run' || game.mode === 'party' || game.mode === 'table')) p.live = store.live;   // this tab's own game: written again at its next step
@@ -167,11 +161,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.hidden = true; }, 1600);
   }
-  function night() { /* one dark theme: kept so screens can still say when play starts */ }
-  function mOf(r) { return !r ? 0 : typeof r.m === 'number' ? r.m : r.f === 'right' ? 100 + Math.max(0, LIMIT - r.secs) : 0; }
-  function totalM(st) { var t = 0; st.res.forEach(function (r) { t += mOf(r); }); return t; }
-  function place(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES[i][1]; }
-  function far(m) { return m < 1000 ? m + ' m' : (m / 1000).toFixed(1) + ' km'; }
+  function scoreLine(n, s) { return n + ' of 3 in ' + mmss(s); }
   function beat(q, r) { if (r.f !== 'right') return; store.seen = store.seen || {}; if (!store.seen[q.kind]) { store.seen[q.kind] = 1; save(); } }
   function beatenLine() {
     if (!kindTotal) kindTotal = E.kinds().length;
@@ -188,28 +178,15 @@
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function times(n) { return n === 1 ? 'once' : n === 2 ? 'twice' : n + ' times'; }
 
-  /* ---------- Signs and the snail ---------- */
+  /* ---------- The sign on the front page ---------- */
   function oct(s) {
     var a = 35.15, pts = [[a, 0], [120 - a, 0], [120, a], [120, 120 - a], [120 - a, 120], [a, 120], [0, 120 - a], [0, a]];
     return pts.map(function (p) { return (60 + (p[0] - 60) * s).toFixed(1) + ',' + (60 + (p[1] - 60) * s).toFixed(1); }).join(' ');
   }
-  function words(lines, size, fill, ys) {
-    return lines.map(function (w, i) { return '<text x="60" y="' + ys[i] + '" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="' + size + '" fill="' + fill + '">' + w + '</text>'; }).join('');
-  }
-  // kind: right | bait | wrong | time. Flat and exact, like the real thing. Only the trap sign carries words.
-  function sign(kind, big) {
-    var s;
-    if (kind === 'bait') {
-      s = '<polygon points="' + oct(1) + '" fill="#fff"/><polygon points="' + oct(0.9) + '" fill="#D8281C"/><polygon points="' + oct(0.9) + '" fill="url(#sheen)"/>' +
-        (big ? words(['NOT', 'SO', 'FAST'], 29, '#fff', [45.5, 70, 94.5]) : '<rect x="53.5" y="28" width="13" height="42" rx="6.5" fill="#fff"/><circle cx="60" cy="86" r="7.5" fill="#fff"/>');
-    } else if (kind === 'right') {
-      s = '<circle cx="60" cy="60" r="60" fill="#fff"/><circle cx="60" cy="60" r="54" fill="#12924A"/><circle cx="60" cy="60" r="54" fill="url(#sheen)"/><path d="M36 62l16 16 32-34" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>';
-    } else {
-      s = '<circle cx="60" cy="60" r="60" fill="#fff"/><circle cx="60" cy="60" r="55" fill="#D8281C"/><circle cx="60" cy="60" r="55" fill="url(#sheen)"/><circle cx="60" cy="60" r="41" fill="#fff"/>' +
-        (kind === 'time' ? '<path d="M60 40v22l13 9" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
-          : '<path d="M46 46l28 28M74 46L46 74" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round"/>');
-    }
-    return '<svg viewBox="0 0 120 120" role="img" aria-label="' + WORD[kind] + '">' + s + '</svg>';
+  function sign() {
+    var ys = [45.5, 70, 94.5];
+    return '<svg viewBox="0 0 120 120" role="img" aria-label="Not so fast"><polygon points="' + oct(1) + '" fill="#fff"/><polygon points="' + oct(0.9) + '" fill="#D8281C"/><polygon points="' + oct(0.9) + '" fill="url(#sheen)"/>' +
+      ['NOT', 'SO', 'FAST'].map(function (w, i) { return '<text x="60" y="' + ys[i] + '" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="29" fill="#fff">' + w + '</text>'; }).join('') + '</svg>';
   }
   var ICON = {
     on: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
@@ -243,7 +220,6 @@
     del: function () { tone(360, 0, 0.05, 'triangle', 0.09); },
     lock: function () { tone(150, 0, 0.14, 'sine', 0.32, 70); },
     beep: function () { tone(1000, 0, 0.04, 'square', 0.035); },
-    crawl: function () { for (var i = 0; i < 7; i++) tone(420 + i * 70, i * 0.11, 0.07, 'triangle', 0.08); },
     right: function () { [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(f, i * 0.075, 0.24, 'triangle', 0.2); }); tone(1568, 0.3, 0.4, 'sine', 0.09); },
     bait: function () { [0, 0.21].forEach(function (s) { tone(311, s, 0.16, 'sawtooth', 0.11); tone(392, s, 0.16, 'sawtooth', 0.09); }); },  // a double honk
     wrong: function () { tone(330, 0, 0.16, 'triangle', 0.2); tone(247, 0.15, 0.3, 'triangle', 0.2); },
@@ -259,43 +235,20 @@
     b.setAttribute('aria-label', store.sound ? 'Sound is on. Turn it off' : 'Sound is off. Turn it on');
   }
 
-  /* ---------- The verdict beat, the flash, the shake and the road ---------- */
-  var takeEl = document.getElementById('take');
-  var TONE = { right: '#12924A', bait: '#D8281C', wrong: '#D8281C', time: '#D8281C' };
+  /* ---------- Lights ---------- */
   function replay(el, cls) { if (!el || calm) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
-  function flash(colour) { flashEl.style.background = colour; replay(flashEl, 'go'); }
-  // For most of a second the sign owns the whole screen. Then it clears and the road reacts.
-  function cheer(f, m, plain) {
-    SFX[f]();
-    if (!calm) {
-      var word = f === 'right' ? (plain ? 'CORRECT' : '+' + m + ' m') : f === 'bait' ? 'THE TRAP' : f === 'time' ? 'OUT OF FUEL' : 'WRONG';
-      takeEl.style.setProperty('--tc', TONE[f]);
-      takeEl.innerHTML = '<div class="tk"><div class="sg">' + sign(f, true) + '</div><p>' + word + '</p></div>';
-      replay(takeEl, 'go');
-    }
-    if (f === 'right') buzz([15, 40, 25]);
-    else if (f === 'bait') { buzz([90, 50, 90]); flash('#fff'); replay(app, 'quake'); }   // caught on camera
-    else buzz(70);
+  function lamp(state, extra) { return '<i class="lt ' + state + (extra ? ' ' + extra : '') + '"></i>'; }
+  function lightOf(r) { return r.f === 'right' ? 'green' : 'red'; }
+  // Three lights are the goal and the score in one. now: the question being asked. lit: the one that has just changed.
+  function lightsHtml(res, now, cls, lit) {
+    var h = '', g = 0, k, r;
+    for (k = 0; k < 3; k++) { r = res[k]; if (r && r.f === 'right') g++; h += lamp(r ? lightOf(r) : k === now ? 'now' : 'off', k === lit ? 'lit' : ''); }
+    return '<div class="lights' + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + g + ' of 3 green">' + h + '</div>';
   }
+  function react(f) { SFX[f](); buzz(f === 'right' ? [15, 40, 25] : 60); }
 
-  // The odometer: each digit is a strip of 0 to 9 that rolls to its number.
-  function pad4(v) { var t = String(Math.max(0, Math.round(v))); while (t.length < 4) t = '0' + t; return t; }
-  function odoHtml(v, id, cls) {
-    return '<span class="odo' + (cls ? ' ' + cls : '') + '" id="' + id + '" role="img" aria-label="' + v + ' metres">' +
-      pad4(v).split('').map(function (d) { return '<i><b style="--d:' + d + '">0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9</b></i>'; }).join('') + '<u>m</u></span>';
-  }
-  function setOdo(el, v) {
-    if (!el) return;
-    var t = pad4(v), cols = el.querySelectorAll('b');
-    if (cols.length !== t.length) { el.outerHTML = odoHtml(v, el.id, el.className.replace('odo', '').trim()); return; }
-    for (var i = 0; i < cols.length; i++) cols[i].style.setProperty('--d', t.charAt(i));
-    el.setAttribute('aria-label', v + ' metres');
-  }
-
-  // The road ahead fills the screen, and it is a real place: everything on it sits at a distance
-  // in metres, and the view is drawn from wherever you have got to. Yellow boards count off every
-  // 100 m like the markers on a driving range, name signs stand where each stretch begins, and
-  // houses give way to street lamps and then to trees. Answer right and you drive the distance.
+  // The road is only a backdrop. It moves on a stretch each time a light turns green, from the
+  // street lamps in town out to open country, where the sky is the reward for three greens.
   var GLOW = ['#ffb347', '#ffa23c', '#ff7d3c', '#6fa3ff', '#4fd6c4'];
   var bgEl = document.getElementById('bg'), cv = document.createElement('canvas'), g2 = cv.getContext && cv.getContext('2d');
   bgEl.appendChild(cv);
@@ -304,7 +257,7 @@
   var DUST = (function () { var r = E.rngFrom('dust'), a = []; for (var i = 0; i < 170; i++) a.push([r() * 2 - 1, (r() + r() + r() - 1.5) * 0.11, 0.2 + r() * 0.55]); return a; })();
   function rnd(k) { var x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }   // the same "random" value for the same object every frame
   function rgba(hex, a) { return 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) + ',' + a + ')'; }
-  function placeIndex(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES.length - 1 - i; return 0; }
+  function glowIndex(m) { return m >= 700 ? 4 : m >= 500 ? 3 : m >= 250 ? 2 : m >= 1 ? 1 : 0; }
   function fitRoad() {
     road.dpr = Math.min(2, window.devicePixelRatio || 1); road.W = bgEl.clientWidth; road.H = bgEl.clientHeight;
     cv.width = Math.round(road.W * road.dpr); cv.height = Math.round(road.H * road.dpr); road.dirty = true;
@@ -316,7 +269,7 @@
     var hy = Math.round(H * 0.3) + (road.ms ? Math.sin(now / 36) * 1.3 : 0), cx = W / 2, S = Math.min(W, H * 0.66);
     var zn = 5, A = zn * (H - hy), P = 0.8 * S * zn / 3.3, far = 300;
     var Y = function (zz) { return hy + A / zz; }, X = function (xx, zz) { return cx + xx * P / zz; };
-    var glow = GLOW[Math.min(GLOW.length - 1, placeIndex(Math.max(0, d)))];
+    var glow = GLOW[glowIndex(d)];
     var near = function (zz) { return road.ms ? 1 : Math.max(0, Math.min(1, (zz - 11) / 14)); };   // stopped: fade out whatever is right beside you
 
     // The sky is where the road is taking you. In town the street lights wash it out. The further
@@ -358,14 +311,14 @@
       }
       c.restore();
       // a ringed planet and a small red one, lit from the left, sitting in the gap the dials leave clear
-      var px = cx + S * 0.05, py = hy * 0.4, pr = Math.max(4.5, S * 0.023);
+      var px = cx + S * 0.2, py = hy * 0.36, pr = Math.max(4.5, S * 0.023);
       c.globalAlpha = deep;
       c.strokeStyle = 'rgba(232,214,176,0.8)'; c.lineWidth = Math.max(1, pr * 0.16);
       c.beginPath(); c.ellipse(px, py, pr * 2, pr * 0.5, -0.35, Math.PI, 2 * Math.PI); c.stroke();
       var pg = c.createRadialGradient(px - pr * 0.4, py - pr * 0.35, pr * 0.1, px, py, pr); pg.addColorStop(0, '#f3dfb4'); pg.addColorStop(0.7, '#c9a56c'); pg.addColorStop(1, '#6d5536');
       c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, 6.3); c.fill();
       c.beginPath(); c.ellipse(px, py, pr * 2, pr * 0.5, -0.35, 0, Math.PI); c.stroke();
-      var qx = cx - S * 0.2, qy = hy * 0.36, qr = Math.max(2, S * 0.006);
+      var qx = cx - S * 0.05, qy = hy * 0.22, qr = Math.max(2, S * 0.006);
       var qg = c.createRadialGradient(qx, qy, 0, qx, qy, qr * 4); qg.addColorStop(0, 'rgba(255,150,110,0.55)'); qg.addColorStop(1, 'rgba(255,150,110,0)');
       c.fillStyle = qg; c.beginPath(); c.arc(qx, qy, qr * 4, 0, 6.3); c.fill();
       c.fillStyle = '#ffb08e'; c.beginPath(); c.arc(qx, qy, qr, 0, 6.3); c.fill();
@@ -434,31 +387,6 @@
       c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(X(-3.9, z), Y(z) - 0.6 * s, Math.max(0.7, 0.075 * s), 0, 6.3); c.fill();
       c.fillStyle = '#fff'; c.beginPath(); c.arc(X(3.9, z), Y(z) - 0.6 * s, Math.max(0.7, 0.075 * s), 0, 6.3); c.fill();
     }
-    c.globalAlpha = 1; c.textAlign = 'center'; c.textBaseline = 'middle';
-    // name signs where each stretch begins, and a yellow board every 100 m on both verges
-    for (k = 0; k < PLACES.length - 2; k++) {
-      z = PLACES[k][0] - d; if (z < 4 || z > 170) continue; s = P / z; x = X(-6.4, z); y = Y(z); c.globalAlpha = near(z);
-      c.fillStyle = '#8f9198'; c.fillRect(x - 1.7 * s, y - 2.3 * s, 0.12 * s, 2.3 * s); c.fillRect(x + 1.6 * s, y - 2.3 * s, 0.12 * s, 2.3 * s);
-      c.fillStyle = '#f4f4f1'; c.fillRect(x - 2.4 * s, y - 3.7 * s, 4.8 * s, 1.5 * s);
-      c.strokeStyle = '#000'; c.lineWidth = Math.max(1, 0.07 * s); c.strokeRect(x - 2.28 * s, y - 3.58 * s, 4.56 * s, 1.26 * s);
-      if (0.46 * s >= 5) { c.fillStyle = '#000'; c.font = '800 ' + (0.46 * s) + 'px "Barlow Condensed", "Arial Narrow", sans-serif'; c.fillText(PLACES[k][1].toUpperCase(), x, y - 2.93 * s, 4.3 * s); }
-    }
-    for (k = Math.floor((d + 200) / 100); k >= Math.max(1, Math.floor(d / 100)); k--) {
-      z = k * 100 - d; if (z < 4) continue; s = P / z; y = Y(z); c.globalAlpha = near(z);
-      for (side = -1; side <= 1; side += 2) {
-        x = X(side * 4.75, z);
-        c.fillStyle = '#d6d6d2'; c.fillRect(x - 0.07 * s, y - 1.5 * s, 0.14 * s, 1.5 * s);
-        c.fillStyle = '#FFD21F'; c.fillRect(x - 0.8 * s, y - 2.2 * s, 1.6 * s, 0.78 * s);
-        if (0.6 * s >= 5) { c.fillStyle = '#000'; c.font = '800 ' + (0.6 * s) + 'px "Barlow Condensed", "Arial Narrow", sans-serif'; c.fillText(String(k * 100), x, y - 1.79 * s, 1.5 * s); }
-      }
-    }
-    // a warning sign now and then: snails crossing
-    for (k = Math.floor((d + 160 - 60) / 400); k >= Math.max(0, Math.floor((d - 60) / 400)); k--) {
-      z = k * 400 + 60 - d; if (z < 4 || z > 160) continue; s = P / z; x = X(5.6, z); y = Y(z); c.globalAlpha = near(z);
-      c.fillStyle = '#8f9198'; c.fillRect(x - 0.06 * s, y - 1.6 * s, 0.12 * s, 1.6 * s);
-      c.save(); c.translate(x, y - 2.3 * s); c.rotate(Math.PI / 4); c.fillStyle = '#FFD21F'; c.fillRect(-0.7 * s, -0.7 * s, 1.4 * s, 1.4 * s); c.strokeStyle = '#000'; c.lineWidth = Math.max(1, 0.07 * s); c.strokeRect(-0.6 * s, -0.6 * s, 1.2 * s, 1.2 * s); c.restore();
-      c.fillStyle = '#000'; c.beginPath(); c.arc(x - 0.12 * s, y - 2.36 * s, 0.26 * s, 0, 6.3); c.fill(); c.fillRect(x - 0.48 * s, y - 2.18 * s, 0.9 * s, 0.16 * s); c.fillRect(x + 0.3 * s, y - 2.5 * s, 0.12 * s, 0.4 * s);
-    }
     c.globalAlpha = 1;
     // a car coming the other way, now and then, while you are stopped
     if (road.car > 0) {
@@ -479,7 +407,7 @@
     if (road.ms) {   // driving: ease in, ease out
       var k = Math.min(1, (now - road.t0) / road.ms), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
       road.d = road.from + (road.to - road.from) * e; road.car = 0;
-      if (k >= 1) { road.ms = 0; var cb = road.cb; road.cb = null; road.d = road.to; document.body.classList.remove('clear'); paintRoad(now); road.last = now; if (cb) cb(); return; }
+      if (k >= 1) { road.ms = 0; var cb = road.cb; road.cb = null; road.d = road.to; paintRoad(now); road.last = now; if (cb) cb(); return; }
     } else {
       if (calm) { if (!road.dirty) return; }
       else {
@@ -494,56 +422,30 @@
   }
   function setRoad(m) { if (road.ms) return; road.d = m; road.dirty = true; }
   function drive(to, ms, cb) {
-    if (calm || !g2) { road.d = to; road.dirty = true; if (cb) cb(); return; }
+    if (calm || !g2 || Math.abs(to - road.d) < 1) { road.d = to; road.dirty = true; if (cb) cb(); return; }
     road.from = road.d; road.to = to; road.ms = ms; road.cb = cb || null; road.t0 = performance.now();
-    document.body.classList.add('clear');   // lift the dimming so the drive is seen properly
   }
-  function brake() { if (calm) return; bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); }
   fitRoad(); window.addEventListener('resize', fitRoad);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { road.dirty = true; });
   requestAnimationFrame(roadLoop);
 
-  // The head-up row: where you are and how far you have come. zone: name the stretch. odo: show the rolling distance.
-  function sceneHtml(m, zone, odo) {
-    setRoad(m);
-    return '<div class="scene" id="road">' + (zone ? '<span class="zone" id="zone">' + place(m) + '</span>' : '') + (odo ? odoHtml(m, 'dist') : '') + '</div>';
-  }
-  // Drive one leg: the screen clears, the road runs under you to the new distance, the odometer rolls.
-  function leg(to, cb) {
-    var p = view.querySelector('.play'); if (p) p.classList.add('driving');
-    setOdo(document.getElementById('dist'), to); SFX.crawl();
-    drive(to, 1500, cb);
-  }
-
-  /* ---------- How today's whole field is doing: anonymous counts of finishing distances ---------- */
-  function mBand(m) { return Math.min(8, Math.floor(m / 100)); }
+  /* ---------- How today's players did: anonymous counts of how many greens each finished with ---------- */
   function readField(day, mine) {
     var jobs = [];
-    for (var b = 0; b < 9; b++) jobs.push(api(b === mine ? 'hit' : 'get', SETV + 'd' + day + 'm' + b));
+    for (var b = 0; b < 4; b++) jobs.push(api(b === mine ? 'hit' : 'get', SETV + 'd' + day + 'g' + b));
     return Promise.all(jobs);
   }
   function fieldNow(day) {   // the front page's read of today's field, kept for a minute so a reload does not ask again
     var k = 'nsf.field', now = Date.now(), d = store.daily;
     if (d && d.done && d.day === day && d.v === SETV && d.field) return Promise.resolve(d.field);
-    try { var m = JSON.parse(sessionStorage.getItem(k)); if (m && m.d === day && m.v === SETV && now - m.at < 60000 && now >= m.at && Array.isArray(m.c) && m.c.length === 9) return Promise.resolve(m.c.map(function (x) { return int(x, 0, 1e9, 0); })); } catch (e) { /* no session storage */ }
+    try { var m = JSON.parse(sessionStorage.getItem(k)); if (m && m.d === day && m.v === SETV && now - m.at < 60000 && now >= m.at && Array.isArray(m.c) && m.c.length === 4) return Promise.resolve(m.c.map(function (x) { return int(x, 0, 1e9, 0); })); } catch (e) { /* no session storage */ }
     return readField(day, -1).then(function (c) { try { sessionStorage.setItem(k, JSON.stringify({ d: day, v: SETV, at: now, c: c })); } catch (e) { /* fine */ } return c; });
   }
-  function fieldTotal(c) { return c.reduce(function (a, b) { return a + b; }, 0); }
-  function todayLine(c) {
-    var n = fieldTotal(c);
-    if (!n) return 'Nobody has finished today’s three yet. Be the first.';
-    if (n < MIN_CROWD) return '<b>' + n + '</b> ' + (n === 1 ? 'player has' : 'players have') + ' finished today’s three.';
-    var seen = 0, mid = 0;
-    for (var b = 0; b < 9; b++) { seen += c[b]; if (seen >= n / 2) { mid = b; break; } }
-    return '<b>' + E.num(n) + '</b> players today. A typical run is ' + (mid === 0 ? 'under 100 m' : 'about ' + (mid * 100 + 50) + ' m') + '.';
-  }
-  function standingLine(c, m) {
-    var n = fieldTotal(c), mine = mBand(m), ahead = 0;
-    if (n <= 1) return 'You are the first to finish today.';
-    if (n < MIN_CROWD) return 'You are one of the first ' + n + ' to finish today.';
-    for (var b = mine + 1; b < 9; b++) ahead += c[b];
-    var level = Math.max(0, c[mine] - 1), beaten = n - 1 - ahead - level;
-    return 'Further than ' + Math.round((beaten + level / 2) / (n - 1) * 100) + '% of today’s ' + E.num(n) + ' players.';
+  function fieldLine(c) {   // numbers only, so safe to set as HTML
+    var n = c[0] + c[1] + c[2] + c[3];
+    if (n < MIN_CROWD) return '';
+    var pct = Math.round(c[3] / n * 100);
+    return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
   }
 
   /* ---------- Live counters ---------- */
@@ -603,12 +505,12 @@
   function rivalHere() { var v = store.rival; return v && game && (game.mode === 'daily' || game.mode === 'table') && v.key === gameKey() ? v : null; }
   function myLink() {
     var st = game.st;
-    return LINK + '#' + gameKey() + '-' + rightCount(st) + '-' + totalM(st);
+    return LINK + '#' + gameKey() + '-' + rightCount(st) + '-' + totalSecs(st);
   }
   function readLink() {
     var h = (location.hash || '').slice(1, 80), m, v = null;
-    if ((m = /^(d\d{1,5})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: m[1], n: +m[2], m: +m[3] };
-    else if ((m = /^(t[A-Z0-9]{1,8}-[1-9]\d?)-([0-3])-(\d{1,4})$/.exec(h))) v = { key: m[1], n: +m[2], m: +m[3] };
+    if ((m = /^(d\d{1,5})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: m[1], n: +m[2], s: +m[3] };
+    else if ((m = /^(t[A-Z0-9]{1,8}-[1-9]\d?)-([0-3])-(\d{1,3})$/.exec(h))) v = { key: m[1], n: +m[2], s: +m[3] };
     if (v) v = okRival(v);
     if (v) { store.rival = v; save(); }
     if (h && h !== 'numbers') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } }
@@ -617,72 +519,44 @@
   function rivalCard() {
     var v = store.rival;
     if (!v) return '';
-    if (v.code) return v.played ? '' : '<div class="card">A friend sent you a private round. They made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
+    if (v.code) return v.played ? '' : '<div class="card">A friend sent you a private round. They got ' + scoreLine(v.n, v.s) + '.<button class="btn" data-act="rivalround">Play their three</button></div>';
     if (v.key !== 'd' + today()) return '';
-    return '<div class="card">A friend made it ' + v.m + ' m today, with ' + v.n + ' of 3 right. Beat that.</div>';
+    return '<div class="card">A friend got ' + scoreLine(v.n, v.s) + ' today. Beat that.</div>';
   }
-  function duelCard() {
+  function duelCard() {   // more greens wins; level on greens, the faster one wins
     var v = rivalHere();
     if (!v) return '';
-    var st = game.st, n = rightCount(st), t = totalM(st);
-    var res = t !== v.m ? (t > v.m ? 1 : -1) : 0;
+    var st = game.st, n = rightCount(st), t = totalSecs(st);
+    var res = n !== v.n ? (n > v.n ? 1 : -1) : t !== v.s ? (t < v.s ? 1 : -1) : 0;
     return '<div class="card duel"><p class="dh">' + (res > 0 ? 'You beat your friend' : res < 0 ? 'Your friend wins' : 'Dead heat') + '</p>' +
-      '<p class="dr"><span>You, ' + n + ' of 3</span><b>' + t + ' m</b></p><p class="dr"><span>Your friend, ' + v.n + ' of 3</span><b>' + v.m + ' m</b></p></div>';
+      '<p class="dr"><span>You</span><b>' + scoreLine(n, t) + '</b></p><p class="dr"><span>Your friend</span><b>' + scoreLine(v.n, v.s) + '</b></p></div>';
   }
 
   /* ---------- Home ---------- */
   // What the front page depends on. If this changes while it sits open (another tab, midnight), it is redrawn.
   var homeSig = '';
-  function sig() { var v = store.rival; return today() + dailyState() + liveStreak() + (v ? v.key + v.m + (v.played || '') : ''); }
+  function sig() { var v = store.rival; return today() + dailyState() + liveStreak() + (v ? v.key + v.n + '-' + v.s + (v.played || '') : ''); }
   function onHome() { return !game && !!view.querySelector('.home'); }
   function home() {
     stopTimers(); game = null; ask = null; drop();
-    night(false); setRoad(dailyState() === 'new' ? 0 : totalM(store.daily));
     var rv = store.rival;
     if (rv && (rv.code ? rv.played || Date.now() - rv.at > 7 * 86400000 : rv.key !== 'd' + today())) { store.rival = null; save(); }   // yesterday's challenge has expired; a private one lasts a week or until played
-    var state = dailyState(), streak = liveStreak();
+    var state = dailyState(), streak = liveStreak(), d = store.daily, res = state === 'new' ? [] : d.res;
+    setRoad(rightCount({ res: res }) * STEP);
     homeSig = sig();
-    var label = state === 'done' ? 'See how far I got' : state === 'going' ? 'Back on the road' : 'Hit the road';
     view.innerHTML =
       '<section class="home">' +
-        '<div class="hero" aria-hidden="true"><div class="sg">' + sign('bait', true) + '</div></div>' +
-        '<p class="pitch">Three questions a day, each harder than the last. One guess each. The obvious answer is the trap.</p>' +
-        '<p class="today" id="today" role="status"></p>' +
+        '<div class="hero" aria-hidden="true"><div class="sg">' + sign() + '</div></div>' +
+        '<p class="pitch">Three trick questions a day.<b>Get three green lights.</b></p>' +
+        lightsHtml(res, state === 'going' && !res[d.idx] ? d.idx : -1, 'mid') +
         rivalCard() +
-        (streak > 1 ? '<p class="streak">' + streak + '-day streak</p>' : '') +
-        '<button class="btn" data-act="daily" data-enter>' + label + '</button>' +
-        (state === 'done' ? '<button class="btn plate" data-act="run">Take the long road</button>' : '') +
+        '<button class="btn" data-act="daily" data-enter>' + (state === 'done' ? 'See today\u2019s result' : state === 'going' ? 'Carry on' : 'Play') + '</button>' +
+        (state === 'done' ? '<button class="btn plate" data-act="run">Keep going: endless mode</button>' : '') +
         '<button class="btn plate" data-act="friends">Play with friends</button>' +
-        '<p class="meta"><span>No. ' + today() + '</span><span>' + esc(dateLine()) + '</span></p>' +
+        '<p class="today" id="today" role="status"></p>' +
+        '<p class="meta"><span>No. ' + today() + (streak > 1 ? ', ' + streak + '-day streak' : '') + '</span><span>' + esc(dateLine()) + '</span></p>' +
       '</section>';
-    if (STATS && window.fetch) fieldNow(today()).then(function (c) { var el = document.getElementById('today'); if (el) el.innerHTML = todayLine(c); }).catch(function () { /* fine without */ });
-  }
-
-  /* ---------- First visit: no title page, no rules. One trap, and the sign does the explaining. ---------- */
-  function demo() {
-    night(true);
-    var todayFirst = E.buildDaily(today())[0].fam, id = todayFirst === 'race' ? 'hands' : 'race';
-    setRoad(0);
-    game = { mode: 'demo', cur: E.make(E.families.filter(function (f) { return f.id === id; })[0], 'first-visit', 0), res: null };
-    demoPlay();
-  }
-  function demoPlay() {
-    stopTimers(); ask = null;
-    var q = game.cur, r = game.res, body;
-    if (r) {
-      var said = r.f === 'right' ? 'You dodged it. ' + E.show(q, q.baits[0]) + ' is the answer that jumps out.' : r.f === 'bait' ? 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' : r.f === 'time' ? 'You ran out of time.' : 'You said ' + E.show(q, parseFloat(r.t)) + '.';
-      body = '<div class="result">' +
-        '<div class="verdict"><div class="sg f-' + r.f + '" id="sg">' + sign(r.f, true) + '</div>' +
-          '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big">' + esc(E.show(q, q.a)) + '</p><p class="you">' + esc(said) + '</p></div></div>' +
-        '<p class="why">' + esc(q.why) + '</p>' +
-        '<p class="crowd">That is the whole game. Every question has an answer that jumps out, and it is usually the trap. Three new ones a day, each harder than the last.</p>' +
-        '<div class="btns"><button class="btn plate" data-act="help">How it works</button><button class="btn" data-act="daily" data-enter>Hit the road</button></div></div>';
-    } else body = entryHtml();
-    view.innerHTML = '<section class="play"><div class="plate-q' + (r ? '' : ' solo') + '"><p class="lvl">One question before you start</p><p class="q">' + esc(q.q) + '</p></div>' + body + '</section>';
-    if (r) return;
-    beginAsk({ q: q, limit: 1e9, start: Date.now(), beat: true,
-      commit: function (res) { res.m = 0; game.res = res; store.demo = 1; save(); },
-      reveal: function (res) { demoPlay(); cheer(res.f, 0, true); } });
+    if (STATS && window.fetch) fieldNow(today()).then(function (c) { var el = document.getElementById('today'); if (el) el.innerHTML = fieldLine(c); }).catch(function () { /* fine without */ });
   }
 
   /* ---------- Starting ---------- */
@@ -691,12 +565,12 @@
     var d = today();
     if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); }
     game = { mode: 'daily', day: d, set: E.buildDaily(d), st: store.daily };
-    fresh = false; night(true);
+    fresh = false;
     if (game.st.done) end(false); else play();
   }
   function startTable(code, round) {
     game = { mode: 'table', code: code, round: round, set: E.buildTable(code, round), st: { idx: 0, res: [], qStart: Date.now(), done: false } };
-    fresh = false; night(true); keep();
+    fresh = false; keep();
     play();
   }
   function persist() { if (!game) return; if (game.mode === 'daily') save(); else keep(); }
@@ -706,7 +580,7 @@
      the questions: they are rebuilt by the engine, never read back. */
   function snap() {
     var g = game;
-    if (g.mode === 'run') return { mode: 'run', n: g.n, lives: g.lives, m: g.m, right: g.right, strikes: g.strikes, recent: g.recent, fid: g.cur.fam, seed: g.seed, res: g.res, start: g.start, over: g.over ? 1 : 0, was: g.was || 0 };
+    if (g.mode === 'run') return { mode: 'run', n: g.n, lives: g.lives, right: g.right, strikes: g.strikes, recent: g.recent, fid: g.cur.fam, seed: g.seed, res: g.res, start: g.start, over: g.over ? 1 : 0, was: g.was || 0 };
     if (g.mode === 'party') return { mode: 'party', seed: g.seed, count: g.set.length, players: g.players, k: g.k, turn: g.turn, ans: g.ans, scored: g.scored, at: g.at, start: g.start || 0 };
     return { mode: 'table', code: g.code, round: g.round, st: g.st };
   }
@@ -727,16 +601,16 @@
         var f = E.families.filter(function (x) { return x.id === g.fid; })[0];
         if (!f || typeof g.seed !== 'string') throw 0;
         var strikes = (Array.isArray(g.strikes) ? g.strikes : []).filter(function (x) { return FS[x] === 1 && x !== 'right'; }).slice(0, RUN_LIVES);
-        game = { mode: 'run', n: int(g.n, 1, 1e5, 1), lives: RUN_LIVES - strikes.length, m: int(g.m, 0, 1e8, 0), right: int(g.right, 0, 1e5, 0), strikes: strikes,
+        game = { mode: 'run', n: int(g.n, 1, 1e5, 1), lives: RUN_LIVES - strikes.length, right: int(g.right, 0, 1e5, 0), strikes: strikes,
           recent: (Array.isArray(g.recent) ? g.recent : []).filter(function (x) { return typeof x === 'string'; }).slice(-14),
-          seed: g.seed.slice(0, 60), res: okRes(g.res, RUN_LIMIT), start: int(g.start, 1, now + 60000, now), was: int(g.was, 0, 1e8, 0) };
+          seed: g.seed.slice(0, 60), res: okRes(g.res, RUN_LIMIT), start: int(g.start, 1, now + 60000, now), was: int(g.was, 0, 1e5, 0) };
         game.cur = E.make(f, game.seed + '-' + (game.n - 1));
         if (g.over && game.lives <= 0) runEnd(true); else runPlay();
       } else if (g.mode === 'party') {
         var ps = (Array.isArray(g.players) ? g.players : []).slice(0, 6), count = g.count === 3 || g.count === 5 || g.count === 7 ? g.count : 0, n = ps.length;
         if (n < 2 || !count || typeof g.seed !== 'string') throw 0;
         game = { mode: 'party', seed: g.seed.slice(0, 60), k: int(g.k, 0, count, 0), turn: 0, ans: [], scored: [], at: g.at, start: int(g.start, 1, now + 60000, now),
-          players: ps.map(function (q, x) { q = q || {}; return { name: String(q.name == null ? '' : q.name).slice(0, 12) || 'Player ' + (x + 1), m: int(q.m, 0, 1e5, 0), right: int(q.right, 0, 99, 0), bait: int(q.bait, 0, 99, 0) }; }) };
+          players: ps.map(function (q, x) { q = q || {}; return { name: String(q.name == null ? '' : q.name).slice(0, 12) || 'Player ' + (x + 1), right: int(q.right, 0, 99, 0), bait: int(q.bait, 0, 99, 0), secs: int(q.secs, 0, 1e5, 0) }; }) };
         game.set = E.buildParty(game.seed, count);
         for (i = 0; i < count; i++) {
           var row = Array.isArray(g.ans) && Array.isArray(g.ans[i]) ? g.ans[i] : [], out = [];
@@ -768,29 +642,30 @@
   function keyBtn(k) { return '<button data-act="key" data-k="' + k + '">' + k + '</button>'; }
   function entryHtml() {
     if (desk) return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
-      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.</p><button class="btn" data-act="enter">Lock it in</button></div></div>';
+      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.</p><button class="btn" data-act="enter">Lock in</button></div></div>';
     return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
       '<div class="pad">' +
         keyBtn(1) + keyBtn(2) + keyBtn(3) + '<button data-act="key" data-k="del" aria-label="Delete">' + ICON.del + '</button>' +
         keyBtn(4) + keyBtn(5) + keyBtn(6) + '<button data-act="key" data-k="." aria-label="Decimal point">.</button>' +
-        keyBtn(7) + keyBtn(8) + keyBtn(9) + '<button class="lock" data-act="enter">Lock<br>it in</button>' +
+        keyBtn(7) + keyBtn(8) + keyBtn(9) + '<button class="lock" data-act="enter">Lock<br>in</button>' +
         '<button class="zero" data-act="key" data-k="0">0</button>' +
       '</div></div>';
   }
-  // Every plate says where the question sits on the day's climb, and what it is worth.
-  // Time is fuel: the needle falls from F to E, and every second left in the tank is a metre.
-  function fuelHtml(limit, left) {
-    return '<span class="fuel' + (left <= 15 ? ' low' : '') + '" id="fuel" style="--f:' + Math.max(0, Math.min(1, left / limit)) + '">' +
-      '<svg viewBox="0 0 60 40" aria-hidden="true"><path class="arc" d="M4.250 30.400A26 26 0 0 1 55.750 30.400"/><path class="red" d="M4.250 30.400A26 26 0 0 1 10.100 17.300"/>' +
-      '<text x="1.500" y="39.500">E</text><text x="53.500" y="39.500">F</text><g class="needle"><path d="M30 34V11.500"/></g><circle cx="30" cy="34" r="3.300"/></svg>' +
-      '<b class="clock" id="clock" role="timer" aria-label="Fuel left, as time">' + mmss(left) + '</b></span>';
+  // The top of every question: where you stand on the left, the time on the right in big digits, and a
+  // bar under both that runs down. Once there is a verdict, the verdict takes the clock's place.
+  // lead: what sits on the left (the lights, or a player's name). r: the answer, once given.
+  function hudHtml(left, limit, lead, r) {
+    var f = r ? lightOf(r) : '';
+    return '<div class="hud">' + lead +
+        (r ? '<b class="say ' + f + '" role="status">' + WORD[r.f] + '</b>' : '<b class="clock' + (left <= 15 ? ' low' : '') + '" id="clock" role="timer" aria-label="Time left">' + mmss(Math.ceil(left)) + '</b>') +
+      '</div><div class="bar' + (f ? ' ' + f : left <= 15 ? ' low' : '') + '"><i id="bar" style="transform:scaleX(' + (r ? 1 : Math.max(0, Math.min(1, left / limit))) + ')"></i></div>';
   }
-  function plateHtml(q, solo) {
+  function timeLeft(limit, start) { return Math.max(0, limit - (Date.now() - start) / 1000); }
+  function plateHtml(q, label, solo) {
     return '<div class="plate-q' + (solo ? ' solo' : '') + '">' +
-      '<p class="lvl"><span class="bars l' + q.level + '" aria-hidden="true"><i></i><i></i><i></i></span>' + LEVEL[q.level] + '<b>worth ' + BASE[q.level] + ' m</b></p>' +
+      '<p class="lvl"><span>' + label + '</span><b>' + LEVEL[q.level] + '</b></p>' +
       '<p class="q' + (q.q.length > 125 ? ' long' : '') + '">' + esc(q.q) + '</p></div>';
   }
-  function partyMax() { var t = 0; game.set.forEach(function (q) { t += BASE[q.level] + PARTY_LIMIT; }); return t; }
   // a: { q, limit, start, beat, commit(r), reveal(r) }. commit stores the answer at once; reveal shows what happens next.
   function beginAsk(a) {
     ask = a; typed = ''; lastBeep = -1;
@@ -802,12 +677,11 @@
     if (!ask) return;
     var left = ask.limit - (Date.now() - ask.start) / 1000;
     if (left <= 0) { lock(true); return; }
-    var c = document.getElementById('clock');
+    var c = document.getElementById('clock'), bar = document.getElementById('bar');
     if (!c) return;
-    var whole = Math.ceil(left);
-    c.textContent = mmss(whole);
-    var fuel = document.getElementById('fuel');
-    if (fuel) { fuel.style.setProperty('--f', Math.max(0, left / ask.limit)); fuel.className = 'fuel' + (left <= 15 ? ' low' : ''); }
+    var whole = Math.ceil(left), low = left <= 15;
+    c.textContent = mmss(whole); c.className = 'clock' + (low ? ' low' : '');
+    if (bar) { bar.style.transform = 'scaleX(' + Math.max(0, left / ask.limit) + ')'; bar.parentNode.className = 'bar' + (low ? ' low' : ''); }
     if (whole <= 10 && whole !== lastBeep) { lastBeep = whole; SFX.beep(); }
   }
   function paintTyped(pop) {
@@ -838,7 +712,6 @@
     if (f === 'low' || f === 'high') f = 'wrong';
     var used = Math.min(a.limit, Math.max(0, (Date.now() - a.start) / 1000));
     var r = { t: timeout ? '' : String(parseFloat(typed)), f: f, secs: Math.round(used) };
-    r.m = f === 'right' ? (BASE[a.q.level] || 100) + Math.max(0, a.limit - r.secs) : 0;   // the question's worth, plus a metre per second of fuel left
     ask = null; typed = '';
     stopTimers();
     if (timeout) quiet = Date.now() + 600;   // the keys vanish under a finger that may already be on its way down
@@ -847,34 +720,36 @@
     if (timeout || calm || !a.beat) { show(); return; }
     SFX.lock(); buzz(20);
     var read = document.getElementById('read'); if (read) read.classList.add('locking');
-    pending = setTimeout(show, 430);   // one held breath before the sign lands
+    pending = setTimeout(show, 320);   // one held breath before the light changes
   }
 
   /* ---------- Playing on your own ---------- */
+  function youLine(q, r) {
+    return r.f === 'right' ? 'You got it in ' + mmss(r.secs) + '.' : r.f === 'bait' ? 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' :
+      r.f === 'time' ? 'You ran out of time.' : 'You said ' + E.show(q, parseFloat(r.t)) + '.';
+  }
+  // After an answer the same screen stays: the light has changed, and under the question sit the
+  // answer, one line on why, and a single button.
   function resultHtml(q, r, i, nextLabel) {
-    var ans = E.show(q, q.a), you;
-    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + '. That is ' + mOf(r) + ' m further down the road.';
-    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.';
-    else if (r.f === 'time') you = 'You ran out of fuel.';
-    else you = 'You said ' + E.show(q, parseFloat(r.t)) + '.';
+    var ans = E.show(q, q.a);
     return '<div class="result">' +
-      '<div class="verdict"><div class="sg f-' + r.f + '" id="sg">' + sign(r.f, true) + '</div>' +
-        '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big' + (ans.length > 8 ? ' sm' : '') + '">' + esc(ans) + '</p><p class="you">' + esc(you) + '</p></div></div>' +
-      '<p class="crowd" id="crowd" role="status">' + esc(crowdLine(r)) + '</p>' +
+      '<p class="lab">The answer</p><p class="big' + (ans.length > 10 ? ' sm' : '') + '">' + esc(ans) + '</p>' +
+      '<p class="you">' + esc(youLine(q, r)) + '</p>' +
       '<p class="why">' + esc(q.why) + '</p>' +
-      '<div class="btns"><button class="btn plate" data-act="friend" data-i="' + i + '">Ask a friend</button><button class="btn" data-act="next" data-enter>' + (nextLabel || (i < 2 ? 'Drive on' : 'See how far I got')) + '</button></div>' +
+      '<p class="crowd" id="crowd" role="status">' + esc(crowdLine(r)) + '</p>' +
+      '<button class="btn" data-act="next" data-enter>' + nextLabel + '</button>' +
+      '<button class="linkish quiet" data-act="friend" data-i="' + i + '">Ask a friend this one</button>' +
     '</div>';
   }
   function play() {
     stopTimers(); ask = null;
-    var st = game.st, i = st.idx, q = game.set[i], r = st.res[i], hud = '';
-    var shown = totalM(st) - (r ? mOf(r) : 0);   // what this answer earned is driven when you press Drive on
-    for (var k = 0; k < 3; k++) { var p = st.res[k]; hud += p ? sign(p.f, false) : '<i class="dot' + (k === i ? ' now' : '') + '">' + (k + 1) + '</i>'; }
+    var st = game.st, i = st.idx, q = game.set[i], r = st.res[i];
+    if (!fresh) setRoad(rightCount(st) * STEP);
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud">' + hud + fuelHtml(LIMIT, r ? LIMIT - r.secs : LIMIT) + '</div>' +
-        sceneHtml(shown, true, true) + plateHtml(q, !r) +
-        (r ? resultHtml(q, r, i) : entryHtml()) +
+        hudHtml(r ? 0 : timeLeft(LIMIT, st.qStart), LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
+        plateHtml(q, 'Question ' + (i + 1) + ' of 3', !r) +
+        (r ? resultHtml(q, r, i, i < 2 ? 'Next question' : 'See your result') : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
@@ -883,14 +758,13 @@
         if (mode === 'daily') { var p = peek(), pd = p && p.daily; if (pd && pd.v === SETV && pd.day === day && (pd.res[i] || pd.idx !== i)) return 'stale'; }   // one guess, however many tabs
         st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res);
       },
-      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res)); if (res.f === 'bait') brake(); } });
+      reveal: function (res) { fresh = true; play(); fresh = false; react(res.f); if (res.f === 'right') drive(rightCount(st) * STEP, 1400); } });   // green: the road moves on behind the answer
   }
-  function next() {
-    var st = game.st, r = st.res[st.idx];
-    if (!r || road.ms) return;
+  function next() {   // never held up by an animation
+    var st = game.st;
+    if (!st.res[st.idx]) return;
     if (st.idx >= 2) { finish(); return; }
-    var on = function () { if (!game || game.st !== st) return; st.idx++; st.qStart = Date.now(); persist(); play(); window.scrollTo(0, 0); };
-    if (mOf(r) > 0) leg(totalM(st), on); else on();   // drive what you earned, then the next question
+    st.idx++; st.qStart = Date.now(); persist(); play(); window.scrollTo(0, 0);
   }
   function finish() {
     var st = game.st;
@@ -904,10 +778,6 @@
         s.best = Math.max(s.best, s.streak);
         s.lastDay = game.day;
         s.dist[n]++;
-        var went = totalM(st);
-        game.newBest = went > (s.far || 0) && s.played > 1;
-        s.far = Math.max(s.far || 0, went);
-        s.metres = (s.metres || 0) + went;
       }
     }
     var first = !st.done;
@@ -915,14 +785,14 @@
     if (game.mode === 'table' && rivalHere()) store.rival.played = 1;   // the challenge has been answered: do not offer it again
     persist();
     end(first);
-    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); flash('#12924A'); }, 1900));
+    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); }, 350));
   }
 
   /* ---------- Score ---------- */
   function shareText() {
     var st = game.st, daily = game.mode === 'daily';
     return (daily ? NAME + ' #' + game.day : NAME + ', a private round') + '\n' +
-      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  \uD83D\uDC0C ' + totalM(st) + ' m\n' +
+      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + ' ' + scoreLine(rightCount(st), totalSecs(st)) + '\n' +
       (daily ? 'Beat me: ' : 'Same three questions: ') + myLink();
   }
   function friendText(q, r) {
@@ -951,61 +821,55 @@
       '<div class="nums">' +
         '<div><b>' + s.played + '</b><span>Played</span></div>' +
         '<div><b>' + liveStreak() + '</b><span>Streak</span></div>' +
-        '<div><b>' + far(s.far || 0) + '</b><span>Best day</span></div>' +
-        '<div><b>' + far(s.metres || 0) + '</b><span>In all</span></div>' +
+        '<div><b>' + s.best + '</b><span>Best streak</span></div>' +
+        '<div><b>' + s.perfect + '</b><span>All three</span></div>' +
       '</div>' +
-      '<h2>Right answers per day</h2><div class="dist">' + bars + '</div>' +
-      '<p class="beaten">' + beatenLine() + (s.runBest ? ' Longest road: ' + far(s.runBest) + '.' : '') + '</p>';
+      '<h2>Green lights per day</h2><div class="dist">' + bars + '</div>' +
+      '<p class="beaten">' + beatenLine() + (s.runTop ? ' Endless best: ' + s.runTop + ' green.' : '') + '</p>';
   }
+  // The score is the same three lights, large, with one number under them.
   function end(first) {
     stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
-    night(true);
-    var st = game.st, signs = '', recap = '', n = rightCount(st), daily = game.mode === 'daily', went = totalM(st);
+    var st = game.st, recap = '', n = rightCount(st), daily = game.mode === 'daily', streak = liveStreak();
+    setRoad(n * STEP);
     for (var i = 0; i < 3; i++) {
       var r = st.res[i], q = game.set[i], pct = crowdPct(r);
-      signs += '<div class="sg f-' + r.f + '">' + sign(r.f, true) + '</div>';
       recap += '<li><p class="rq">' + esc(q.q) + '</p>' +
-        '<p class="ra">' + sign(r.f, false) + '<b>' + esc(E.show(q, q.a)) + '</b><span class="rt">' +
-          esc(r.f === 'right' ? 'in ' + mmss(r.secs) + ', ' + mOf(r) + ' m' : r.f === 'time' ? 'out of fuel' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
-        '<button class="linkish" data-act="friend" data-i="' + i + '">Ask a friend this one</button></li>';
+        '<p class="ra">' + lamp(lightOf(r), 'sm') + '<b>' + esc(E.show(q, q.a)) + '</b><span class="rt">' +
+          esc(r.f === 'right' ? 'in ' + mmss(r.secs) : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
+        '<button class="linkish quiet" data-act="friend" data-i="' + i + '">Ask a friend this one</button></li>';
     }
     view.innerHTML =
       '<section class="end">' +
-        '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
-        '<div class="endsigns' + (first ? ' fresh' : '') + '">' + signs + '</div>' +
-        sceneHtml(first ? 0 : went, true, false) +
-        '<p class="far">' + odoHtml(first ? 0 : went, 'tot', 'big') + '</p>' +
-        '<p class="rank">' + place(went) + '</p>' +
-        '<p class="total">' + n + ' of 3 right in ' + mmss(totalSecs(st)) + '.' + (daily ? (game.newBest ? ' Your best day yet.' : store.stats.far > went ? ' Your best day is ' + store.stats.far + ' m.' : '') : '') + '</p>' +
-        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? esc(standingLine(st.field, went)) : '') + '</p>' : '') +
+        '<div class="score">' +
+          '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
+          lightsHtml(st.res, -1, 'big' + (first ? ' fresh' : '')) +
+          '<p class="tally">' + n + ' of 3</p>' +
+          '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 1 ? ', ' + streak + '-day streak' : '') + '</p>' +
+        '</div>' +
+        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? fieldLine(st.field) : '') + '</p>' : '') +
         duelCard() +
-        '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend to beat it') + '</button>' +
-          (daily ? '<button class="btn plate" data-act="run">Still bored? Take the long road</button><button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
+        '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend') + '</button>' +
+          (daily ? '<button class="btn plate" data-act="run">Keep going: endless mode</button><button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
         '</div>' + (daily ? inAppNote() : '') +
-        (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' + statsBlock() : '') +
-        '<h2>' + (daily ? 'Today’s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
+        (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
+        '<h2>' + (daily ? 'Today\u2019s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
       '</section>';
     window.scrollTo(0, 0);
     if (daily) runCountdown();
-    if (first && went > 0) {   // replay the whole journey from the doorstep while the number rolls up
-      seq.push(setTimeout(function () {
-        setOdo(document.getElementById('tot'), went); SFX.crawl();
-        drive(went, 1900, function () { var z = document.getElementById('zone'); if (z) z.textContent = place(went); });
-      }, calm ? 0 : 450));
-    }
     if (daily && first && STATS && window.fetch) {
-      readField(game.day, mBand(went)).then(function (c) {
+      readField(game.day, n).then(function (c) {
         st.field = c; save();
-        var el = document.getElementById('standing'); if (el && game && game.st === st) el.textContent = standingLine(c, went);
+        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = fieldLine(c);
       }).catch(function () { /* fine without */ });
     }
   }
 
-  /* ---------- The long road: keep answering until three wrong turns ---------- */
+  /* ---------- Endless mode: keep answering until three reds ---------- */
+  var RUN_STEP = 90;   // the road moves on a little for every green
   function startRun() {
     if (adopt()) save();
-    game = { mode: 'run', n: 0, lives: RUN_LIVES, m: 0, right: 0, strikes: [], recent: [], cur: null, res: null, seed: Date.now() + '-' + Math.random() };
-    night(true);
+    game = { mode: 'run', n: 0, lives: RUN_LIVES, right: 0, strikes: [], recent: [], cur: null, res: null, seed: Date.now() + '-' + Math.random() };
     runNext();
   }
   function runNext() {
@@ -1019,62 +883,62 @@
     runPlay();
     window.scrollTo(0, 0);
   }
+  function runLead() {   // the three lights here are the three reds you are allowed
+    var h = '';
+    for (var k = 0; k < RUN_LIVES; k++) h += lamp(k < game.strikes.length ? 'red' : 'off');
+    return '<div class="lights" role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' reds used">' + h + '</div><span class="hudn">' + game.right + ' green</span>';
+  }
   function runPlay() {
     stopTimers(); ask = null;
-    var q = game.cur, r = game.res, hud = '';
-    for (var k = 0; k < RUN_LIVES; k++) hud += k < game.strikes.length ? sign(game.strikes[k], false) : '<i class="dot life" aria-hidden="true"></i>';
-    var shown = game.m - (r ? r.m : 0);
+    var q = game.cur, r = game.res;
+    if (!fresh) setRoad(game.right * RUN_STEP);
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud"><span role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' wrong turns used" style="display:contents">' + hud + '</span><span class="hudn">Question ' + game.n + '</span>' + fuelHtml(RUN_LIMIT, r ? RUN_LIMIT - r.secs : RUN_LIMIT) + '</div>' +
-        sceneHtml(shown, false, true) + plateHtml(q, !r) +
-        (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Drive on' : 'See how far I got') : entryHtml()) +
+        hudHtml(r ? 0 : timeLeft(RUN_LIMIT, game.start), RUN_LIMIT, runLead(), r) +
+        plateHtml(q, 'Question ' + game.n, !r) +
+        (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Next question' : 'See your result') : entryHtml()) +
       '</section>';
     if (r) return;
     beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
-      commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); },
-      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m); if (res.f === 'bait') brake(); } });
+      commit: function (res) { game.res = res; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); },
+      reveal: function (res) { fresh = true; runPlay(); fresh = false; react(res.f); if (res.f === 'right') drive(game.right * RUN_STEP, 1200); } });
   }
   function runEnd(again) {   // again: the page was refreshed on this screen
     stopTimers(); ask = null;
-    var s = store.stats, old = again ? game.was : s.runBest || 0, isBest = game.m > old && game.m > 0;
-    if (isBest) s.runBest = Math.max(s.runBest || 0, game.m);
+    var s = store.stats, old = again ? game.was : s.runTop || 0, isBest = game.right > old;
+    if (isBest) s.runTop = Math.max(s.runTop || 0, game.right);
     game.over = true; game.was = old;
     save(); keep();
+    setRoad(game.right * RUN_STEP);
     view.innerHTML =
       '<section class="end">' +
-        '<p class="endno">The long road</p>' +
-        sceneHtml(0, false, false) +
-        '<p class="far">' + odoHtml(0, 'tot', 'big') + '</p>' +
-        '<p class="rank">' + (isBest && old ? 'Your longest road yet' : game.right === 0 ? 'Stalled at the start' : 'Three wrong turns') + '</p>' +
-        '<p class="total">' + game.right + ' right out of ' + game.n + '.' + (!isBest && old ? ' Your longest road is ' + far(old) + '.' : '') + '</p>' +
-        '<p class="total">' + beatenLine() + '</p>' +
+        '<div class="score">' +
+          '<p class="endno">Endless mode</p>' +
+          '<p class="tally">' + game.right + '</p>' +
+          '<p class="total">green ' + (game.right === 1 ? 'light' : 'lights') + ' before three reds.' + (isBest && old ? ' Your best yet.' : !isBest && old ? ' Your best is ' + old + '.' : '') + '</p>' +
+        '</div>' +
         '<div class="endbtns"><button class="btn" data-act="run" data-enter>Go again</button><button class="btn plate" data-act="runshare">Share it</button><button class="btn plate" data-act="home">Back to today</button></div>' +
+        '<p class="beaten">' + beatenLine() + '</p>' +
       '</section>';
     window.scrollTo(0, 0);
-    var went = game.m;
-    if (!went) return;
-    seq.push(setTimeout(function () {
-      setOdo(document.getElementById('tot'), went); SFX.crawl();
-      drive(went, 1900, function () { if (isBest) { SFX.sweep(); flash('#12924A'); } });
-    }, calm ? 0 : 400));
+    if (isBest && !again) seq.push(setTimeout(function () { SFX.sweep(); }, 300));
   }
 
   /* ---------- One phone, passed round ---------- */
   function startParty(names, count) {
     var seed = Date.now() + '-' + Math.random();
-    game = { mode: 'party', players: names.map(function (nm) { return { name: nm, m: 0, right: 0, bait: 0 }; }),
+    game = { mode: 'party', players: names.map(function (nm) { return { name: nm, right: 0, bait: 0, secs: 0 }; }),
       seed: seed, set: E.buildParty(seed, count), k: 0, turn: 0, ans: [], scored: [], at: 'pass', start: 0 };
-    night(true);
+    setRoad(0);
     partyPass();
   }
   function order() { var n = game.players.length, o = []; for (var i = 0; i < n; i++) o.push((game.k + i) % n); return o; }   // a different player goes first each time
   function ranked() {
-    return game.players.slice().sort(function (a, b) { return b.m - a.m || b.right - a.right; });
+    return game.players.slice().sort(function (a, b) { return b.right - a.right || a.secs - b.secs; });
   }
   function standings(detail) {
     return '<ol class="table">' + ranked().map(function (p) {
-      return '<li><span>' + esc(p.name) + '</span>' + (detail ? '<small>' + p.right + ' right' + (p.bait ? ', trapped ' + times(p.bait) : '') + '</small>' : '') + '<b>' + p.m + ' m</b></li>';
+      return '<li><span>' + esc(p.name) + '</span>' + (detail ? '<small>' + mmss(p.secs) + (p.bait ? ', trapped ' + times(p.bait) : '') + '</small>' : '') + '<b>' + p.right + lamp('green', 'sm') + '</b></li>';
     }).join('') + '</ol>';
   }
   function partyPass() {
@@ -1098,8 +962,8 @@
     game.at = 'answer'; keep();
     view.innerHTML =
       '<section class="play">' +
-        '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span>' + fuelHtml(PARTY_LIMIT, PARTY_LIMIT) + '</div>' +
-        sceneHtml(game.players[pi].m, false, true) + plateHtml(q, true) + entryHtml() +
+        hudHtml(timeLeft(PARTY_LIMIT, game.start), PARTY_LIMIT, '<span class="chip">' + esc(game.players[pi].name) + '</span>', null) +
+        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length, true) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: game.start, beat: false,
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; game.turn++; game.at = game.turn < game.players.length ? 'pass' : 'gather'; keep(); },
@@ -1122,7 +986,7 @@
       game.scored[k] = true;
       ord.forEach(function (pi) {
         var r = a[pi], p = game.players[pi];
-        p.m += r.m;
+        p.secs += r.secs;
         if (r.f === 'right') p.right++;
         if (r.f === 'bait') p.bait++;
       });
@@ -1130,24 +994,23 @@
     game.at = 'reveal'; keep();
     var rows = ord.map(function (pi) {
       var r = a[pi];
-      var said = r.f === 'time' ? 'ran out of fuel' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '');
-      return '<div class="prow hid" data-f="' + r.f + '"><div class="sg f-' + r.f + '">' + sign(r.f, true) + '</div><p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p><span class="pt">' + (r.m ? '+' + r.m + ' m' : '') + '</span></div>';
+      var said = r.f === 'time' ? 'ran out of time' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '');
+      return '<div class="prow hid" data-f="' + r.f + '">' + lamp(lightOf(r)) + '<p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p></div>';
     }).join('');
     view.innerHTML =
       '<section class="rev">' +
-        plateHtml(q, false) +
+        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length, false) +
         '<p class="answer"><span>The answer</span><b>' + esc(E.show(q, q.a)) + '</b></p>' +
         rows +
         '<div class="after hid" id="after"><p class="why">' + esc(q.why) + '</p>' + standings(false) +
-          '<button class="btn" data-act="pnext" data-enter>' + (last ? 'The finish line' : 'Drive on') + '</button></div>' +
+          '<button class="btn" data-act="pnext" data-enter>' + (last ? 'See who won' : 'Next question') + '</button></div>' +
       '</section>';
     window.scrollTo(0, 0);
     var els = view.querySelectorAll('.prow'), after = document.getElementById('after');
     var showRow = function (el) {
       var f = el.getAttribute('data-f');
       el.classList.remove('hid'); el.classList.add('show');
-      SFX[f](); buzz(f === 'bait' ? [70, 40, 70] : 25);
-      if (f === 'bait') flash('#fff');
+      SFX[f](); buzz(25);
     };
     if (calm) { for (var i = 0; i < els.length; i++) els[i].classList.remove('hid'); after.classList.remove('hid'); return; }
     Array.prototype.forEach.call(els, function (el, i) { seq.push(setTimeout(function () { showRow(el); }, 600 + i * 850)); });
@@ -1160,13 +1023,13 @@
   function listNames(ps) { var n = ps.map(function (p) { return p.name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; }
   function partyFinal() {
     stopTimers(); game.at = 'final'; keep();
-    var r = ranked(), top = r.filter(function (p) { return p.m === r[0].m; });
+    var r = ranked(), top = r.filter(function (p) { return p.right === r[0].right && p.secs === r[0].secs; });
     var most = Math.max.apply(null, r.map(function (p) { return p.bait; })), trapped = r.filter(function (p) { return p.bait === most; });
     view.innerHTML =
       '<section class="pass" style="justify-content:flex-start">' +
         '<p class="sm">After ' + game.set.length + ' questions</p>' +
         '<p class="who">' + (top.length === 1 ? esc(top[0].name) + ' wins' : 'Dead heat') + '</p>' +
-        (top.length > 1 ? '<p class="sm">' + esc(listNames(top)) + ' share it on ' + r[0].m + ' m.</p>' : '') +
+        (top.length > 1 ? '<p class="sm">' + esc(listNames(top)) + ' share it.</p>' : '') +
         standings(true) +
         (most > 0 ? '<p class="sm">Most trapped: ' + esc(listNames(trapped)) + ', caught ' + times(most) + (trapped.length > 1 ? ' each' : '') + '.</p>' : '<p class="sm">Nobody fell for a single trap.</p>') +
         '<button class="btn" data-act="pagain" data-enter>Play again</button>' +
@@ -1178,7 +1041,7 @@
   }
   function partyShare() {
     return NAME + ', ' + game.set.length + ' questions round the table\n' +
-      ranked().map(function (p, i) { return (i + 1) + '. ' + p.name + ' ' + p.m + ' m' + (p.bait ? ' (trapped ' + times(p.bait) + ')' : ''); }).join('\n') + '\n' + SITE;
+      ranked().map(function (p, i) { return (i + 1) + '. ' + p.name + ' ' + p.right + ' of ' + game.set.length + (p.bait ? ' (trapped ' + times(p.bait) + ')' : ''); }).join('\n') + '\n' + SITE;
   }
 
   /* ---------- Sheets ---------- */
@@ -1187,23 +1050,21 @@
     veil.hidden = false;
   }
   function closeSheet() { veil.hidden = true; veil.innerHTML = ''; }
-  function eg(kind, val, note) { return '<div class="line">' + sign(kind, false) + '<p><b>' + val + '</b><span>' + note + '</span></p></div>'; }
+  function eg(light, val, note) { return '<div class="line">' + lamp(light) + '<p><b>' + val + '</b><span>' + note + '</span></p></div>'; }
   function leaveSheet() {
     sheet('Leave this game?', '<h2 class="big">Leave this game?</h2><p>Your place in it will be lost.</p><button class="btn" data-act="close">Keep playing</button><button class="btn plate" data-act="home" data-sure>Leave</button>');
   }
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes of fuel.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves you down the road: 100 m, 150 m, then 200 m, plus a metre for every second of fuel left. The trap moves you nowhere.</li></ul>' +
-      '<div class="eg"><p class="egq">A bat and a ball cost €1.10. The bat costs €1.00 more than the ball. How much is the ball?</p>' +
-        eg('right', '5 cents', 'Correct. It takes a second look.') +
-        eg('bait', '10 cents', 'The trap. It is the answer that jumps out first.') +
-        eg('wrong', 'Anything else', 'Wrong, but at least you dodged the trap.') +
+      '<ul><li>Three trick questions a day, the same three for everyone.</li><li>One guess each. Two minutes on the clock.</li><li>Right turns the light green. Anything else turns it red.</li><li>Get three green lights.</li></ul>' +
+      '<div class="eg"><p class="egq">A bat and a ball cost \u20AC1.10. The bat costs \u20AC1.00 more than the ball. How much is the ball?</p>' +
+        eg('green', '5 cents', 'Correct. It takes a second look.') +
+        eg('red', '10 cents', 'The trap: the answer that jumps out first.') +
       '</div>' +
-      '<p>A new three arrive at midnight. Your score comes with a link, so a friend can play the same three and see who won.</p>' +
-      '<p>Done for the day and still bored? The long road keeps the questions coming until you take three wrong turns.</p>' +
-      '<p>Sound is off until you turn it on.</p>' +
-      '<p class="small">To show how other players did, the game sends anonymous counts of answers and finishing distances. Nothing about you is sent or stored.</p>');
+      '<p>The questions go from easy to hard. A new three arrive at midnight.</p>' +
+      '<p>Your result comes with a link, so a friend can play the same three and see who won.</p>' +
+      '<p class="small">To show how other players did, the game sends anonymous counts of answers. Nothing about you is sent or stored.</p>');
   }
   function stats() { sheet('Your record', statsBlock()); }
   function stepper(label, value, minus, plus) {
@@ -1225,7 +1086,7 @@
       stepper('Players', cfg.names.length, 'pn-', 'pn+') +
       '<div class="names">' + inputs + '</div>' +
       stepper('Questions', cfg.count, 'pq-', 'pq+') +
-      '<p class="small">The questions go from easiest to hardest. A right answer is worth 100 to 200 m, plus a metre for every second you had left. Blurt out the trap and you get nothing.</p>' +
+      '<p class="small">Most green lights wins. Level on greens, the faster player wins.</p>' +
       '<button class="btn" data-act="pstart">Start</button>');
   }
   function partyStart() {
@@ -1260,7 +1121,7 @@
 
   /* ---------- The numbers page: how hard each kind of question really is (open the site with #numbers) ---------- */
   function numbers() {
-    stopTimers(); game = null; ask = null; night(true);
+    stopTimers(); game = null; ask = null;
     var ks = E.kinds().sort(function (a, b) { return a.level - b.level || (a.kind < b.kind ? -1 : 1); }), rows = '', lv = 0;
     var aim = { 1: 'Openers, aiming for about 70% right', 2: 'Coin flips, aiming for about 50% right', 3: 'Closers, aiming for about 30% right' };
     ks.forEach(function (k, i) {
@@ -1306,13 +1167,11 @@
     else if (act === 'enter') { lock(false); if (ask) quiet = 0; }   // nothing was locked (no number yet), so nothing changed
     else if (act === 'next') {
       if (game.mode !== 'run') next();
-      else if (road.ms) { /* already driving */ }
       else if (game.lives <= 0) runEnd();
-      else if (game.res && game.res.m > 0) leg(game.m, function () { if (game && game.mode === 'run') runNext(); });
       else runNext();
     }
     else if (act === 'run') { closeSheet(); startRun(); }
-    else if (act === 'runshare') send(NAME + ', the long road\n\uD83D\uDC0C ' + game.m + ' m before three wrong turns\n' + SITE, 'Copied. Paste it anywhere.');
+    else if (act === 'runshare') send(NAME + ', endless mode\n' + EMOJI.right + ' ' + game.right + ' green ' + (game.right === 1 ? 'light' : 'lights') + ' before three reds\n' + SITE, 'Copied. Paste it anywhere.');
     else if (act === 'daily') startDaily();
     else if (act === 'friends') friendsSheet();
     else if (act === 'party') partySheet();
@@ -1387,10 +1246,9 @@
     paintSound();
     var h = readLink();
     if (h === 'numbers') numbers();
-    else if (resume()) { /* back in the long road, the party or the private round they were in */ }
-    else if (dailyState() === 'going') startDaily();   // a refresh mid-game goes back to the question, where the fuel is still burning
-    else if (!hadLocal && !store.demo && !store.rival) demo();   // brand new here: straight into a trap
-    else home();
+    else if (resume()) { /* back in endless mode, the party or the private round they were in */ }
+    else if (dailyState() === 'going') startDaily();   // a refresh mid-game goes back to the question, where the clock is still running
+    else home();   // everyone else, new or not, starts at the front page: the goal, the lights, one button
   }
   function boot(snap) {
     try { start(snap); }
