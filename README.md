@@ -36,6 +36,25 @@ town, and the further out the player gets the more of it shows, from a few stars
 and then planets and an aurora past 620 m. Pressing "Drive on" clears the screen and drives the distance the
 last answer earned. There is no separate progress bar.
 
+## What a refresh does
+
+Every answer is saved the moment it is locked in, and the page reopens where it was left:
+
+- mid-question, back on the question with the fuel that is left (a refresh buys neither time nor a
+  second guess);
+- on a verdict, the verdict again;
+- the long road, a pass-the-phone party and a private round are saved step by step and resume;
+- two tabs share one game: an answer given in one shows in the other, and counts once.
+
+Saved data is rebuilt and checked every time it is read, so a damaged or hand-edited save cannot
+break the page. The counters are optional: if the service is down, slow or refusing, the game
+carries on and shows no numbers rather than wrong ones, and leaves the service alone for a minute.
+An unexpected error shows a bar with a Reload button and is counted on the `#numbers` page.
+Inside TikTok, Instagram, Snapchat or Facebook the score screen explains that the streak is kept
+in that app's own browser. `404.html` sends a mistyped address to the game.
+
+`python3 src/journeys.py` plays all of this in a real browser; the top of that file says how.
+
 A first-time visitor skips the front page and lands on one trap question, so the first thing the
 game does is catch them. Every question plate shows its
 level and what it is worth, so players can see the day goes from easiest to hardest.

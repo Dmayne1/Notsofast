@@ -48,11 +48,11 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 p { margin: 0; }
 
 /* The road fills the screen behind everything. It is drawn on a canvas from wherever you have got to. */
-#bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #07090f; }
-#bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-#bg::before { content: ""; position: absolute; inset: 0; z-index: 1; background: #D8281C; opacity: 0; }
+#bg { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #07090f; }
+#bg canvas { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
+#bg::before { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; background: #D8281C; opacity: 0; }
 #bg.brake::before { animation: wash 0.9s ease-out; }
-#bg::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(to bottom, rgba(7, 9, 15, 0) 0%, rgba(7, 9, 15, 0) 36%, rgba(7, 9, 15, 0.42) 56%, rgba(7, 9, 15, 0.72) 100%); transition: opacity 0.25s; }
+#bg::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 2; background: linear-gradient(to bottom, rgba(7, 9, 15, 0) 0%, rgba(7, 9, 15, 0) 36%, rgba(7, 9, 15, 0.42) 56%, rgba(7, 9, 15, 0.72) 100%); transition: opacity 0.25s; }
 body.clear #bg::after { opacity: 0.25; }
 .app { position: relative; z-index: 1; max-width: 460px; min-height: 100%; min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 0 18px calc(14px + env(safe-area-inset-bottom)); }
 .app.quake { animation: quake 0.3s; }
@@ -257,7 +257,7 @@ body.desk .read { height: 70px; }
 .numbers .lv td { padding-top: 18px; border: 0; color: var(--sign); font-weight: 700; text-align: left; }
 
 /* Sheets */
-.veil { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, 0.72); display: flex; align-items: flex-start; justify-content: center; padding: 44px 12px 12px; overflow: auto; }
+.veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 10; background: rgba(0, 0, 0, 0.72); display: flex; align-items: flex-start; justify-content: center; padding: 44px 12px 12px; overflow: auto; }
 .sheet { width: 100%; max-width: 440px; background: var(--panel); border-radius: 16px; padding: 10px 18px 22px; }
 .sheet-top { display: flex; justify-content: flex-end; margin-right: -8px; }
 .sheet .big { margin: 0 0 12px; color: var(--fg); font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; }
@@ -281,14 +281,20 @@ body.desk .read { height: 70px; }
 .stepper output { text-align: center; font-family: var(--disp); font-weight: 800; font-size: 1.7rem; }
 .sharetext { margin: 0 0 12px; padding: 12px; border: 1px dashed var(--edge); border-radius: 10px; font-family: var(--body); font-size: 1rem; white-space: pre-wrap; user-select: all; -webkit-user-select: all; }
 
-.toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 40; max-width: calc(100% - 24px); background: var(--fg); color: #000; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 0.93rem; white-space: nowrap; pointer-events: none; }
-#take { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; opacity: 0; --tc: #D8281C; background: rgba(0, 0, 0, 0.8); background: radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--tc) 60%, transparent) 0%, rgba(0, 0, 0, 0.86) 62%); }
+.toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 40; max-width: calc(100% - 24px); background: var(--fg); color: #000; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 0.93rem; width: max-content; text-align: center; pointer-events: none; }
+.oops { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: var(--fg); color: #000; font-weight: 700; }
+.oops[hidden] { display: none; }
+.oops button { margin-left: 12px; padding: 8px 16px; border-radius: 8px; background: #000; color: #fff; font-weight: 700; }
+.inapp { margin: 14px 0 0; padding: 12px 14px; border: 1px dashed var(--edge); border-radius: 12px; color: var(--mut); font-size: 0.93rem; line-height: 1.4; text-align: left; }
+.inapp b { color: var(--fg); }
+.noscript { max-width: 420px; margin: 30vh auto 0; padding: 0 24px; text-align: center; }
+#take { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; opacity: 0; --tc: #D8281C; background: rgba(0, 0, 0, 0.8); background: radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--tc) 60%, transparent) 0%, rgba(0, 0, 0, 0.86) 62%); }
 #take.go { animation: take 0.8s ease-out both; }
 #take .tk { display: grid; justify-items: center; gap: 16px; }
 #take .sg { width: min(56vw, 240px); height: min(56vw, 240px); filter: drop-shadow(0 0 46px var(--tc)); }
 #take.go .sg { animation: land 0.8s cubic-bezier(0.2, 0.8, 0.3, 1.1) both; }
 #take p { color: #fff; font-family: var(--disp); font-weight: 800; font-size: 2.7rem; line-height: 1; letter-spacing: 0.04em; text-shadow: 0 2px 14px #000; }
-#flash { position: fixed; inset: 0; z-index: 25; background: #fff; opacity: 0; pointer-events: none; }
+#flash { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 25; background: #fff; opacity: 0; pointer-events: none; }
 #flash.go { animation: flash 0.45s ease-out; }
 
 @keyframes arrive { 0% { transform: scale(1.22); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
@@ -342,6 +348,7 @@ body.desk .read { height: 70px; }
 </style>
 </head>
 <body>
+<noscript><p class="noscript">Not So Fast needs JavaScript to run. Turn it on in your browser settings, then reload.</p></noscript>
 <div id="bg" aria-hidden="true"></div>
 <div class="app" id="app">
   <header class="top">
@@ -361,6 +368,7 @@ body.desk .read { height: 70px; }
 <div id="take" aria-hidden="true"></div>
 <div id="flash" aria-hidden="true"></div>
 <div id="toast" class="toast" role="status" hidden></div>
+<div id="oops" class="oops" role="alert" hidden><span>Something went wrong.</span><button data-act="reload">Reload</button></div>
 <div id="veil" class="veil" hidden></div>
 
 <script>
@@ -849,6 +857,8 @@ body.desk .read { height: 70px; }
   var BASE = { 1: 100, 2: 150, 3: 200 };
   var LEVEL = { 1: 'Warm-up', 2: 'Trickier', 3: 'The hard one' };
   var DAY_MAX = BASE[1] + BASE[2] + BASE[3] + 3 * LIMIT;
+  var FS = { right: 1, bait: 1, wrong: 1, time: 1 };   // the four verdicts
+  var RIVAL_D = /^d(\d{1,5})$/, RIVAL_T = /^t([A-Z0-9]{1,8})-([1-9]\d?)$/;   // the two kinds of game a friend's link can point at
   var PLACES = [[700, 'Under the stars'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
@@ -871,18 +881,94 @@ body.desk .read { height: 70px; }
   if (desk) document.body.classList.add('desk');
   var RUN_LIMIT = 60, RUN_LIVES = 3;   // the long road: a minute a question, three wrong turns and you are out
   var kindTotal = 0;
+  var quiet = 0;       // taps are ignored until this time: a second tap must not land on the screen the first one opened
+  var broke = false;
+  // Opened from a link inside another app, the game runs in that app's own browser, which keeps its own storage.
+  var UA = navigator.userAgent || '';
+  var INAPP = /musical_ly|Bytedance|TikTok|Trill_/i.test(UA) ? 'TikTok' : /Instagram/i.test(UA) ? 'Instagram' : /Snapchat/i.test(UA) ? 'Snapchat' : /FBAN|FBAV|FBIOS|FB_IAB/.test(UA) ? 'Facebook' : '';
+  var BROWSER = /Android/i.test(UA) ? 'Chrome' : /iPhone|iPad|iPod/i.test(UA) ? 'Safari' : 'your usual browser';
 
-  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null }; }
+  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null, live: null, seen: {} }; }
+
+  /* Nothing read back from storage is trusted. A half-written save, an older version or a curious
+     player with the developer tools open must never be able to break the page, so every value is
+     rebuilt from scratch and anything that does not make sense is dropped. */
+  function int(v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d; }
+  function okRes(r, limit) {
+    if (!r || typeof r !== 'object' || FS[r.f] !== 1) return null;
+    var t = r.f === 'time' ? '' : String(r.t == null ? '' : r.t).slice(0, 12);
+    if (r.f !== 'time' && !isFinite(parseFloat(t))) return null;
+    var o = { t: t, f: r.f, secs: int(r.secs, 0, limit, 0), m: r.f === 'right' ? int(r.m, 1, 200 + limit, 100) : 0 }, c = r.crowd;
+    if (c && typeof c === 'object' && isFinite(c.n) && c.n >= 0) o.crowd = { n: int(c.n, 0, 1e9, 0), r: int(c.r, 0, 1e9, 0), t: int(c.t, 0, 1e9, 0), slower: int(c.slower, 0, 1e9, 0) };
+    return o;
+  }
+  function okSt(d, limit) {   // three questions in progress: the answers so far, and which one is on screen
+    if (!d || typeof d !== 'object' || !Array.isArray(d.res)) return null;
+    var res = [], i, r, now = Date.now(), q = Number(d.qStart);
+    for (i = 0; i < 3 && i < d.res.length; i++) { r = okRes(d.res[i], limit); if (!r) break; res.push(r); }
+    var idx = int(d.idx, 0, 2, 0);
+    if (idx > res.length) idx = res.length;          // cannot be on a question without answering the one before
+    if (idx < res.length - 1) idx = res.length - 1;
+    return { idx: Math.min(2, idx), res: res, qStart: isFinite(q) && q > 0 && q < now + 60000 ? q : now, done: d.done === true && res.length === 3 };
+  }
+  function okDaily(d) {
+    var st = okSt(d, LIMIT);
+    if (!st || typeof d.v !== 'string' || !isFinite(d.day)) return null;
+    st.v = d.v.slice(0, 8); st.day = int(d.day, 1, 1e6, 1);
+    if (Array.isArray(d.field) && d.field.length === 9) st.field = d.field.map(function (x) { return int(x, 0, 1e9, 0); });
+    return st;
+  }
+  function okRival(v) {
+    if (!v || typeof v !== 'object' || typeof v.key !== 'string') return null;
+    var o = { key: v.key, n: int(v.n, 0, 3, 0), m: int(v.m, 0, DAY_MAX, 0), at: int(v.at, 1, Date.now(), Date.now()) }, m;
+    if (RIVAL_D.test(v.key)) return o;
+    if (!(m = RIVAL_T.exec(v.key))) return null;
+    o.code = m[1]; o.round = +m[2]; if (v.played) o.played = 1;
+    return o;
+  }
+  function clean(s) {
+    var b = blank(), st = (s.stats && typeof s.stats === 'object' && s.stats) || {}, i, age = s.live && typeof s.live === 'object' ? Date.now() - Number(s.live.at) : NaN;
+    b.sound = s.sound === true; if (s.demo) b.demo = 1;
+    ['played', 'perfect', 'streak', 'best', 'lastDay'].forEach(function (k) { b.stats[k] = int(st[k], 0, 1e6, 0); });
+    for (i = 0; i < 4; i++) b.stats.dist[i] = int(st.dist && st.dist[i], 0, 1e6, 0);
+    b.stats.far = int(st.far, 0, 1e6, 0); if (b.stats.far > DAY_MAX) b.stats.far = 0;
+    b.stats.metres = int(st.metres, 0, 1e9, 0); b.stats.runBest = int(st.runBest, 0, 1e8, 0);
+    if (Array.isArray(s.names)) b.names = s.names.slice(0, 6).map(function (n) { return String(n == null ? '' : n).slice(0, 10); });
+    if (s.seen && typeof s.seen === 'object') Object.keys(s.seen).slice(0, 500).forEach(function (k) { if (/^[a-z0-9]{3,40}$/.test(k)) b.seen[k] = 1; });
+    b.daily = okDaily(s.daily); b.rival = okRival(s.rival);
+    if (age > -60000 && age < 6 * 3600 * 1000 && s.live.v === SETV && s.live.game && typeof s.live.game === 'object') b.live = { v: SETV, at: Number(s.live.at), game: s.live.game };   // checked again when it is resumed
+    return b;
+  }
+  function parse(raw) { var s = JSON.parse(raw); return s && typeof s === 'object' && !Array.isArray(s) ? s : null; }
   function load() {
     try {
-      var s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.stats && s.stats.dist) { hadLocal = true; if (typeof s.sound !== 'boolean') s.sound = false; if (s.stats.far > 810) s.stats.far = 0; return s; }
-      var old = JSON.parse(localStorage.getItem(OLD_KEY));  // keep the streak from the earlier version
-      if (old && old.stats && old.stats.dist) { hadLocal = true; var b = blank(); b.stats = old.stats; return b; }
+      var s = parse(localStorage.getItem(KEY));
+      if (s && s.stats) { hadLocal = true; return clean(s); }
+      var old = parse(localStorage.getItem(OLD_KEY));  // keep the streak from the earlier version
+      if (old && old.stats && old.stats.dist) { hadLocal = true; return clean({ stats: old.stats }); }
     } catch (e) { /* storage may be unavailable */ }
     return blank();
   }
+  function peek() { try { var s = parse(localStorage.getItem(KEY)); return s && s.stats ? clean(s) : null; } catch (e) { return null; } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* play on without it */ } }
+
+  /* More than one tab. Each tab holds its own copy of the save, so without care the last one to
+     write would wipe what another had done. adopt() takes in what was written elsewhere and keeps
+     whatever this tab is further on with. It returns true when storage should be rewritten. */
+  function rank(d) { return d && d.v === SETV ? d.day * 100 + (d.done ? 50 : 0) + d.res.length * 10 + d.idx : -1; }
+  function adopt() {
+    var p = peek(), fix = false, a = store.stats, b, k;
+    if (!p) return false;
+    b = p.stats;
+    if (a.played > b.played || (a.played === b.played && a.lastDay > b.lastDay)) { p.stats = a; b = a; fix = true; }
+    else { k = Math.max(a.runBest || 0, b.runBest || 0); if (k !== b.runBest) { b.runBest = k; fix = true; } }
+    for (k in store.seen) if (!p.seen[k]) { p.seen[k] = 1; fix = true; }
+    if (rank(store.daily) >= rank(p.daily)) { if (rank(store.daily) > rank(p.daily)) fix = true; p.daily = store.daily; }
+    if (game && (game.mode === 'run' || game.mode === 'party' || game.mode === 'table')) p.live = store.live;   // this tab's own game: written again at its next step
+    if (store.demo) p.demo = 1;
+    store = p;
+    return fix;
+  }
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function today() { return E.dayNumber(new Date()); }
   function dateLine() { return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); }
@@ -996,7 +1082,9 @@ body.desk .read { height: 70px; }
     time: function () { tone(392, 0, 0.55, 'triangle', 0.2, 185); },
     sweep: function () { [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach(function (f, i) { tone(f, i * 0.085, 0.32, 'triangle', 0.2); }); }
   };
-  function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* not every phone can */ } }
+  function buzz(p) {
+    try { if (navigator.vibrate && !(navigator.userActivation && !navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) { /* not every phone can */ }   // browsers refuse it before the first tap
+  }
   function paintSound() {
     var b = document.getElementById('snd');
     b.innerHTML = store.sound ? ICON.on : ICON.off;
@@ -1266,6 +1354,12 @@ body.desk .read { height: 70px; }
     for (var b = 0; b < 9; b++) jobs.push(api(b === mine ? 'hit' : 'get', SETV + 'd' + day + 'm' + b));
     return Promise.all(jobs);
   }
+  function fieldNow(day) {   // the front page's read of today's field, kept for a minute so a reload does not ask again
+    var k = 'nsf.field', now = Date.now(), d = store.daily;
+    if (d && d.done && d.day === day && d.v === SETV && d.field) return Promise.resolve(d.field);
+    try { var m = JSON.parse(sessionStorage.getItem(k)); if (m && m.d === day && m.v === SETV && now - m.at < 60000 && now >= m.at && Array.isArray(m.c) && m.c.length === 9) return Promise.resolve(m.c.map(function (x) { return int(x, 0, 1e9, 0); })); } catch (e) { /* no session storage */ }
+    return readField(day, -1).then(function (c) { try { sessionStorage.setItem(k, JSON.stringify({ d: day, v: SETV, at: now, c: c })); } catch (e) { /* fine */ } return c; });
+  }
   function fieldTotal(c) { return c.reduce(function (a, b) { return a + b; }, 0); }
   function todayLine(c) {
     var n = fieldTotal(c);
@@ -1285,12 +1379,18 @@ body.desk .read { height: 70px; }
   }
 
   /* ---------- Live counters ---------- */
+  // A refused or garbled reply is a failure, never a zero: a wrong number on screen is worse than none.
+  // After any failure the game leaves the service alone for a minute rather than keep knocking.
+  var apiRest = 0;
   function api(kind, key) {
-    var ctl = window.AbortController ? new AbortController() : null;
+    if (Date.now() < apiRest) return Promise.reject(new Error('resting'));
+    var ctl = window.AbortController ? new AbortController() : null, opt = { cache: 'no-store' };
+    if (ctl) opt.signal = ctl.signal;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 5000);
-    return fetch(STATS + '/' + kind + '/' + STATS_NS + '/' + key, ctl ? { signal: ctl.signal } : undefined)
-      .then(function (r) { return r.ok ? r.json() : { value: 0 }; })
-      .then(function (j) { clearTimeout(timer); return Number(j.value) || 0; });
+    return fetch(STATS + '/' + kind + '/' + STATS_NS + '/' + key, opt)
+      .then(function (r) { if (!r.ok) throw new Error('refused'); return r.json(); })
+      .then(function (j) { clearTimeout(timer); var v = Number(j && j.value); if (!isFinite(v) || v < 0 || v > 1e9) throw new Error('odd'); return Math.round(v); })
+      .catch(function (e) { clearTimeout(timer); apiRest = Date.now() + 60000; throw e; });
   }
   function band(secs) { for (var i = 0; i < BUCKETS.length; i++) if (secs < BUCKETS[i]) return i; return BUCKETS.length - 1; }
   // Lifetime tallies per kind of question, so real difficulty can be read back (see the numbers page).
@@ -1338,9 +1438,10 @@ body.desk .read { height: 70px; }
     return LINK + '#' + gameKey() + '-' + rightCount(st) + '-' + totalM(st);
   }
   function readLink() {
-    var h = (location.hash || '').slice(1), m, v = null;
-    if ((m = /^d(\d{1,5})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: 'd' + m[1], n: +m[2], m: +m[3] };
-    else if ((m = /^t([A-Z0-9]{1,8})-(\d{1,2})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: 't' + m[1] + '-' + m[2], code: m[1], round: +m[2], n: +m[3], m: +m[4] };
+    var h = (location.hash || '').slice(1, 80), m, v = null;
+    if ((m = /^(d\d{1,5})-([0-3])-(\d{1,4})$/.exec(h))) v = { key: m[1], n: +m[2], m: +m[3] };
+    else if ((m = /^(t[A-Z0-9]{1,8}-[1-9]\d?)-([0-3])-(\d{1,4})$/.exec(h))) v = { key: m[1], n: +m[2], m: +m[3] };
+    if (v) v = okRival(v);
     if (v) { store.rival = v; save(); }
     if (h && h !== 'numbers') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } }
     return h;
@@ -1348,7 +1449,7 @@ body.desk .read { height: 70px; }
   function rivalCard() {
     var v = store.rival;
     if (!v) return '';
-    if (v.code) return '<div class="card">A friend sent you a private round. They made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
+    if (v.code) return v.played ? '' : '<div class="card">A friend sent you a private round. They made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
     if (v.key !== 'd' + today()) return '';
     return '<div class="card">A friend made it ' + v.m + ' m today, with ' + v.n + ' of 3 right. Beat that.</div>';
   }
@@ -1362,11 +1463,17 @@ body.desk .read { height: 70px; }
   }
 
   /* ---------- Home ---------- */
+  // What the front page depends on. If this changes while it sits open (another tab, midnight), it is redrawn.
+  var homeSig = '';
+  function sig() { var v = store.rival; return today() + dailyState() + liveStreak() + (v ? v.key + v.m + (v.played || '') : ''); }
+  function onHome() { return !game && !!view.querySelector('.home'); }
   function home() {
-    stopTimers(); game = null; ask = null;
+    stopTimers(); game = null; ask = null; drop();
     night(false); setRoad(dailyState() === 'new' ? 0 : totalM(store.daily));
-    if (store.rival && (typeof store.rival.m !== 'number' || (!store.rival.code && store.rival.key !== 'd' + today()))) { store.rival = null; save(); }   // yesterday's challenge has expired
+    var rv = store.rival;
+    if (rv && (rv.code ? rv.played || Date.now() - rv.at > 7 * 86400000 : rv.key !== 'd' + today())) { store.rival = null; save(); }   // yesterday's challenge has expired; a private one lasts a week or until played
     var state = dailyState(), streak = liveStreak();
+    homeSig = sig();
     var label = state === 'done' ? 'See how far I got' : state === 'going' ? 'Back on the road' : 'Hit the road';
     view.innerHTML =
       '<section class="home">' +
@@ -1380,7 +1487,7 @@ body.desk .read { height: 70px; }
         '<button class="btn plate" data-act="friends">Play with friends</button>' +
         '<p class="meta"><span>No. ' + today() + '</span><span>' + esc(dateLine()) + '</span></p>' +
       '</section>';
-    if (STATS && window.fetch) readField(today(), -1).then(function (c) { var el = document.getElementById('today'); if (el) el.innerHTML = todayLine(c); }).catch(function () { /* fine without */ });
+    if (STATS && window.fetch) fieldNow(today()).then(function (c) { var el = document.getElementById('today'); if (el) el.innerHTML = todayLine(c); }).catch(function () { /* fine without */ });
   }
 
   /* ---------- First visit: no title page, no rules. One trap, and the sign does the explaining. ---------- */
@@ -1395,7 +1502,7 @@ body.desk .read { height: 70px; }
     stopTimers(); ask = null;
     var q = game.cur, r = game.res, body;
     if (r) {
-      var said = r.f === 'right' ? 'You dodged it. ' + E.show(q, q.baits[0]) + ' is the answer that jumps out.' : r.f === 'bait' ? 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' : 'You said ' + E.show(q, parseFloat(r.t)) + '.';
+      var said = r.f === 'right' ? 'You dodged it. ' + E.show(q, q.baits[0]) + ' is the answer that jumps out.' : r.f === 'bait' ? 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.' : r.f === 'time' ? 'You ran out of time.' : 'You said ' + E.show(q, parseFloat(r.t)) + '.';
       body = '<div class="result">' +
         '<div class="verdict"><div class="sg f-' + r.f + '" id="sg">' + sign(r.f, true) + '</div>' +
           '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big">' + esc(E.show(q, q.a)) + '</p><p class="you">' + esc(said) + '</p></div></div>' +
@@ -1405,13 +1512,14 @@ body.desk .read { height: 70px; }
     } else body = entryHtml();
     view.innerHTML = '<section class="play"><div class="plate-q' + (r ? '' : ' solo') + '"><p class="lvl">One question before you start</p><p class="q">' + esc(q.q) + '</p></div>' + body + '</section>';
     if (r) return;
-    beginAsk({ q: q, limit: 3600, start: Date.now(), beat: true,
+    beginAsk({ q: q, limit: 1e9, start: Date.now(), beat: true,
       commit: function (res) { res.m = 0; game.res = res; store.demo = 1; save(); },
       reveal: function (res) { demoPlay(); cheer(res.f, 0, true); } });
   }
 
   /* ---------- Starting ---------- */
   function startDaily() {
+    if (adopt()) save();   // another tab may have played on
     var d = today();
     if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); }
     game = { mode: 'daily', day: d, set: E.buildDaily(d), st: store.daily };
@@ -1420,10 +1528,67 @@ body.desk .read { height: 70px; }
   }
   function startTable(code, round) {
     game = { mode: 'table', code: code, round: round, set: E.buildTable(code, round), st: { idx: 0, res: [], qStart: Date.now(), done: false } };
-    fresh = false; night(true);
+    fresh = false; night(true); keep();
     play();
   }
-  function persist() { if (game && game.mode === 'daily') save(); }
+  function persist() { if (!game) return; if (game.mode === 'daily') save(); else keep(); }
+
+  /* A game other than the daily three is kept as plain data too, so a refresh, or a phone that drops
+     the page while you look at something else, puts you back where you were. Only seeds are kept for
+     the questions: they are rebuilt by the engine, never read back. */
+  function snap() {
+    var g = game;
+    if (g.mode === 'run') return { mode: 'run', n: g.n, lives: g.lives, m: g.m, right: g.right, strikes: g.strikes, recent: g.recent, fid: g.cur.fam, seed: g.seed, res: g.res, start: g.start, over: g.over ? 1 : 0, was: g.was || 0 };
+    if (g.mode === 'party') return { mode: 'party', seed: g.seed, count: g.set.length, players: g.players, k: g.k, turn: g.turn, ans: g.ans, scored: g.scored, at: g.at, start: g.start || 0 };
+    return { mode: 'table', code: g.code, round: g.round, st: g.st };
+  }
+  function keep() { if (!game || (game.mode !== 'run' && game.mode !== 'party' && game.mode !== 'table')) return; store.live = { v: SETV, at: Date.now(), game: snap() }; save(); }
+  function drop() { if (store.live) { store.live = null; save(); } }
+  function resume() {
+    var g = store.live && store.live.game, i, j, now = Date.now();
+    if (!g) return false;
+    try {
+      if (g.mode === 'table') {
+        var st = okSt(g.st, LIMIT);
+        if (!st || !/^[A-Z0-9]{1,8}$/.test(g.code)) throw 0;
+        game = { mode: 'table', code: g.code, round: int(g.round, 1, 99, 1), st: st };
+        game.set = E.buildTable(game.code, game.round);
+        fresh = false;
+        if (st.done) end(false); else play();
+      } else if (g.mode === 'run') {
+        var f = E.families.filter(function (x) { return x.id === g.fid; })[0];
+        if (!f || typeof g.seed !== 'string') throw 0;
+        var strikes = (Array.isArray(g.strikes) ? g.strikes : []).filter(function (x) { return FS[x] === 1 && x !== 'right'; }).slice(0, RUN_LIVES);
+        game = { mode: 'run', n: int(g.n, 1, 1e5, 1), lives: RUN_LIVES - strikes.length, m: int(g.m, 0, 1e8, 0), right: int(g.right, 0, 1e5, 0), strikes: strikes,
+          recent: (Array.isArray(g.recent) ? g.recent : []).filter(function (x) { return typeof x === 'string'; }).slice(-14),
+          seed: g.seed.slice(0, 60), res: okRes(g.res, RUN_LIMIT), start: int(g.start, 1, now + 60000, now), was: int(g.was, 0, 1e8, 0) };
+        game.cur = E.make(f, game.seed + '-' + (game.n - 1));
+        if (g.over && game.lives <= 0) runEnd(true); else runPlay();
+      } else if (g.mode === 'party') {
+        var ps = (Array.isArray(g.players) ? g.players : []).slice(0, 6), count = g.count === 3 || g.count === 5 || g.count === 7 ? g.count : 0, n = ps.length;
+        if (n < 2 || !count || typeof g.seed !== 'string') throw 0;
+        game = { mode: 'party', seed: g.seed.slice(0, 60), k: int(g.k, 0, count, 0), turn: 0, ans: [], scored: [], at: g.at, start: int(g.start, 1, now + 60000, now),
+          players: ps.map(function (q, x) { q = q || {}; return { name: String(q.name == null ? '' : q.name).slice(0, 12) || 'Player ' + (x + 1), m: int(q.m, 0, 1e5, 0), right: int(q.right, 0, 99, 0), bait: int(q.bait, 0, 99, 0) }; }) };
+        game.set = E.buildParty(game.seed, count);
+        for (i = 0; i < count; i++) {
+          var row = Array.isArray(g.ans) && Array.isArray(g.ans[i]) ? g.ans[i] : [], out = [];
+          for (j = 0; j < n; j++) out[j] = okRes(row[j], PARTY_LIMIT);
+          game.ans[i] = out; game.scored[i] = !!(Array.isArray(g.scored) && g.scored[i]);
+        }
+        for (i = 0; i < game.k; i++) for (j = 0; j < n; j++) if (!game.ans[i][j]) throw 0;   // every earlier question must have every answer
+        if (game.at === 'final' || game.k >= count) { game.k = count; partyFinal(); }
+        else {
+          var ord = order(), got = 0;
+          while (got < n && game.ans[game.k][ord[got]]) got++;
+          game.turn = got;                                   // go by the answers that are there, not by a counter
+          if (got === n) { if (game.at === 'reveal') partyReveal(); else partyGather(); }
+          else if (game.at === 'answer') partyAnswer(true);
+          else partyPass();
+        }
+      } else throw 0;
+      return true;
+    } catch (e) { stopTimers(); game = null; ask = null; drop(); return false; }
+  }
 
   /* ---------- Asking one question: shared by every mode ---------- */
   function parts(q, text) {
@@ -1508,7 +1673,8 @@ body.desk .read { height: 70px; }
     r.m = f === 'right' ? (BASE[a.q.level] || 100) + Math.max(0, a.limit - r.secs) : 0;   // the question's worth, plus a metre per second of fuel left
     ask = null; typed = '';
     stopTimers();
-    a.commit(r);             // stored at once, so a reload cannot buy a second guess
+    if (timeout) quiet = Date.now() + 600;   // the keys vanish under a finger that may already be on its way down
+    if (a.commit(r) === 'stale') { toast('Already answered in another tab'); startDaily(); return; }   // stored at once, so a reload cannot buy a second guess
     var show = function () { pending = null; if (game) a.reveal(r); };
     if (timeout || calm || !a.beat) { show(); return; }
     SFX.lock(); buzz(20);
@@ -1545,7 +1711,10 @@ body.desk .read { height: 70px; }
     if (r) return;
     var mode = game.mode, day = game.day;
     beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
-      commit: function (res) { st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
+      commit: function (res) {
+        if (mode === 'daily') { var p = peek(), pd = p && p.daily; if (pd && pd.v === SETV && pd.day === day && (pd.res[i] || pd.idx !== i)) return 'stale'; }   // one guess, however many tabs
+        st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res);
+      },
       reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res)); if (res.f === 'bait') brake(); } });
   }
   function next() {
@@ -1559,7 +1728,7 @@ body.desk .read { height: 70px; }
     var st = game.st;
     if (game.mode === 'daily' && !st.done) {
       var s = store.stats;
-      if (s.lastDay !== game.day) {
+      if (s.lastDay < game.day) {   // a day counts once, and never out of order
         var n = rightCount(st);
         s.played++;
         if (n === 3) s.perfect++;
@@ -1575,6 +1744,7 @@ body.desk .read { height: 70px; }
     }
     var first = !st.done;
     st.done = true;
+    if (game.mode === 'table' && rivalHere()) store.rival.played = 1;   // the challenge has been answered: do not offer it again
     persist();
     end(first);
     if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); flash('#12924A'); }, 1900));
@@ -1592,12 +1762,18 @@ body.desk .read { height: 70px; }
     return (r && r.f === 'right' ? 'I got this one in ' + mmss(r.secs) + '. Can you?' : 'This one caught me. Can you get it?') +
       '\n\n' + q.q + '\n\n' + (pct >= 0 && pct < 50 ? 'Only ' + pct + '% of players got it today. ' : '') + 'No calculator. ' + SITE;
   }
-  function send(text, done) {
+  function copyText(text, done) {
     var showIt = function () { sheet('Copy this', '<h2 class="big">Copy this</h2><p>Press and hold the text to copy it.</p><pre class="sharetext">' + esc(text) + '</pre>'); };
-    var clip = function () { try { navigator.clipboard.writeText(text).then(function () { toast(done); }, showIt); } catch (e) { showIt(); } };
+    try { navigator.clipboard.writeText(text).then(function () { toast(done); }, showIt); } catch (e) { showIt(); }
+  }
+  function send(text, done) {
+    var clip = function () { copyText(text, done); };
     if (touch && navigator.share) {
       try { navigator.share({ text: text }).catch(function (e) { if (!e || e.name !== 'AbortError') clip(); }); } catch (e) { clip(); }
     } else clip();
+  }
+  function inAppNote() {
+    return INAPP ? '<p class="inapp">You are playing inside ' + INAPP + '. Your streak is only saved here. To keep it, open <b>' + SITE + '</b> in ' + BROWSER + '. <button class="linkish" data-act="copylink">Copy the link</button></p>' : '';
   }
   function statsBlock() {
     var s = store.stats, max = Math.max.apply(null, s.dist.concat(1)), bars = '';
@@ -1637,7 +1813,7 @@ body.desk .read { height: 70px; }
         duelCard() +
         '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend to beat it') + '</button>' +
           (daily ? '<button class="btn plate" data-act="run">Still bored? Take the long road</button><button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
-        '</div>' +
+        '</div>' + (daily ? inAppNote() : '') +
         (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' + statsBlock() : '') +
         '<h2>' + (daily ? 'Today’s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
       '</section>';
@@ -1659,6 +1835,7 @@ body.desk .read { height: 70px; }
 
   /* ---------- The long road: keep answering until three wrong turns ---------- */
   function startRun() {
+    if (adopt()) save();
     game = { mode: 'run', n: 0, lives: RUN_LIVES, m: 0, right: 0, strikes: [], recent: [], cur: null, res: null, seed: Date.now() + '-' + Math.random() };
     night(true);
     runNext();
@@ -1670,6 +1847,7 @@ body.desk .read { height: 70px; }
     var f = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
     game.recent.push(f.id); if (game.recent.length > 14) game.recent.shift();
     game.cur = E.make(f, game.seed + '-' + n); game.res = null; game.start = Date.now();
+    keep();
     runPlay();
     window.scrollTo(0, 0);
   }
@@ -1686,14 +1864,15 @@ body.desk .read { height: 70px; }
       '</section>';
     if (r) return;
     beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
-      commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); },
+      commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); },
       reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m); if (res.f === 'bait') brake(); } });
   }
-  function runEnd() {
+  function runEnd(again) {   // again: the page was refreshed on this screen
     stopTimers(); ask = null;
-    var s = store.stats, old = s.runBest || 0, isBest = game.m > old && game.m > 0;
-    if (isBest) { s.runBest = game.m; save(); }
-    game.over = true;
+    var s = store.stats, old = again ? game.was : s.runBest || 0, isBest = game.m > old && game.m > 0;
+    if (isBest) s.runBest = Math.max(s.runBest || 0, game.m);
+    game.over = true; game.was = old;
+    save(); keep();
     view.innerHTML =
       '<section class="end">' +
         '<p class="endno">The long road</p>' +
@@ -1715,8 +1894,9 @@ body.desk .read { height: 70px; }
 
   /* ---------- One phone, passed round ---------- */
   function startParty(names, count) {
+    var seed = Date.now() + '-' + Math.random();
     game = { mode: 'party', players: names.map(function (nm) { return { name: nm, m: 0, right: 0, bait: 0 }; }),
-      set: E.buildParty(Date.now() + '-' + Math.random(), count), k: 0, turn: 0, ans: [], scored: [] };
+      seed: seed, set: E.buildParty(seed, count), k: 0, turn: 0, ans: [], scored: [], at: 'pass', start: 0 };
     night(true);
     partyPass();
   }
@@ -1730,7 +1910,7 @@ body.desk .read { height: 70px; }
     }).join('') + '</ol>';
   }
   function partyPass() {
-    stopTimers(); ask = null;
+    stopTimers(); ask = null; game.at = 'pass'; keep();
     var p = game.players[order()[game.turn]];
     view.innerHTML =
       '<section class="pass">' +
@@ -1743,20 +1923,22 @@ body.desk .read { height: 70px; }
       '</section>';
     window.scrollTo(0, 0);
   }
-  function partyAnswer() {
+  function partyAnswer(again) {   // again: the page was refreshed mid-question, so the clock carries on
     stopTimers();
     var k = game.k, pi = order()[game.turn], q = game.set[k];
+    if (!again) game.start = Date.now();
+    game.at = 'answer'; keep();
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span>' + fuelHtml(PARTY_LIMIT, PARTY_LIMIT) + '</div>' +
         sceneHtml(game.players[pi].m, false, true) + plateHtml(q, true) + entryHtml() +
       '</section>';
-    beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false,
-      commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; },
-      reveal: function () { SFX.lock(); game.turn++; if (game.turn < game.players.length) partyPass(); else partyGather(); } });
+    beginAsk({ q: q, limit: PARTY_LIMIT, start: game.start, beat: false,
+      commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; game.turn++; game.at = game.turn < game.players.length ? 'pass' : 'gather'; keep(); },
+      reveal: function () { SFX.lock(); if (game.turn < game.players.length) partyPass(); else partyGather(); } });
   }
   function partyGather() {
-    stopTimers();
+    stopTimers(); game.at = 'gather'; keep();
     view.innerHTML =
       '<section class="pass">' +
         '<p class="sm">Question ' + (game.k + 1) + ' of ' + game.set.length + '</p>' +
@@ -1777,6 +1959,7 @@ body.desk .read { height: 70px; }
         if (r.f === 'bait') p.bait++;
       });
     }
+    game.at = 'reveal'; keep();
     var rows = ord.map(function (pi) {
       var r = a[pi];
       var said = r.f === 'time' ? 'ran out of fuel' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '');
@@ -1808,7 +1991,7 @@ body.desk .read { height: 70px; }
   }
   function listNames(ps) { var n = ps.map(function (p) { return p.name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; }
   function partyFinal() {
-    stopTimers();
+    stopTimers(); game.at = 'final'; keep();
     var r = ranked(), top = r.filter(function (p) { return p.m === r[0].m; });
     var most = Math.max.apply(null, r.map(function (p) { return p.bait; })), trapped = r.filter(function (p) { return p.bait === most; });
     view.innerHTML =
@@ -1837,6 +2020,9 @@ body.desk .read { height: 70px; }
   }
   function closeSheet() { veil.hidden = true; veil.innerHTML = ''; }
   function eg(kind, val, note) { return '<div class="line">' + sign(kind, false) + '<p><b>' + val + '</b><span>' + note + '</span></p></div>'; }
+  function leaveSheet() {
+    sheet('Leave this game?', '<h2 class="big">Leave this game?</h2><p>Your place in it will be lost.</p><button class="btn" data-act="close">Keep playing</button><button class="btn plate" data-act="home" data-sure>Leave</button>');
+  }
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
@@ -1914,8 +2100,9 @@ body.desk .read { height: 70px; }
       rows += '<tr title="' + esc(k.eg) + '"><td>' + esc(k.kind) + '</td><td id="n' + i + '">…</td><td id="r' + i + '"></td><td id="t' + i + '"></td></tr>';
     });
     view.innerHTML = '<section class="numbers"><p class="rank">The numbers</p><p class="total" id="nstate">Reading the live counts. This takes about a minute.</p>' +
-      '<table><thead><tr><th>Kind</th><th>Answered</th><th>Right</th><th>Trapped</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+      '<p class="total" id="nerr"></p><table><thead><tr><th>Kind</th><th>Answered</th><th>Right</th><th>Trapped</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
     if (!STATS || !window.fetch) return;
+    api('get', SETV + 'err').then(function (v) { var el = document.getElementById('nerr'); if (el) el.textContent = 'Players who hit an error: ' + v + '.'; }).catch(function () {});
     var i = 0, base = function (k) { return SETV + 'k' + k.kind; };
     var step = function () {
       if (game || !document.getElementById('nstate')) return;
@@ -1930,12 +2117,25 @@ body.desk .read { height: 70px; }
   }
 
   /* ---------- Events ---------- */
-  document.addEventListener('click', function (e) {
+  // If anything does go wrong, say so and offer a reload rather than leave a dead screen.
+  function oops(e) {
+    if (broke) return; broke = true;
+    try { if (window.console) console.error('Not So Fast:', e && (e.message || e)); } catch (x) { /* no console */ }
+    try { if (STATS && window.fetch) api('hit', SETV + 'err').catch(function () {}); } catch (x) { /* fine */ }
+    var el = document.getElementById('oops'); if (el) el.hidden = false;
+  }
+  window.addEventListener('error', function (e) { if (e && e.filename && e.filename.split('#')[0] === location.href.split('#')[0]) oops(e); });
+  document.addEventListener('click', function (e) { try { tap(e); } catch (x) { oops(x); } });
+  function tap(e) {
     var t = e.target.closest ? e.target.closest('[data-act]') : null;
     if (!t) { if (e.target === veil) closeSheet(); return; }
-    var act = t.getAttribute('data-act');
+    var act = t.getAttribute('data-act'), now = Date.now();
+    if (act === 'reload') { location.reload(); return; }
+    if (now < quiet) return;
+    if (!/^(key|sound|pn[-+]|pq[-+]|round[-+]|rand)$/.test(act)) quiet = now + 350;
+    if (act === 'daily' && onHome() && sig() !== homeSig) { home(); return; }   // the page sat open past midnight: show today's button first
     if (act === 'key') key(t.getAttribute('data-k'));
-    else if (act === 'enter') lock(false);
+    else if (act === 'enter') { lock(false); if (ask) quiet = 0; }   // nothing was locked (no number yet), so nothing changed
     else if (act === 'next') {
       if (game.mode !== 'run') next();
       else if (road.ms) { /* already driving */ }
@@ -1955,7 +2155,11 @@ body.desk .read { height: 70px; }
     else if (act === 'copy') send(shareText(), 'Copied. Paste it to a friend.');
     else if (act === 'friend') { var fi = t.getAttribute('data-i'); send(fi === 'run' ? friendText(game.cur, game.res) : friendText(game.set[+fi], game.st.res[+fi]), 'Question copied. Paste it to a friend.'); }
     else if (act === 'sound') { store.sound = !store.sound; save(); paintSound(); if (store.sound) SFX.key(); }
-    else if (act === 'home') { closeSheet(); home(); }
+    else if (act === 'home') {
+      var mid = game && ((game.mode === 'run' && !game.over) || (game.mode === 'party' && game.at !== 'final') || (game.mode === 'table' && !game.st.done));
+      if (mid && !t.hasAttribute('data-sure')) leaveSheet(); else { closeSheet(); home(); }
+    }
+    else if (act === 'copylink') copyText(LINK, 'Link copied. Paste it into ' + BROWSER + '.');
     else if (act === 'deal') deal();
     else if (act === 'rand') { table.code = randomCode(); var c = document.getElementById('code'); if (c) c.value = table.code; }
     else if (act === 'round-' || act === 'round+') {
@@ -1977,8 +2181,10 @@ body.desk .read { height: 70px; }
     else if (act === 'pnext') partyNext();
     else if (act === 'pagain') startParty(game.players.map(function (p) { return p.name; }), game.set.length);
     else if (act === 'pshare') send(partyShare(), 'Result copied. Paste it anywhere.');
-  });
-  document.addEventListener('keydown', function (e) {
+  }
+  document.addEventListener('keydown', function (e) { try { typedKey(e); } catch (x) { oops(x); } });
+  function typedKey(e) {
+    if (e.key === 'Enter' && e.repeat) { e.preventDefault(); return; }   // a held key must not run through the screens
     if (!veil.hidden) { if (e.key === 'Escape') closeSheet(); else if (e.key === 'Enter' && document.getElementById('code')) deal(); return; }
     if (ask) {
       if (/^[0-9]$/.test(e.key)) key(e.key);
@@ -1989,19 +2195,45 @@ body.desk .read { height: 70px; }
       var b = view.querySelector('[data-enter]');
       if (b && !(b.closest('.hid'))) { b.click(); e.preventDefault(); }
     }
+  }
+
+  /* ---------- Keeping up with other tabs, with midnight, and with a page that was put away ---------- */
+  function heard() {
+    var was = store.daily;
+    if (adopt()) save();
+    if (game && game.mode === 'daily') {
+      if (store.daily !== was && store.daily && store.daily.day === game.day) startDaily();   // another tab played on: show where things stand
+      else if (store.daily !== was) { store.daily = was; }
+    } else if (onHome() && sig() !== homeSig) home();
+  }
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { try { heard(); } catch (x) { oops(x); } } });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { heard(); } catch (x) { oops(x); } } });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) { try { heard(); } catch (x) { oops(x); } } });
+  window.addEventListener('hashchange', function () {   // a friend's link pasted into a tab that is already open
+    try { var h = readLink(); if (h === 'numbers' && !game) numbers(); else if (onHome()) home(); } catch (x) { oops(x); }
   });
 
   /* ---------- Boot ---------- */
   function start(snap) {
-    if (!hadLocal && snap && snap.store && snap.store.stats && snap.store.stats.dist) { store = snap.store; if (typeof store.sound !== 'boolean') store.sound = false; }
+    if (!hadLocal && snap && snap.store && typeof snap.store === 'object' && snap.store.stats) store = clean(snap.store);
     paintSound();
-    if (readLink() === 'numbers') numbers();
+    var h = readLink();
+    if (h === 'numbers') numbers();
+    else if (resume()) { /* back in the long road, the party or the private round they were in */ }
+    else if (dailyState() === 'going') startDaily();   // a refresh mid-game goes back to the question, where the fuel is still burning
     else if (!hadLocal && !store.demo && !store.rival) demo();   // brand new here: straight into a trap
     else home();
   }
+  function boot(snap) {
+    try { start(snap); }
+    catch (e) {   // should be impossible; if it is not, drop the game in progress and keep the record
+      oops(e); stopTimers(); game = null; ask = null; store.live = null; store.daily = null; store.rival = null; save();
+      try { home(); } catch (e2) { /* the bar offers a reload */ }
+    }
+  }
   var hot = window.claude && window.claude.hot;
   if (hot && hot.snapshot) hot.snapshot(function () { return { store: store }; });
-  if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+  if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
 })();
 
 </script>
