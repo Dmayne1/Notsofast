@@ -113,7 +113,7 @@ async def wrong_for(p, q):
 async def live_answer(p):
     """The answer to the question on screen in endless mode, a party or a private round, worked out from the saved seeds."""
     return await p.evaluate("""k => { const E = window.BaitEngine, s = JSON.parse(localStorage.getItem(k)), g = s && s.live && s.live.game; if (!g) return null;
-      if (g.mode === 'run') return E.make(E.families.filter(f => f.id === g.fid)[0], g.seed + '-' + (g.n - 1)).a;
+      if (g.mode === 'run') return E.makeKind(g.kind, g.seed + '-' + (g.n - 1), g.n - 1).a;
       if (g.mode === 'party') return E.buildParty(g.seed, g.count)[g.k].a;
       return E.buildTable(g.code, g.round)[g.st.idx].a; }""", KEY)
 
@@ -355,12 +355,12 @@ async def no_storage(b):
         'null': 'null',
         'array': '[1,2,3]',
         'stats wrong shape': {'stats': {'dist': 'x'}, 'demo': 1},
-        'finished day with no answers': lambda d: {'demo': 1, 'stats': {'played': 1, 'perfect': 0, 'streak': 1, 'best': 1, 'lastDay': d, 'dist': [0, 1, 0, 0]}, 'daily': {'v': 'v8', 'day': d, 'idx': 2, 'res': [], 'done': True}},
-        'answers are junk': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v8', 'day': d, 'idx': 9, 'res': 'x', 'qStart': 'y', 'done': False}},
-        'answer with unknown verdict': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v8', 'day': d, 'idx': 0, 'res': [{'f': 'zzz', 't': '<b>', 'secs': 'a', 'm': 'q'}], 'qStart': 0, 'done': False}},
+        'finished day with no answers': lambda d: {'demo': 1, 'stats': {'played': 1, 'perfect': 0, 'streak': 1, 'best': 1, 'lastDay': d, 'dist': [0, 1, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 2, 'res': [], 'done': True}},
+        'answers are junk': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 9, 'res': 'x', 'qStart': 'y', 'done': False}},
+        'answer with unknown verdict': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 0, 'res': [{'f': 'zzz', 't': '<b>', 'secs': 'a', 'm': 'q'}], 'qStart': 0, 'done': False}},
         'hostile friend and names': {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'rival': {'key': 'tAB-1', 'code': '<img src=x onerror=alert(1)>', 'round': 'x', 'n': 9, 's': '<i>'}, 'names': 'bob', 'seen': 7, 'live': 'x'},
         'stats are strings': {'demo': 1, 'stats': {'played': 'lots', 'perfect': None, 'streak': -4, 'best': {}, 'lastDay': 'x', 'dist': [0, 'a', None], 'far': 99999, 'metres': 'm'}},
-        'broken live game': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'live': {'v': 'v8', 'at': 9e15, 'game': {'mode': 'party', 'players': 'x', 'set': [], 'k': 4}}},
+        'broken live game': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'live': {'v': 'v9', 'at': 9e15, 'game': {'mode': 'party', 'players': 'x', 'set': [], 'k': 4}}},
     }
     for name, data in bad.items():
         async with Site(b) as s:

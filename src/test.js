@@ -188,13 +188,14 @@ const verify = {
   jointwork(v) { let done = 0, t = 0; const step = 1 / 1000; while (done < 1 - 1e-9) { done += step / v.x + step / v.y; t += step; } return Math.round(t * 1000) / 1000; }
 };
 
-const variants = {}; let longest = 0, lenSum = 0;
+const variants = {}; let longest = 0, lenSum = 0; const madeKinds = new Set();
 for (const f of E.families) {
   const seen = new Set();
   for (let i = 0; i < 4000; i++) {
     const q = E.make(f, 'test-' + i, i);
     checked++;
-    seen.add(q.q);
+    seen.add(q.q); madeKinds.add(q.kind);
+    if (!(q.grade >= 1 && q.grade <= 5) || q.level !== (q.grade <= 2 ? 1 : q.grade === 3 ? 2 : 3)) fail('grade and level disagree', q);
     if (/undefined|NaN|null|Infinity/.test(q.q + q.why)) fail('bad text', q);
     if (!isFinite(q.a) || q.a < 0) fail('bad answer', q);
     if (!near(q.a * 100, Math.round(q.a * 100))) fail('answer has more than 2 decimals', q);
@@ -216,7 +217,7 @@ for (const f of E.families) {
 }
 
 // Schedule checks over three years.
-let back = 0; let prevFams = [];
+let back = 0; let prevFams = []; const lastSeen = {}, kindDays = {}; let minGap = 9999;
 const famCount = {};
 for (let day = 1; day <= 1095; day++) {
   const set = E.buildDaily(day);
@@ -224,6 +225,8 @@ for (let day = 1; day <= 1095; day++) {
   const ids = set.map(q => q.fam);
   if (new Set(ids).size !== 3) fail('day ' + day + ' repeats a family');
   if (set.map(q => q.level).join('') !== '123') fail('day ' + day + ' levels ' + set.map(q => q.level).join(''));
+  if (set.map(q => q.grade).join('') !== '234') fail('day ' + day + ' grades ' + set.map(q => q.grade).join('') + ': a day must climb 2, 3, 4');
+  set.forEach((q, n) => { const k = n + ':' + q.kind; if (lastSeen[k]) minGap = Math.min(minGap, day - lastSeen[k]); lastSeen[k] = day; kindDays[q.kind] = (kindDays[q.kind] || 0) + 1; });
   if (ids.some(id => prevFams.includes(id))) back++;
   ids.forEach(id => famCount[id] = (famCount[id] || 0) + 1);
   prevFams = ids;
@@ -239,11 +242,21 @@ for (const n of [3, 5, 7]) for (let i = 0; i < 300; i++) {
   const set = E.buildParty('p' + i, n);
   if (set.length !== n) fail('party set has ' + set.length + ' questions, wanted ' + n);
   if (new Set(set.map(q => q.fam)).size !== n) fail('party set repeats a family');
-  if (set.map(q => q.level).join('') !== set.map(q => q.level).sort().join('')) fail('party set is not easy-first');
+  if (set.map(q => q.grade).join('') !== set.map(q => q.grade).sort().join('')) fail('party set is not easy-first');
+  if (set.some(q => q.grade < 2 || q.grade > 4)) fail('party set uses a giveaway or a brutal one');
   if (JSON.stringify(E.buildParty('p' + i, n).map(q => q.q)) !== JSON.stringify(set.map(q => q.q))) fail('party set not deterministic');
 }
 const kinds = E.kinds();
 if (new Set(kinds.map(k => k.kind)).size !== kinds.length) fail('duplicate kinds');
+// Grades: every kind the bank can make has one, nothing graded is unmakeable, and a kind can be asked for by name.
+const graded = new Set(Object.keys(E.GRADE));
+for (const k of madeKinds) if (!graded.has(k)) fail('kind has no grade: ' + k);
+for (const k of graded) if (!madeKinds.has(k)) fail('graded kind is never made: ' + k);
+for (const k of graded) for (let i = 0; i < 40; i++) { const q = E.makeKind(k, 'mk-' + i, i); if (q.kind !== k) fail('asked for ' + k + ', got ' + q.kind); }
+for (const k of graded) if (E.GRADE[k] >= 2 && E.GRADE[k] <= 4 && !kindDays[k]) fail('a daily kind never comes up in three years: ' + k);
+for (const k of Object.keys(kindDays)) if (E.GRADE[k] < 2 || E.GRADE[k] > 4) fail('a giveaway or a brutal kind appeared in a daily set: ' + k);
+if (minGap < 3) fail('the same kind came round again in the same slot after only ' + minGap + ' day(s)');
+if (JSON.stringify(E.buildTable('LADS', 1).map(q => q.grade)) !== '[2,3,4]') fail('private round does not climb 2, 3, 4');
 // Day numbering.
 if (E.dayNumber(new Date(2026, 10, 16)) !== 1) fail('epoch day');
 if (E.dayNumber(new Date(2026, 10, 17)) !== 2) fail('day 2');
@@ -257,7 +270,8 @@ console.log('questions checked:', checked);
 console.log('longest question:', longest, 'characters; average', Math.round(lenSum / checked));
 console.log('distinct question texts found:', totalVariants);
 console.log('fewest variants in a family:', Object.entries(variants).sort((a, b) => a[1] - b[1]).slice(0, 5).map(e => e.join('=')).join(', '));
-console.log('kinds of question:', kinds.length, '(level 1:', kinds.filter(k => k.level === 1).length + ', 2:', kinds.filter(k => k.level === 2).length + ', 3:', kinds.filter(k => k.level === 3).length + ')');
+console.log('kinds of question:', kinds.length, '(grade ' + [1, 2, 3, 4, 5].map(g => g + ': ' + kinds.filter(k => k.grade === g).length).join(', ') + ')');
+console.log('shortest gap before a kind returns to the same slot:', minGap, 'days');
 console.log('days with a family repeated from the day before (of 1095):', back);
 console.log('family appearances min/max over 3 years:', Math.min(...Object.values(famCount)), Math.max(...Object.values(famCount)));
 console.log(fails ? 'FAILURES: ' + fails : 'ALL CHECKS PASSED');

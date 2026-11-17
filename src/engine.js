@@ -5,10 +5,12 @@
    3. One illusion: a single obvious answer that is wrong, and a click when you see why.
    And one rule of fairness: a minute of thinking must be able to reach the answer. No trivia.
 
-   The three levels are the three slots in a day, aimed at these shares of players getting it right:
-   1. the opener, about 7 in 10   2. the coin flip, about 5 in 10   3. the closer, about 3 in 10.
-   Those shares are estimates until the live counters say otherwise; each question carries a
-   `kind` so real results can be read back per kind and the levels re-sorted. */
+   Every kind of question has a grade from 1 to 5, judged against a running clock:
+   1. a giveaway   2. easy, but with a real trap   3. tricky   4. hard   5. most people miss it.
+   A day climbs 2, 3, 4: it starts with something that can catch you and ends with something a
+   minute of thought can still reach. Grades 1 and 5 never appear in the daily three; they are for
+   endless mode. The grades are estimates until the live counters say otherwise: each question
+   carries a `kind` so real results can be read back and the grades re-sorted (see GRADE below). */
 (function (root) {
   'use strict';
 
@@ -375,55 +377,111 @@
     return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
   });
 
-  /* ---------- Sets ---------- */
+  /* ---------- Grades and sets ---------- */
 
-  const BY = { 1: F.filter(function (f) { return f.level === 1; }), 2: F.filter(function (f) { return f.level === 2; }), 3: F.filter(function (f) { return f.level === 3; }) };
+  // How hard each kind is, 1 (a giveaway) to 5 (most people miss it). To move a kind, change its number here.
+  const GRADE = {
+    // 1: giveaways. Endless mode only.
+    family: 1, hands: 1, race: 1, listenapples: 1, listenhole: 1, listensheep: 1, listenstamps: 1, picturecats: 1, picturefathers: 1, picturemonths: 1,
+    // 2: the first question of the day. Easy to read, easy to get wrong.
+    corners: 2, dry: 2, divhalf: 2, queuequeue: 2, siblinghalf: 2, siblingtwice: 2, socksany: 2, doublinghalf: 2, ratestime: 2, scalingsquare: 2, sumdiff: 2,
+    intervalscircle: 2, intervalsfloors: 2, intervalslength: 2, intervalspills: 2, intervalsposts: 2,
+    // 3: the second. Needs a second look.
+    coinsmatch: 3, cube: 3, doublingquarter: 3, doublingtwo: 3, downup: 3, intervalslog: 3, matchesknockout: 3, matchesshake: 3, pigeon: 3, pigeoncoins: 3,
+    punch: 3, scalingpizza: 3, selfref: 3, buysell: 3, till: 3, compounddiscount: 3,
+    // 4: the third. Hard, but a minute of thought gets there.
+    ratescount: 4, ratesworkers: 4, refill: 4, balance: 4, clock: 4, digitsappear: 4, fly: 4, reverse: 4, intervalsclock: 4, snail: 4,
+    // 5: most people miss these, or they need real working out. Endless mode only.
+    baserate: 5, classiccable: 5, classiccards: 5, classiccoinroll: 5, classicmonty: 5, classicrope: 5, classictwokids: 5, clockopposite: 5, clockoverlap: 5,
+    cuts: 5, dilutionleave: 5, dilutionweigh: 5, lockers: 5, speedavg: 5
+  };
+  // The family that makes a kind: the longest family id the kind's name starts with.
+  function famOf(kind) {
+    let best = null;
+    F.forEach(function (f) { if (kind.indexOf(f.id) === 0 && (!best || f.id.length > best.id.length)) best = f; });
+    return best;
+  }
+  function kindsAt(grade) { return Object.keys(GRADE).filter(function (k) { return GRADE[k] === grade; }); }
+  // Within a grade, the kinds one family makes share a turn, so a day's slot rotates through
+  // families and the same illusion does not come round five times in a fortnight.
+  const UNITS = {};
+  [2, 3, 4].forEach(function (g) {
+    const by = {};
+    kindsAt(g).forEach(function (k) { const id = famOf(k).id; (by[id] = by[id] || { fam: id, kinds: [] }).kinds.push(k); });
+    UNITS[g] = Object.keys(by).map(function (id) { return by[id]; });
+  });
 
-  // Each level runs in cycles: every family appears once per cycle, and never on
-  // the last day of one cycle and the first day of the next.
-  function cycleOrder(level, target) {
-    const fams = BY[level], days = fams.length;
-    let prev = null, sh = null;
+  // Each grade runs in cycles: every unit appears once per cycle, and whatever closed one
+  // cycle stays out of the first three days of the next, so nothing comes round again too soon.
+  function cycleOrder(grade, target) {
+    const units = UNITS[grade], days = units.length;
+    let tail = [], sh = null;
     for (let c = 0; c <= target; c++) {
-      sh = shuffle(rngFrom('v6-cycle-' + level + '-' + c), fams);
-      if (prev && sh[0] === prev) sh = sh.slice(1).concat(sh[0]);
-      prev = sh[days - 1];
+      sh = shuffle(rngFrom('v7-cycle-' + grade + '-' + c), units);
+      for (let a = 0; a < 3; a++) if (tail.indexOf(sh[a]) >= 0) {
+        for (let b = 3; b < days; b++) if (tail.indexOf(sh[b]) < 0) { const t = sh[a]; sh[a] = sh[b]; sh[b] = t; break; }
+      }
+      tail = sh.slice(days - 3);
     }
     return sh;
   }
   function make(f, seed, turn) {
     const q = f.gen(rngFrom(seed + '-' + f.id), turn);
-    q.fam = f.id; q.level = f.level;
+    q.fam = f.id;
     q.kind = f.id + ((q.v && (q.v.mode || q.v.id)) || '');   // letters only: used as a counter name
+    q.grade = GRADE[q.kind] || (f.level === 1 ? 2 : f.level === 2 ? 3 : 4);
+    q.level = q.grade <= 2 ? 1 : q.grade === 3 ? 2 : 3;      // the label a player sees: easy, tricky, hard
     q.pre = q.pre || ''; q.suf = q.suf || '';
     q.a = Math.round(q.a * 1e6) / 1e6;
     q.baits = (q.baits || []).filter(function (b, i, arr) { return isFinite(b) && b >= 0 && Math.abs(b - q.a) > (q.tol || 0) + 0.006 && arr.indexOf(b) === i; });
     return q;
   }
+  // One question of an exact kind. A family picks its own variant, so this asks again until the kind comes up.
+  function makeKind(kind, seed, base) {
+    const f = famOf(kind); let q = null;
+    for (let k = 0; k < 400; k++) { q = make(f, seed + '~' + k, (base || 0) + k); if (q.kind === kind) return q; }
+    return q;
+  }
+  // A day is one question from each of grades 2, 3 and 4, in that order, never two from one family.
   function buildDaily(day) {
-    const i = Math.max(0, day - 1);
-    return [1, 2, 3].map(function (level, n) {
-      const days = BY[level].length, turn = Math.floor(i / days);
-      return make(cycleOrder(level, turn)[i % days], 'v6-daily-' + day + '-' + n, turn);
+    const i = Math.max(0, day - 1), used = {};
+    return [2, 3, 4].map(function (grade, n) {
+      const days = UNITS[grade].length, turn = Math.floor(i / days), order = cycleOrder(grade, turn);
+      let u = order[i % days];
+      if (used[u.fam]) {   // same family as an earlier question today: borrow a unit that is not due within two days either side
+        const near = [];
+        for (let d = -2; d <= 2; d++) { const j = i + d; if (j >= 0) near.push(cycleOrder(grade, Math.floor(j / days))[j % days]); }
+        const ok = order.filter(function (c) { return !used[c.fam] && near.indexOf(c) < 0; });
+        u = ok.length ? ok[(i * 7 + n) % ok.length] : order.filter(function (c) { return !used[c.fam]; })[0];
+      }
+      used[u.fam] = 1;
+      return makeKind(u.kinds[turn % u.kinds.length], 'v7-daily-' + day + '-' + n, turn);
     });
   }
   function buildTable(code, round) {
-    const key = 'v6-table-' + code + '-' + round, r = rngFrom(key);
-    return [pick(r, BY[1]), pick(r, BY[2]), pick(r, BY[3])].map(function (f, n) { return make(f, key + '-' + n); });
+    const key = 'v7-table-' + code + '-' + round, r = rngFrom(key), used = {};
+    return [2, 3, 4].map(function (grade, n) {
+      const pool = UNITS[grade].filter(function (u) { return !used[u.fam]; }), u = pick(r, pool);
+      used[u.fam] = 1;
+      return makeKind(pick(r, u.kinds), key + '-' + n, 0);
+    });
   }
 
   // A longer set for one phone passed round a group: easy first, hardest last, no family twice.
   function buildParty(seed, n) {
-    const key = 'v6-party-' + seed, r = rngFrom(key);
-    const plan = n <= 3 ? [1, 2, 3] : n <= 5 ? [1, 2, 2, 3, 3] : [1, 2, 2, 2, 3, 3, 3];
-    const pool = { 1: shuffle(r, BY[1]), 2: shuffle(r, BY[2]), 3: shuffle(r, BY[3]) };
-    return plan.map(function (level, i) { return make(pool[level].pop(), key + '-' + i); });
+    const key = 'v7-party-' + seed, r = rngFrom(key), used = {};
+    const plan = n <= 3 ? [2, 3, 4] : n <= 5 ? [2, 3, 3, 4, 4] : [2, 2, 3, 3, 3, 4, 4];
+    const pool = { 2: shuffle(r, UNITS[2]), 3: shuffle(r, UNITS[3]), 4: shuffle(r, UNITS[4]) };
+    return plan.map(function (grade, i) {
+      let u = pool[grade].pop();
+      while (u && used[u.fam] && pool[grade].length) u = pool[grade].pop();
+      used[u.fam] = 1;
+      return makeKind(pick(r, u.kinds), key + '-' + i, 0);
+    });
   }
   // Every kind of question the bank can produce, for reading the live counters back.
   function kinds() {
-    const seen = {}, out = [];
-    F.forEach(function (f) { for (let i = 0; i < 400; i++) { const q = make(f, 'kinds-' + i, i); if (!seen[q.kind]) { seen[q.kind] = 1; out.push({ kind: q.kind, level: q.level, eg: q.q }); } } });
-    return out;
+    return Object.keys(GRADE).map(function (k) { const q = makeKind(k, 'kinds', 0); return { kind: k, grade: q.grade, level: q.level, eg: q.q }; });
   }
 
   const EPOCH = Date.UTC(2026, 10, 16); // No. 1 was 16 November 2026, by the player's local date
@@ -449,7 +507,7 @@
     return q.pre + num(v) + (suf ? (tight ? '' : ' ') + suf : '');
   }
 
-  const api = { families: F, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
+  const api = { families: F, GRADE: GRADE, kindsAt: kindsAt, makeKind: makeKind, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.BaitEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

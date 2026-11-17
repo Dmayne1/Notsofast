@@ -8,7 +8,7 @@
   var LIMIT = 180;                     // seconds for all three questions on your own: one clock, not three
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
-  var SETV = 'v8';                     // bump when the question bank changes: today's set restarts and counts never mix
+  var SETV = 'v9';                     // bump when the question bank changes: today's set restarts and counts never mix
 
   // Live counters: anonymous tallies on a free public counting service.
   // Set STATS to '' to switch them off. Nothing about the player is sent.
@@ -587,7 +587,7 @@
      the questions: they are rebuilt by the engine, never read back. */
   function snap() {
     var g = game;
-    if (g.mode === 'run') return { mode: 'run', n: g.n, lives: g.lives, right: g.right, strikes: g.strikes, recent: g.recent, fid: g.cur.fam, seed: g.seed, res: g.res, start: g.start, over: g.over ? 1 : 0, was: g.was || 0 };
+    if (g.mode === 'run') return { mode: 'run', n: g.n, lives: g.lives, right: g.right, strikes: g.strikes, recent: g.recent, kind: g.kind, seed: g.seed, res: g.res, start: g.start, over: g.over ? 1 : 0, was: g.was || 0 };
     if (g.mode === 'party') return { mode: 'party', seed: g.seed, count: g.set.length, players: g.players, k: g.k, turn: g.turn, ans: g.ans, scored: g.scored, at: g.at, start: g.start || 0 };
     return { mode: 'table', code: g.code, round: g.round, st: g.st };
   }
@@ -605,13 +605,12 @@
         fresh = false;
         if (st.done) end(false); else play();
       } else if (g.mode === 'run') {
-        var f = E.families.filter(function (x) { return x.id === g.fid; })[0];
-        if (!f || typeof g.seed !== 'string') throw 0;
+        if (typeof g.kind !== 'string' || !E.GRADE.hasOwnProperty(g.kind) || typeof g.seed !== 'string') throw 0;
         var strikes = (Array.isArray(g.strikes) ? g.strikes : []).filter(function (x) { return FS[x] === 1 && x !== 'right'; }).slice(0, RUN_LIVES);
         game = { mode: 'run', n: int(g.n, 1, 1e5, 1), lives: RUN_LIVES - strikes.length, right: int(g.right, 0, 1e5, 0), strikes: strikes,
-          recent: (Array.isArray(g.recent) ? g.recent : []).filter(function (x) { return typeof x === 'string'; }).slice(-14),
+          recent: (Array.isArray(g.recent) ? g.recent : []).filter(function (x) { return typeof x === 'string'; }).slice(-24), kind: g.kind,
           seed: g.seed.slice(0, 60), res: okRes(g.res, RUN_LIMIT), start: int(g.start, 1, now + 60000, now), was: int(g.was, 0, 1e5, 0) };
-        game.cur = E.make(f, game.seed + '-' + (game.n - 1));
+        game.cur = E.makeKind(game.kind, game.seed + '-' + (game.n - 1), game.n - 1);
         if (g.over && game.lives <= 0) runEnd(true); else runPlay();
       } else if (g.mode === 'party') {
         var ps = (Array.isArray(g.players) ? g.players : []).slice(0, 6), count = g.count === 3 || g.count === 5 || g.count === 7 ? g.count : 0, n = ps.length;
@@ -913,12 +912,11 @@
     runNext();
   }
   function runNext() {
-    var n = game.n++, level = n < 5 ? [1, 1, 2, 2, 3][n] : [2, 3, 2, 3, 1, 3][(n - 5) % 6];   // ease in, then mostly the harder two
-    var all = E.families.filter(function (f) { return f.level === level; });
-    var pool = all.filter(function (f) { return game.recent.indexOf(f.id) < 0; });
-    var f = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
-    game.recent.push(f.id); if (game.recent.length > 14) game.recent.shift();
-    game.cur = E.make(f, game.seed + '-' + n); game.res = null; game.start = Date.now();
+    var n = game.n++, grade = n < 6 ? [1, 2, 2, 3, 3, 4][n] : [3, 4, 2, 5, 3, 4, 1, 5][(n - 6) % 8];   // ease in, then everything, the brutal ones included
+    var all = E.kindsAt(grade), pool = all.filter(function (k) { return game.recent.indexOf(k) < 0; });
+    var kind = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
+    game.recent.push(kind); if (game.recent.length > 24) game.recent.shift();
+    game.kind = kind; game.cur = E.makeKind(kind, game.seed + '-' + n, n); game.res = null; game.start = Date.now();
     keep();
     runPlay();
     window.scrollTo(0, 0);
@@ -1167,10 +1165,10 @@
   /* ---------- The numbers page: how hard each kind of question really is (open the site with #numbers) ---------- */
   function numbers() {
     stopTimers(); game = null; ask = null;
-    var ks = E.kinds().sort(function (a, b) { return a.level - b.level || (a.kind < b.kind ? -1 : 1); }), rows = '', lv = 0;
-    var aim = { 1: 'Openers, aiming for about 70% right', 2: 'Coin flips, aiming for about 50% right', 3: 'Closers, aiming for about 30% right' };
+    var ks = E.kinds().sort(function (a, b) { return a.grade - b.grade || (a.kind < b.kind ? -1 : 1); }), rows = '', lv = 0;
+    var aim = { 1: 'Grade 1, giveaways: endless mode only', 2: 'Grade 2, the first question: aiming for about 60% right', 3: 'Grade 3, the second: about 45% right', 4: 'Grade 4, the third: about 30% right', 5: 'Grade 5, brutal: endless mode only' };
     ks.forEach(function (k, i) {
-      if (k.level !== lv) { lv = k.level; rows += '<tr class="lv"><td colspan="4">' + aim[lv] + '</td></tr>'; }
+      if (k.grade !== lv) { lv = k.grade; rows += '<tr class="lv"><td colspan="4">' + aim[lv] + '</td></tr>'; }
       rows += '<tr title="' + esc(k.eg) + '"><td>' + esc(k.kind) + '</td><td id="n' + i + '">…</td><td id="r' + i + '"></td><td id="t' + i + '"></td></tr>';
     });
     view.innerHTML = '<section class="numbers"><p class="rank">The numbers</p><p class="total" id="nstate">Reading the live counts. This takes about a minute.</p>' +

@@ -84,12 +84,25 @@ the three it is and whether it is the easy, tricky or hard one.
 
 Every question in `src/engine.js` has to pass three tests: short enough to say to a friend,
 no real calculation, and one illusion that clicks. The test file rejects any question over
-190 characters. A day runs opener, coin flip, closer, aimed at roughly 70%, 50% and 30% of
-players getting each one right.
+190 characters.
 
-Those targets are estimates. The game keeps an anonymous lifetime tally for each kind of
+Each kind of question has a grade from 1 to 5, set in the `GRADE` table in `src/engine.js`:
+
+1. a giveaway
+2. easy, but with a real trap
+3. tricky
+4. hard, though a minute of thought gets there
+5. most people miss it, or it needs real working out
+
+A day climbs 2, 3, 4, aimed at roughly 60%, 45% and 30% of players getting each one right. So the
+day starts with something that can catch you and ends with something reachable. Grades 1 and 5
+never appear in the daily three, a private round or a party; endless mode uses all five. No two
+questions in a day come from the same family, and a kind does not return to the same slot for at
+least three days.
+
+Those grades are estimates. The game keeps an anonymous lifetime tally for each kind of
 question; open the site with `#numbers` on the end of the address to read real difficulty
-back, then move kinds between levels in `src/engine.js`.
+back, then change the kind's number in `GRADE`.
 
 ## Typeface
 
