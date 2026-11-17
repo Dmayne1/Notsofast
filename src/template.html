@@ -69,8 +69,6 @@ main { flex: 1; display: flex; flex-direction: column; }
 /* Buttons */
 .btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; padding: 0 18px; border: 0; border-radius: 12px; background: linear-gradient(#FFE45C, #F7C600); color: #000; font-weight: 700; font-size: 1.06rem; line-height: 1; white-space: nowrap; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 0 #8a6f00, 0 0 26px rgba(255, 210, 31, 0.22); }
 .btn:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 0 #8a6f00; }
-.btn.hot { background: linear-gradient(#ef4a3c, #c21f14); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 #6d0f09, 0 0 22px rgba(216, 40, 28, 0.3); }
-.btn.hot:active { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 0 #6d0f09; }
 .btn.plate { background: linear-gradient(rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)); color: var(--fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 3px 0 #08080a; }
 .btn.plate:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 1px 0 #08080a; }
 .linkish { padding: 6px 0; color: var(--fg); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--mut); }
@@ -148,11 +146,7 @@ main { flex: 1; display: flex; flex-direction: column; }
 .pad button:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11), 0 1px 0 #08080a; }
 .pad button svg { width: 26px; height: 19px; }
 .pad .zero { grid-column: span 3; }
-.pad .lock.tall { grid-row: span 2; height: auto; line-height: 1.18; }
-.pad .floor { background: linear-gradient(#ef4a3c, #c21f14); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 #6d0f09, 0 0 22px rgba(216, 40, 28, 0.3); font-size: 0.95rem; white-space: nowrap; }
-.pad .floor:active { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 0 #6d0f09; }
-.pad .floor b { margin-left: 3px; font-family: var(--disp); font-weight: 800; font-size: 1.15rem; }
-.pad .lock { background: linear-gradient(#FFE45C, #F7C600); color: #000; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 0 #8a6f00, 0 0 26px rgba(255, 210, 31, 0.25); font-size: 0.98rem; white-space: nowrap; }
+.pad .lock { grid-row: span 2; height: auto; background: linear-gradient(#FFE45C, #F7C600); color: #000; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 3px 0 #8a6f00, 0 0 26px rgba(255, 210, 31, 0.25); font-size: 1.02rem; line-height: 1.18; }
 .pad .lock:active { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 0 #8a6f00; }
 
 /* Laptops: no keypad, type the answer */
@@ -296,7 +290,6 @@ body.desk .read { height: 70px; }
 #take .tk { display: grid; justify-items: center; gap: 16px; }
 #take .sg { width: min(56vw, 240px); height: min(56vw, 240px); filter: drop-shadow(0 0 46px var(--tc)); }
 #take.go .sg { animation: land 0.8s cubic-bezier(0.2, 0.8, 0.3, 1.1) both; }
-#take p.sub { margin-bottom: -8px; color: var(--sign); font-size: 1.3rem; letter-spacing: 0.12em; }
 #take p { color: #fff; font-family: var(--disp); font-weight: 800; font-size: 2.7rem; line-height: 1; letter-spacing: 0.04em; text-shadow: 0 2px 14px #000; }
 #flash { position: fixed; inset: 0; z-index: 25; background: #fff; opacity: 0; pointer-events: none; }
 #flash.go { animation: flash 0.45s ease-out; }
