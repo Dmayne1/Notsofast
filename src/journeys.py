@@ -127,6 +127,8 @@ async def answer(p, v, wait=420):
     await p.click('[data-act="enter"]')
     await p.wait_for_timeout(wait)
 
+GO = 1150   # after a right answer the next thing arrives by itself: long enough to see it
+
 async def press(p, act, wait=420):
     await p.click('[data-act="%s"]' % act)
     await p.wait_for_timeout(wait)
@@ -140,7 +142,8 @@ async def play_day(s, how=('right', 'bait', 'wrong'), p=None):
         h = how[i]
         v = q['a'] if h == 'right' else (q['baits'][0] if h == 'bait' and q['baits'] else await wrong_for(p, q))
         await answer(p, v)
-        await press(p, 'next')
+        if h == 'right': await p.wait_for_timeout(GO)     # green means go: nothing to press
+        else: await press(p, 'next')                      # red means stop: read why, then move on
     return qs
 
 
@@ -151,7 +154,7 @@ async def first_visit(b):
     async with Site(b) as s:
         await s.open()
         a = await screen(s.page)
-        check('a brand-new visitor sees the goal and one Play button', 'home' in a['cls'] and 'three green lights' in a['text'].lower() and a['btns'][0] == 'Play', (a['text'][:120], a['btns']))
+        check('a brand-new visitor sees the goal and one Play button', 'home' in a['cls'] and 'three green lights' in a['text'].lower() and 'Three minutes' in a['text'] and a['btns'][0] == 'Play', (a['text'][:120], a['btns']))
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
         check('three unlit lights are on the front page', len(lights) == 3 and all('off' in c for c in lights), lights)
         await s.page.reload(); await s.page.wait_for_timeout(250)
@@ -159,7 +162,8 @@ async def first_visit(b):
         await press(s.page, 'daily')
         q = await screen(s.page)
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
-        check('Play goes straight to question one with a big clock', q['entry'] and q['clock'] in ('2:00', '1:59'), q['clock'])
+        check('Play goes straight to question one with a big clock', q['entry'] and q['clock'] in ('3:00', '2:59'), q['clock'])
+        check('the screen says it is one clock for all three', 'One clock for all three questions' in q['text'], q['text'][:120])
         check('the first light is live and the others are off', len(lights) == 3 and 'now' in lights[0] and 'off' in lights[1] and 'off' in lights[2], lights)
         size = await s.page.evaluate("() => parseFloat(getComputedStyle(document.getElementById('clock')).fontSize)")
         check('the clock is large', size >= 38, size)
@@ -179,52 +183,75 @@ async def refresh_daily(b):
         await s.page.reload(); await s.page.wait_for_timeout(300)
         a = await screen(s.page)
         check('refresh mid-question puts you back on the question', a['entry'] and a['q'] == qs[0]['q'], a['cls'] + ' | ' + a['text'][:100])
-        check('refresh does not refill the clock', a['clock'] is not None and a['clock'] <= '1:58', a['clock'])
+        check('refresh does not refill the clock', a['clock'] is not None and '2:50' <= a['clock'] <= '2:58', a['clock'])
         check('refresh clears the half-typed answer', a['typed'] is not None and '7' not in a['typed'], a['typed'])
-        if not a['entry']: await press(s.page, 'daily')
+        await s.page.wait_for_timeout(1000)
         await answer(s.page, qs[0]['a'])
-        r = await screen(s.page)
-        check('a right answer is marked correct', r['result'] and 'correct' in r['text'].lower(), r['text'][:120])
+        await s.page.wait_for_timeout(GO)
+        q2 = await screen(s.page)
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
-        check('and the first light is green', 'green' in lights[0], lights)
+        check('a right answer turns the light green and goes straight to question two', q2['entry'] and q2['q'] == qs[1]['q'] and 'green' in lights[0] and 'now' in lights[1], (q2['cls'], lights))
+        check('the clock carries on from where it was, it does not reset', q2['clock'] is not None and '2:40' <= q2['clock'] <= '2:57', q2['clock'])
+        await answer(s.page, qs[1]['baits'][0] if qs[1]['baits'] else await wrong_for(s.page, qs[1]))
+        r = await screen(s.page)
+        check('a wrong answer stops on the verdict', r['result'] and ('not so fast' in r['text'].lower() or 'wrong' in r['text'].lower()) and 'Clock stopped' in r['text'], r['text'][:160])
         yellow = await s.page.evaluate("() => [...document.querySelectorAll('#view button')].filter(b => getComputedStyle(b).backgroundImage.includes('255, 228, 92')).map(b => b.textContent)")
         check('the only yellow button is Next question', yellow == ['Next question'], yellow)
         hits = len([h for h in s.hits if h.startswith('hit/')])
         await s.page.reload(); await s.page.wait_for_timeout(300)
         r2 = await screen(s.page)
-        check('refresh on the verdict shows the verdict again', r2['result'] and 'correct' in r2['text'].lower(), r2['cls'] + ' | ' + r2['text'][:100])
+        check('refresh on the verdict shows the verdict again', r2['result'] and r2['text'][:60] == r['text'][:60], r2['cls'] + ' | ' + r2['text'][:100])
         check('refresh does not count the answer twice', len([h for h in s.hits if h.startswith('hit/')]) == hits, (hits, len([h for h in s.hits if h.startswith('hit/')])))
-        if not r2['result']: await press(s.page, 'daily')
+        await s.page.wait_for_timeout(6000)
         await press(s.page, 'next')
-        q2 = await screen(s.page)
-        check('Next question reaches question two with a full clock', q2['entry'] and q2['q'] == qs[1]['q'] and q2['clock'] in ('2:00', '1:59'), q2['clock'])
-        await answer(s.page, qs[1]['baits'][0] if qs[1]['baits'] else 1)
-        await press(s.page, 'next')
+        q3 = await screen(s.page)
+        check('the clock did not run while the answer was on screen', q3['entry'] and q3['q'] == qs[2]['q'] and q3['clock'] >= '2:51', (q2['clock'], q3['clock']))
         await answer(s.page, await wrong_for(s.page, qs[2]))
         await press(s.page, 'next')
         e = await screen(s.page)
         check('the third answer leads to the score', 'end' in e['cls'] and '1 of 3' in e['text'], e['text'][:160])
+        fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
+        check('the score is one complete screen, nothing to scroll', fits)
         st = await store(s.page)
         await s.page.reload(); await s.page.wait_for_timeout(300)
         h = await screen(s.page)
-        check('refresh after finishing offers the score, not a new game', 'See today' in h['text'] and 'Play with friends' in h['text'], h['text'][:160])
-        await press(s.page, 'daily')
-        e2 = await screen(s.page)
+        check('refresh after finishing shows the score again, it is the home screen now', 'end' in h['cls'] and '1 of 3' in h['text'] and 'Next three in' in h['text'], h['text'][:160])
+        await s.page.click('.wordmark'); await s.page.wait_for_timeout(450)
+        h2 = await screen(s.page)
         st2 = await store(s.page)
-        check('the finished day is only counted once', st2['stats']['played'] == 1 and st['stats']['played'] == 1 and 'end' in e2['cls'], st2['stats'])
+        check('the logo keeps you on the finished day', 'end' in h2['cls'])
+        check('the finished day is only counted once', st2['stats']['played'] == 1 and st['stats']['played'] == 1, st2['stats'])
+        await press(s.page, 'answers')
+        a3 = await screen(s.page)
+        check('See the answers opens all three with their reasons', a3['sheet'] and all(q['q'] in a3['sheetText'] for q in qs), a3['sheetText'][:120])
         check('no errors across the daily three', not s.errors, s.errors)
-    async with Site(b, calm=False) as s:   # with the real animations: refresh in the middle of the drive
+    async with Site(b, calm=False) as s:   # with the real animations: refresh in the moment after a right answer
         await s.returning()
         qs = await today_set(s.page)
         await press(s.page, 'daily')
-        await answer(s.page, qs[0]['a'], wait=2600)
-        await s.page.click('[data-act="next"]')
-        await s.page.wait_for_timeout(400)
-        await s.page.reload(); await s.page.wait_for_timeout(500)
+        await answer(s.page, qs[0]['a'], wait=500)
+        await s.page.reload(); await s.page.wait_for_timeout(600)
         a = await screen(s.page)
         st = await store(s.page)
-        check('refresh mid-drive lands somewhere sensible', (a['result'] or a['entry']) and st['daily']['res'][0]['f'] == 'right', a['cls'] + ' | ' + a['text'][:120])
-        check('no errors refreshing mid-drive', not s.errors, s.errors)
+        check('refresh just after a right answer carries on to question two', a['entry'] and a['q'] == qs[1]['q'] and st['daily']['res'][0]['f'] == 'right', a['cls'] + ' | ' + a['text'][:120])
+        check('no errors refreshing after a right answer', not s.errors, s.errors)
+    async with Site(b, w=375, h=560) as s:   # a short phone: the finished day and a wrong answer must both sit on one screen
+        await s.returning()
+        qs = await today_set(s.page)
+        await press(s.page, 'daily')
+        await answer(s.page, await wrong_for(s.page, qs[0]))
+        vis = await s.page.evaluate("() => { const r = document.querySelector('[data-act=next]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }")
+        check('on a short phone Next question is on screen without scrolling', vis)
+        await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next')
+        fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
+        check('on a short phone the score still fits one screen', fits, await s.page.evaluate("() => [document.scrollingElement.scrollHeight, innerHeight]"))
+    async with Site(b, w=320, h=480) as s:
+        await s.returning()
+        qs = await today_set(s.page)
+        await press(s.page, 'daily')
+        await answer(s.page, await wrong_for(s.page, qs[0]))
+        vis = await s.page.evaluate("() => { const r = document.querySelector('[data-act=next]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }")
+        check('on a very small phone Next question is still on screen', vis)
 
 
 async def out_of_fuel(b):
@@ -236,10 +263,15 @@ async def out_of_fuel(b):
         await s.page.reload(); await s.page.wait_for_timeout(600)
         a = await screen(s.page)
         if not a['result'] and 'home' in a['cls']: await press(s.page, 'daily'); a = await screen(s.page)
-        check('coming back late shows out of time', a['result'] and 'ran out of time' in a['text'] and 'NaN' not in a['text'], a['text'][:200])
+        check('coming back late shows out of time', a['result'] and 'ran out of time' in a['text'] and 'The clock ran out' in a['text'] and 'NaN' not in a['text'], a['text'][:200])
+        lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
+        check('with the clock gone, all three lights are red', all('red' in c for c in lights), lights)
         await press(s.page, 'next')
-        q2 = await screen(s.page)
-        check('and the next question still starts with a full clock', q2['entry'] and q2['clock'] in ('2:00', '1:59'), q2['clock'])
+        e = await screen(s.page)
+        check('and the day ends there', 'end' in e['cls'] and '0 of 3' in e['text'] and 'in 3:00' in e['text'], e['text'][:160])
+        await press(s.page, 'answers')
+        a3 = await screen(s.page)
+        check('questions the clock never reached are marked as such', a3['sheetText'].count('not reached') == 2, a3['sheetText'][:200])
         check('no errors', not s.errors, s.errors)
 
 
@@ -278,7 +310,7 @@ async def two_tabs(b):
         await play_day(s, p=t2)
         await s.page.bring_to_front(); await s.page.wait_for_timeout(400)
         h = await screen(s.page)
-        check('an idle tab notices the day was finished elsewhere', 'See today' in h['text'], h['text'][:160])
+        check('an idle tab notices the day was finished elsewhere', 'end' in h['cls'] and 'of 3' in h['text'], h['text'][:160])
         check('no errors', not s.errors, s.errors)
 
 
@@ -385,11 +417,13 @@ async def links(b):
         st = await store(s.page)
         check('a private round is saved as you go', bool(st and st.get('live')) and st['live']['game']['mode'] == 'table')
         for i in range(3):
-            await answer(s.page, (await live_answer(s.page)) if i == 0 else 987654)
+            if i == 1:
+                await answer(s.page, await live_answer(s.page)); await s.page.wait_for_timeout(GO); continue
+            await answer(s.page, 987654)
             if i == 0:
                 await s.page.reload(); await s.page.wait_for_timeout(300)
                 r = await screen(s.page)
-                check('refresh in a private round keeps your place', r['result'] and 'correct' in r['text'].lower(), r['cls'] + ' | ' + r['text'][:80])
+                check('refresh in a private round keeps your place', r['result'] and 'wrong' in r['text'].lower(), r['cls'] + ' | ' + r['text'][:80])
             await press(s.page, 'next')
         e = await screen(s.page)
         check('the private round ends with the duel', 'end' in e['cls'] and ('Your friend' in e['text'] or 'your friend' in e['text']), e['text'][:200])
@@ -430,13 +464,21 @@ async def taps(b):
         await s.returning()
         qs = await today_set(s.page)
         await press(s.page, 'daily')
-        await s.page.keyboard.type(keys_of(qs[0]['a']))
+        pad = await s.page.evaluate("() => { const p = document.querySelector('#view .pad'); return !!p && p.getBoundingClientRect().height > 100; }")
+        ring = await s.page.evaluate("() => getComputedStyle(document.getElementById('read')).boxShadow.includes('255, 210, 31')")
+        check('a computer gets the keypad too, and the answer field is visibly live', pad and ring, (pad, ring))
+        await s.page.click('[data-act="key"][data-k="4"]')
+        await s.page.keyboard.type('2')
+        t = await screen(s.page)
+        check('on a computer you can click the keys or type, and both land in the same field', (t['typed'] or '').startswith('42'), t['typed'])
+        await s.page.keyboard.press('Backspace'); await s.page.keyboard.press('Backspace')
+        await s.page.keyboard.type(str(await wrong_for(s.page, qs[0])))
         await s.page.keyboard.down('Enter')
         for i in range(12):
             await s.page.keyboard.down('Enter'); await s.page.wait_for_timeout(60)   # the key repeats while held
         await s.page.keyboard.up('Enter'); await s.page.wait_for_timeout(300)
         a = await screen(s.page)
-        check('holding Enter does not skip past the verdict', a['result'] and 'correct' in a['text'].lower(), a['cls'] + ' | ' + a['text'][:80])
+        check('holding Enter does not skip past the verdict', a['result'] and 'wrong' in a['text'].lower(), a['cls'] + ' | ' + a['text'][:80])
         check('no errors on a laptop', not s.errors, s.errors)
 
 
@@ -451,10 +493,9 @@ async def long_road(b):
         check('endless mode is saved as you go', bool(live) and live['game']['mode'] == 'run')
         if not live: return
         await answer(s.page, await live_answer(s.page))
-        r = await screen(s.page)
-        check('endless mode: right answer', 'correct' in r['text'].lower() and '1 green' in r['text'], r['text'][:80])
-        await press(s.page, 'next')
+        await s.page.wait_for_timeout(GO)
         before = await screen(s.page)
+        check('endless mode: a right answer goes straight on', before['entry'] and 'Question 2' in before['text'] and '1 green' in before['text'], before['text'][:80])
         await s.page.reload(); await s.page.wait_for_timeout(300)
         a = await screen(s.page)
         check('refresh in endless mode keeps the run', a['entry'] and 'Question 2' in a['text'] and a['q'] == before['q'], a['cls'] + ' | ' + a['text'][:100])
@@ -470,7 +511,8 @@ async def long_road(b):
         await press(s.page, 'home') if 'end' in e2['cls'] else None
         await s.page.reload(); await s.page.wait_for_timeout(300)
         h = await screen(s.page)
-        check('going home ends the saved run', 'home' in h['cls'], h['cls'])
+        st = await store(s.page)
+        check('going home ends the saved run and shows the finished day', not st.get('live') and 'of 3' in h['text'] and 'Next three in' in h['text'], h['text'][:100])
         check('no errors in endless mode', not s.errors, s.errors)
 
 
@@ -530,8 +572,9 @@ async def screens(b):
                 if (!r.width) return; if (r.bottom + scrollY > de.scrollHeight + 1 || r.right > innerWidth + 1 || r.left < -1) out.need.push(el.textContent.slice(0, 12)); });
               const q = document.querySelector('#view .q').getBoundingClientRect(); out.qcut = q.bottom > de.scrollHeight; return out; }""")
             check('question fits or scrolls on ' + name, m['wide'] <= 0 and not m['need'], m)
-            if mob: await answer(s.page, qs[0]['a'])
-            else: await s.page.keyboard.type(keys_of(qs[0]['a'])); await s.page.keyboard.press('Enter'); await s.page.wait_for_timeout(250)
+            bad = await wrong_for(s.page, qs[0])
+            if mob: await answer(s.page, bad)
+            else: await s.page.keyboard.type(str(bad)); await s.page.keyboard.press('Enter'); await s.page.wait_for_timeout(250)
             m2 = await s.page.evaluate("""() => { const de = document.scrollingElement, b = document.querySelector('[data-act=next]'); if (!b) return { ok: false };
               const r = b.getBoundingClientRect(); return { ok: r.bottom + scrollY <= de.scrollHeight + 1 && r.right <= innerWidth + 1 && r.width > 40, wide: de.scrollWidth - innerWidth }; }""")
             check('Next question is reachable on ' + name, m2['ok'] and m2['wide'] <= 0 and not s.errors, (m2, s.errors))
@@ -545,7 +588,13 @@ async def in_app(b):
         check('opens inside TikTok', 'home' in a['cls'] and a['btns'][0] == 'Play', a['text'][:80])
         await play_day(s)
         e = await screen(s.page)
-        check('the score screen says how to keep a streak when inside an app', 'TikTok' in e['text'], e['text'][:300])
+        check('the score screen offers a way to keep a streak when inside an app', 'Keep your streak' in e['text'], e['text'][:300])
+        fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
+        check('and still fits one screen inside TikTok', fits, await s.page.evaluate("() => [document.scrollingElement.scrollHeight, innerHeight]"))
+        await press(s.page, 'inapp')
+        sh = await screen(s.page)
+        check('which explains that the streak lives inside TikTok', sh['sheet'] and 'TikTok' in sh['sheetText'] and 'Safari' in sh['sheetText'], sh['sheetText'][:160])
+        await press(s.page, 'close')
         await press(s.page, 'copy')
         sh = await screen(s.page)
         check('sharing falls back to text you can copy', sh['sheet'] and 'playnotsofast.com' in sh['sheetText'], sh['sheetText'][:120])
@@ -554,7 +603,7 @@ async def in_app(b):
         await s.returning()
         await play_day(s)
         e = await screen(s.page)
-        check('no in-app note in a normal browser', 'TikTok' not in e['text'] and 'inside' not in e['text'])
+        check('no in-app note in a normal browser', 'Keep your streak' not in e['text'])
 
 
 async def midnight(b):
@@ -585,16 +634,19 @@ async def midnight(b):
         await s.page.evaluate("() => document.dispatchEvent(new Event('visibilitychange'))"); await s.page.wait_for_timeout(300)
         h = await screen(s.page)
         check('a front page left open overnight offers the new day', h['btns'][0] == 'Play', h['btns'])
-    async with Site(b, init=(CLOCK,)) as s:      # a game started before midnight and finished after
+    async with Site(b, init=(CLOCK,)) as s:      # a game started a few seconds before midnight and finished after it
+        await s.page.goto(BASE)
+        await s.page.evaluate("() => { const n = new Date(), mid = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1); localStorage.setItem('__shift', String(mid - n - 5000)); }")
         await s.returning()
+        d0 = await s.page.evaluate("() => window.BaitEngine.dayNumber(new Date())")
         qs = await today_set(s.page)
         await press(s.page, 'daily')
-        await answer(s.page, qs[0]['a'])
-        await s.page.evaluate("d => localStorage.setItem('__shift', String(d))", DAY)
-        await press(s.page, 'next')
-        await answer(s.page, qs[1]['a']); await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next')
+        await answer(s.page, qs[0]['a']); await s.page.wait_for_timeout(5500)      # midnight passes while question two is on screen
+        d1 = await s.page.evaluate("() => window.BaitEngine.dayNumber(new Date())")
+        await answer(s.page, qs[1]['a']); await s.page.wait_for_timeout(GO)
+        await answer(s.page, 987654); await press(s.page, 'next')
         e = await screen(s.page)
-        check('a game that crosses midnight still finishes', 'end' in e['cls'] and not s.errors, (e['cls'], s.errors))
+        check('a game that crosses midnight finishes as the day it began', d1 == d0 + 1 and 'end' in e['cls'] and ('No. %d' % d0) in e['text'] and '2 of 3' in e['text'] and not s.errors, (d0, d1, e['text'][:80], s.errors))
     async with Site(b, init=(CLOCK,)) as s:      # a phone whose clock says 2019
         await s.page.goto(BASE); await s.page.evaluate("localStorage.setItem('__shift', String(-7 * 365 * 24 * 3600 * 1000))")
         await s.returning(); await play_day(s)

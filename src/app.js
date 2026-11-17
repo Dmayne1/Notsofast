@@ -5,7 +5,7 @@
   var NAME = 'Not So Fast';            // change it here and it changes everywhere
   var SITE = 'playnotsofast.com';
   var LINK = 'https://' + SITE + '/';
-  var LIMIT = 120;                     // seconds per question on your own
+  var LIMIT = 180;                     // seconds for all three questions on your own: one clock, not three
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
   var SETV = 'v8';                     // bump when the question bank changes: today's set restarts and counts never mix
@@ -19,8 +19,9 @@
 
   var EMOJI = { right: '🟢', bait: '🔴', wrong: '🔴', time: '🔴' };
   var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of time' };
-  // The whole game is three lights. A right answer turns one green; anything else turns it red.
-  // The goal is three greens. Time only breaks a tie.
+  // The whole game is three lights and one clock. A right answer turns a light green and the next
+  // question arrives by itself: green means go. Anything else turns it red and stops you, to show
+  // why: red means stop. The clock runs only while a question is on screen. Three greens is the goal.
   var LEVEL = { 1: 'Easy', 2: 'Tricky', 3: 'Hard' };
   var STEP = 270;                      // metres the road behind the screen moves on for each green light
   var FS = { right: 1, bait: 1, wrong: 1, time: 1 };   // the four verdicts
@@ -62,6 +63,7 @@
     var t = r.f === 'time' ? '' : String(r.t == null ? '' : r.t).slice(0, 12);
     if (r.f !== 'time' && !isFinite(parseFloat(t))) return null;
     var o = { t: t, f: r.f, secs: int(r.secs, 0, limit, 0) }, c = r.crowd;
+    if (r.skip && r.f === 'time') o.skip = 1;
     if (c && typeof c === 'object' && isFinite(c.n) && c.n >= 0) o.crowd = { n: int(c.n, 0, 1e9, 0), r: int(c.r, 0, 1e9, 0), t: int(c.t, 0, 1e9, 0), slower: int(c.slower, 0, 1e9, 0) };
     return o;
   }
@@ -71,7 +73,7 @@
     for (i = 0; i < 3 && i < d.res.length; i++) { r = okRes(d.res[i], limit); if (!r) break; res.push(r); }
     var idx = int(d.idx, 0, 2, 0);
     if (idx > res.length) idx = res.length;          // cannot be on a question without answering the one before
-    if (idx < res.length - 1) idx = res.length - 1;
+    if (idx < res.length - 1 && !res[idx + 1].skip) idx = res.length - 1;   // unless the clock ran out there and the rest were never reached
     return { idx: Math.min(2, idx), res: res, qStart: isFinite(q) && q > 0 && q < now + 60000 ? q : now, done: d.done === true && res.length === 3 };
   }
   function okDaily(d) {
@@ -542,16 +544,16 @@
     var rv = store.rival;
     if (rv && (rv.code ? rv.played || Date.now() - rv.at > 7 * 86400000 : rv.key !== 'd' + today())) { store.rival = null; save(); }   // yesterday's challenge has expired; a private one lasts a week or until played
     var state = dailyState(), streak = liveStreak(), d = store.daily, res = state === 'new' ? [] : d.res;
+    if (state === 'done') { startDaily(); return; }   // once today is done, the result is the front page
     setRoad(rightCount({ res: res }) * STEP);
     homeSig = sig();
     view.innerHTML =
       '<section class="home">' +
         '<div class="hero" aria-hidden="true"><div class="sg">' + sign() + '</div></div>' +
-        '<p class="pitch">Three trick questions a day.<b>Get three green lights.</b></p>' +
+        '<p class="pitch">Three questions. Three minutes.<b>Get three green lights.</b></p>' +
         lightsHtml(res, state === 'going' && !res[d.idx] ? d.idx : -1, 'mid') +
         rivalCard() +
-        '<button class="btn" data-act="daily" data-enter>' + (state === 'done' ? 'See today\u2019s result' : state === 'going' ? 'Carry on' : 'Play') + '</button>' +
-        (state === 'done' ? '<button class="btn plate" data-act="run">Keep going: endless mode</button>' : '') +
+        '<button class="btn" data-act="daily" data-enter>' + (state === 'going' ? 'Carry on' : 'Play') + '</button>' +
         '<button class="btn plate" data-act="friends">Play with friends</button>' +
         '<p class="today" id="today" role="status"></p>' +
         '<p class="meta"><span>No. ' + today() + (streak > 1 ? ', ' + streak + '-day streak' : '') + '</span><span>' + esc(dateLine()) + '</span></p>' +
@@ -641,8 +643,6 @@
   }
   function keyBtn(k) { return '<button data-act="key" data-k="' + k + '">' + k + '</button>'; }
   function entryHtml() {
-    if (desk) return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
-      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.</p><button class="btn" data-act="enter">Lock in</button></div></div>';
     return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
       '<div class="pad">' +
         keyBtn(1) + keyBtn(2) + keyBtn(3) + '<button data-act="key" data-k="del" aria-label="Delete">' + ICON.del + '</button>' +
@@ -652,21 +652,21 @@
       '</div></div>';
   }
   // The top of every question: where you stand on the left, the time on the right in big digits, and a
-  // bar under both that runs down. Once there is a verdict, the verdict takes the clock's place.
-  // lead: what sits on the left (the lights, or a player's name). r: the answer, once given.
-  function hudHtml(left, limit, lead, r) {
+  // bar under both that runs down. Once there is a verdict, the verdict takes the clock's place and the
+  // bar holds at what is left. lead: the lights, or a player's name. r: the answer, once given.
+  function hudHtml(left, total, lead, r) {
     var f = r ? lightOf(r) : '';
     return '<div class="hud">' + lead +
         (r ? '<b class="say ' + f + '" role="status">' + WORD[r.f] + '</b>' : '<b class="clock' + (left <= 15 ? ' low' : '') + '" id="clock" role="timer" aria-label="Time left">' + mmss(Math.ceil(left)) + '</b>') +
-      '</div><div class="bar' + (f ? ' ' + f : left <= 15 ? ' low' : '') + '"><i id="bar" style="transform:scaleX(' + (r ? 1 : Math.max(0, Math.min(1, left / limit))) + ')"></i></div>';
+      '</div><div class="bar' + (f ? ' ' + f : left <= 15 ? ' low' : '') + '"><i id="bar" style="transform:scaleX(' + Math.max(0, Math.min(1, left / total)) + ')"></i></div>';
   }
   function timeLeft(limit, start) { return Math.max(0, limit - (Date.now() - start) / 1000); }
-  function plateHtml(q, label, solo) {
-    return '<div class="plate-q' + (solo ? ' solo' : '') + '">' +
+  function plateHtml(q, label) {
+    return '<div class="plate-q">' +
       '<p class="lvl"><span>' + label + '</span><b>' + LEVEL[q.level] + '</b></p>' +
       '<p class="q' + (q.q.length > 125 ? ' long' : '') + '">' + esc(q.q) + '</p></div>';
   }
-  // a: { q, limit, start, beat, commit(r), reveal(r) }. commit stores the answer at once; reveal shows what happens next.
+  // a: { q, limit, total, start, beat, commit(r), reveal(r) }. limit: seconds this question may take. total: what a full bar stands for. commit stores the answer at once; reveal shows what happens next.
   function beginAsk(a) {
     ask = a; typed = ''; lastBeep = -1;
     paintTyped(false);
@@ -681,13 +681,13 @@
     if (!c) return;
     var whole = Math.ceil(left), low = left <= 15;
     c.textContent = mmss(whole); c.className = 'clock' + (low ? ' low' : '');
-    if (bar) { bar.style.transform = 'scaleX(' + Math.max(0, left / ask.limit) + ')'; bar.parentNode.className = 'bar' + (low ? ' low' : ''); }
+    if (bar) { bar.style.transform = 'scaleX(' + Math.max(0, left / (ask.total || ask.limit)) + ')'; bar.parentNode.className = 'bar' + (low ? ' low' : ''); }
     if (whole <= 10 && whole !== lastBeep) { lastBeep = whole; SFX.beep(); }
   }
   function paintTyped(pop) {
     var val = document.getElementById('val'), read = document.getElementById('read');
     if (!val || !ask) return;
-    val.innerHTML = typed === '' ? '<span class="ph">Type your answer</span>' : parts(ask.q, typed);
+    val.innerHTML = typed === '' ? '<span class="ph">' + (desk ? 'Type or click your answer' : 'Type your answer') + '</span>' : parts(ask.q, typed);
     if (pop) replay(read, 'pop');
   }
   function key(k) {
@@ -737,34 +737,56 @@
       '<p class="you">' + esc(youLine(q, r)) + '</p>' +
       '<p class="why">' + esc(q.why) + '</p>' +
       '<p class="crowd" id="crowd" role="status">' + esc(crowdLine(r)) + '</p>' +
-      '<button class="btn" data-act="next" data-enter>' + nextLabel + '</button>' +
       '<button class="linkish quiet" data-act="friend" data-i="' + i + '">Ask a friend this one</button>' +
+      '<button class="btn" data-act="next" data-enter>' + nextLabel + '</button>' +
     '</div>';
+  }
+  function spent(st, upto) { var t = 0; for (var k = 0; k < upto; k++) if (st.res[k]) t += st.res[k].secs; return t; }
+  // Green means go: the light changes, the answer glows for a moment, and what comes next arrives by itself.
+  function go(i, cb) {
+    var lts = view.querySelectorAll('.hud .lights .lt'), read = document.getElementById('read');
+    if (lts[i]) lts[i].className = 'lt green lit';
+    if (read) { read.classList.remove('locking'); read.classList.add('good'); }
+    react('right');
+    pending = setTimeout(function () { pending = null; cb(); }, calm ? 450 : 850);
   }
   function play() {
     stopTimers(); ask = null;
-    var st = game.st, i = st.idx, q = game.set[i], r = st.res[i];
+    var st = game.st, i = st.idx, r = st.res[i];
+    if (r && r.f === 'right' && !fresh) {   // a green never stops you: after a refresh, carry straight on
+      if (i >= 2) { finish(); return; }
+      st.idx = ++i; st.qStart = Date.now(); persist(); r = st.res[i];
+    }
+    var q = game.set[i], budget = Math.max(0, LIMIT - spent(st, i)), last = i >= 2 || !!st.res[i + 1];
+    var left = r ? Math.max(0, budget - r.secs) : timeLeft(budget, st.qStart);
     if (!fresh) setRoad(rightCount(st) * STEP);
     view.innerHTML =
       '<section class="play">' +
-        hudHtml(r ? 0 : timeLeft(LIMIT, st.qStart), LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
-        plateHtml(q, 'Question ' + (i + 1) + ' of 3', !r) +
-        (r ? resultHtml(q, r, i, i < 2 ? 'Next question' : 'See your result') : entryHtml()) +
+        hudHtml(left, LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
+        '<p class="cap">' + (!r ? 'One clock for all three questions.' : r.f === 'time' ? 'The clock ran out.' : 'Clock stopped with ' + mmss(left) + ' left.') + '</p>' +
+        plateHtml(q, 'Question ' + (i + 1) + ' of 3') +
+        (r ? resultHtml(q, r, i, last ? 'See your result' : 'Next question') : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
-    beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
+    beginAsk({ q: q, limit: budget, total: LIMIT, start: st.qStart, beat: true,
       commit: function (res) {
         if (mode === 'daily') { var p = peek(), pd = p && p.daily; if (pd && pd.v === SETV && pd.day === day && (pd.res[i] || pd.idx !== i)) return 'stale'; }   // one guess, however many tabs
-        st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res);
+        st.res[i] = res;
+        if (res.f === 'time') for (var k = i + 1; k < 3; k++) st.res[k] = { t: '', f: 'time', secs: 0, skip: 1 };   // the clock ran out: the rest are never reached
+        persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res);
       },
-      reveal: function (res) { fresh = true; play(); fresh = false; react(res.f); if (res.f === 'right') drive(rightCount(st) * STEP, 1400); } });   // green: the road moves on behind the answer
+      reveal: function (res) {
+        if (res.f !== 'right') { fresh = true; play(); fresh = false; react(res.f); return; }   // red: stop, and see why
+        drive(rightCount(st) * STEP, 1400);                                                    // green: the road moves on
+        go(i, function () { if (game && game.st === st) next(); });
+      } });
   }
   function next() {   // never held up by an animation
     var st = game.st;
     if (!st.res[st.idx]) return;
-    if (st.idx >= 2) { finish(); return; }
-    st.idx++; st.qStart = Date.now(); persist(); play(); window.scrollTo(0, 0);
+    if (st.idx >= 2 || st.res[st.idx + 1]) { finish(); return; }   // the last question, or the clock ran out
+    st.idx++; st.qStart = Date.now(); persist(); quiet = Date.now() + 200; play(); window.scrollTo(0, 0);
   }
   function finish() {
     var st = game.st;
@@ -810,8 +832,11 @@
       try { navigator.share({ text: text }).catch(function (e) { if (!e || e.name !== 'AbortError') clip(); }); } catch (e) { clip(); }
     } else clip();
   }
-  function inAppNote() {
-    return INAPP ? '<p class="inapp">You are playing inside ' + INAPP + '. Your streak is only saved here. To keep it, open <b>' + SITE + '</b> in ' + BROWSER + '. <button class="linkish" data-act="copylink">Copy the link</button></p>' : '';
+  // Inside another app's browser the streak lives in that app. One quiet line says so; the detail is a tap away.
+  function inAppNote() { return INAPP ? '<button class="linkish quiet" data-act="inapp">Keep your streak: open in ' + BROWSER + '</button>' : ''; }
+  function inAppSheet() {
+    sheet('Keep your streak', '<h2 class="big">Keep your streak</h2><p>You are playing inside ' + INAPP + ', which has its own browser. Your streak is only saved there.</p>' +
+      '<p>To keep it in one place, open <b>' + SITE + '</b> in ' + BROWSER + '.</p><button class="btn" data-act="copylink">Copy the link</button>');
   }
   function statsBlock() {
     var s = store.stats, max = Math.max.apply(null, s.dist.concat(1)), bars = '';
@@ -827,18 +852,24 @@
       '<h2>Green lights per day</h2><div class="dist">' + bars + '</div>' +
       '<p class="beaten">' + beatenLine() + (s.runTop ? ' Endless best: ' + s.runTop + ' green.' : '') + '</p>';
   }
-  // The score is the same three lights, large, with one number under them.
-  function end(first) {
-    stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
-    var st = game.st, recap = '', n = rightCount(st), daily = game.mode === 'daily', streak = liveStreak();
-    setRoad(n * STEP);
+  // The score is one complete screen: the three lights, one number, one button, and when the next
+  // three arrive. Nothing runs off the bottom. The answers are one tap away, in a sheet.
+  function answersSheet() {
+    var st = game.st, recap = '', title = game.mode === 'daily' ? 'Today\u2019s three' : 'This round';
     for (var i = 0; i < 3; i++) {
       var r = st.res[i], q = game.set[i], pct = crowdPct(r);
       recap += '<li><p class="rq">' + esc(q.q) + '</p>' +
         '<p class="ra">' + lamp(lightOf(r), 'sm') + '<b>' + esc(E.show(q, q.a)) + '</b><span class="rt">' +
-          esc(r.f === 'right' ? 'in ' + mmss(r.secs) : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
+          esc(r.f === 'right' ? 'in ' + mmss(r.secs) : r.skip ? 'not reached' : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
+        '<p class="rw">' + esc(q.why) + '</p>' +
         '<button class="linkish quiet" data-act="friend" data-i="' + i + '">Ask a friend this one</button></li>';
     }
+    sheet(title, '<h2 class="big">' + title + '</h2><ol class="recap">' + recap + '</ol>');
+  }
+  function end(first) {
+    stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
+    var st = game.st, n = rightCount(st), daily = game.mode === 'daily', streak = liveStreak();
+    setRoad(n * STEP);
     view.innerHTML =
       '<section class="end">' +
         '<div class="score">' +
@@ -850,10 +881,10 @@
         (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? fieldLine(st.field) : '') + '</p>' : '') +
         duelCard() +
         '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend') + '</button>' +
-          (daily ? '<button class="btn plate" data-act="run">Keep going: endless mode</button><button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
-        '</div>' + (daily ? inAppNote() : '') +
-        (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
-        '<h2>' + (daily ? 'Today\u2019s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
+          '<div class="pair">' + (daily ? '<button class="btn plate" data-act="run">Endless mode</button><button class="btn plate" data-act="friends">With friends</button>' : '<button class="btn plate" data-act="nextround">Another three</button><button class="btn plate" data-act="home">Home</button>') + '</div>' +
+        '</div>' +
+        '<div class="foot">' + (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
+          '<button class="linkish quiet" data-act="answers">See the answers</button>' + (daily ? inAppNote() : '') + '</div>' +
       '</section>';
     window.scrollTo(0, 0);
     if (daily) runCountdown();
@@ -891,17 +922,23 @@
   function runPlay() {
     stopTimers(); ask = null;
     var q = game.cur, r = game.res;
+    if (r && r.f === 'right' && !fresh) { runNext(); return; }   // a green never stops you
     if (!fresh) setRoad(game.right * RUN_STEP);
     view.innerHTML =
       '<section class="play">' +
-        hudHtml(r ? 0 : timeLeft(RUN_LIMIT, game.start), RUN_LIMIT, runLead(), r) +
-        plateHtml(q, 'Question ' + game.n, !r) +
+        hudHtml(r ? RUN_LIMIT - r.secs : timeLeft(RUN_LIMIT, game.start), RUN_LIMIT, runLead(), r) +
+        plateHtml(q, 'Question ' + game.n) +
         (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Next question' : 'See your result') : entryHtml()) +
       '</section>';
     if (r) return;
     beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
       commit: function (res) { game.res = res; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); },
-      reveal: function (res) { fresh = true; runPlay(); fresh = false; react(res.f); if (res.f === 'right') drive(game.right * RUN_STEP, 1200); } });
+      reveal: function (res) {
+        if (res.f !== 'right') { fresh = true; runPlay(); fresh = false; react(res.f); return; }
+        var n = view.querySelector('.hudn'), g = game; if (n) n.textContent = game.right + ' green';
+        drive(game.right * RUN_STEP, 1200);
+        go(-1, function () { if (game === g) runNext(); });
+      } });
   }
   function runEnd(again) {   // again: the page was refreshed on this screen
     stopTimers(); ask = null;
@@ -917,8 +954,7 @@
           '<p class="tally">' + game.right + '</p>' +
           '<p class="total">green ' + (game.right === 1 ? 'light' : 'lights') + ' before three reds.' + (isBest && old ? ' Your best yet.' : !isBest && old ? ' Your best is ' + old + '.' : '') + '</p>' +
         '</div>' +
-        '<div class="endbtns"><button class="btn" data-act="run" data-enter>Go again</button><button class="btn plate" data-act="runshare">Share it</button><button class="btn plate" data-act="home">Back to today</button></div>' +
-        '<p class="beaten">' + beatenLine() + '</p>' +
+        '<div class="endbtns"><button class="btn" data-act="run" data-enter>Go again</button><div class="pair"><button class="btn plate" data-act="runshare">Share it</button><button class="btn plate" data-act="home">Home</button></div></div>' +
       '</section>';
     window.scrollTo(0, 0);
     if (isBest && !again) seq.push(setTimeout(function () { SFX.sweep(); }, 300));
@@ -963,7 +999,7 @@
     view.innerHTML =
       '<section class="play">' +
         hudHtml(timeLeft(PARTY_LIMIT, game.start), PARTY_LIMIT, '<span class="chip">' + esc(game.players[pi].name) + '</span>', null) +
-        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length, true) + entryHtml() +
+        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: game.start, beat: false,
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; game.turn++; game.at = game.turn < game.players.length ? 'pass' : 'gather'; keep(); },
@@ -999,7 +1035,7 @@
     }).join('');
     view.innerHTML =
       '<section class="rev">' +
-        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length, false) +
+        plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length) +
         '<p class="answer"><span>The answer</span><b>' + esc(E.show(q, q.a)) + '</b></p>' +
         rows +
         '<div class="after hid" id="after"><p class="why">' + esc(q.why) + '</p>' + standings(false) +
@@ -1034,7 +1070,7 @@
         (most > 0 ? '<p class="sm">Most trapped: ' + esc(listNames(trapped)) + ', caught ' + times(most) + (trapped.length > 1 ? ' each' : '') + '.</p>' : '<p class="sm">Nobody fell for a single trap.</p>') +
         '<button class="btn" data-act="pagain" data-enter>Play again</button>' +
         '<button class="btn plate" data-act="pshare">Share the result</button>' +
-        '<button class="btn plate" data-act="home">Back to today</button>' +
+        '<button class="btn plate" data-act="home">Home</button>' +
       '</section>';
     window.scrollTo(0, 0);
     seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); }, 250));
@@ -1057,7 +1093,7 @@
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three trick questions a day, the same three for everyone.</li><li>One guess each. Two minutes on the clock.</li><li>Right turns the light green. Anything else turns it red.</li><li>Get three green lights.</li></ul>' +
+      '<ul><li>Three trick questions a day, the same three for everyone.</li><li>One guess each, and three minutes for all three, on one clock.</li><li>Right: the light turns green and the next question arrives.</li><li>Wrong: the light turns red, the clock stops, and you see why.</li><li>Get three green lights.</li></ul>' +
       '<div class="eg"><p class="egq">A bat and a ball cost \u20AC1.10. The bat costs \u20AC1.00 more than the ball. How much is the ball?</p>' +
         eg('green', '5 cents', 'Correct. It takes a second look.') +
         eg('red', '10 cents', 'The trap: the answer that jumps out first.') +
@@ -1178,6 +1214,8 @@
     else if (act === 'table') tableSheet();
     else if (act === 'help') help();
     else if (act === 'stats') stats();
+    else if (act === 'answers') answersSheet();
+    else if (act === 'inapp') inAppSheet();
     else if (act === 'close') closeSheet();
     else if (act === 'copy') send(shareText(), 'Copied. Paste it to a friend.');
     else if (act === 'friend') { var fi = t.getAttribute('data-i'); send(fi === 'run' ? friendText(game.cur, game.res) : friendText(game.set[+fi], game.st.res[+fi]), 'Question copied. Paste it to a friend.'); }
@@ -1237,7 +1275,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { heard(); } catch (x) { oops(x); } } });
   window.addEventListener('pageshow', function (e) { if (e.persisted) { try { heard(); } catch (x) { oops(x); } } });
   window.addEventListener('hashchange', function () {   // a friend's link pasted into a tab that is already open
-    try { var h = readLink(); if (h === 'numbers' && !game) numbers(); else if (onHome()) home(); } catch (x) { oops(x); }
+    try { var h = readLink(); if (h === 'numbers' && !game) numbers(); else if (onHome() || (game && game.mode === 'daily' && game.st.done)) home(); } catch (x) { oops(x); }
   });
 
   /* ---------- Boot ---------- */
@@ -1247,7 +1285,7 @@
     var h = readLink();
     if (h === 'numbers') numbers();
     else if (resume()) { /* back in endless mode, the party or the private round they were in */ }
-    else if (dailyState() === 'going') startDaily();   // a refresh mid-game goes back to the question, where the clock is still running
+    else if (dailyState() === 'going') startDaily();   // a refresh mid-game goes back to the question, where the one clock is still running
     else home();   // everyone else, new or not, starts at the front page: the goal, the lights, one button
   }
   function boot(snap) {

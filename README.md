@@ -1,6 +1,6 @@
 # Not So Fast
 
-A daily game: three trick questions, one guess each. Get three green lights.
+A daily game: three trick questions, three minutes, three green lights.
 
 Live at https://playnotsofast.com
 
@@ -17,29 +17,41 @@ Live at https://playnotsofast.com
 - A private three on your own phones, by code or by link.
 - Endless mode: once today's three are done, questions keep coming until three reds.
 
-Sound is off until the player turns it on, and on a laptop the answer is typed, because this is
-meant to be playable in a lecture.
+Sound is off until the player turns it on. A computer gets the same keypad as a phone, which can
+be clicked, and the keyboard works too.
 
 ## The one idea
 
-Three lights. A right answer turns a light green; the trap, a wrong answer or running out of
-time turns it red. The goal is three greens, and the score is how many you got, with total time
-to break a tie (two minutes a question on your own, one minute when a phone is passed round).
+Three lights and one clock. A right answer turns a light green; the trap, a wrong answer or
+running out of time turns it red. The goal is three greens.
+
+- **Green means go.** The light changes and the next question arrives by itself. Nothing to press.
+- **Red means stop.** The clock stops and the screen shows the answer and one line on why, with
+  one button to carry on.
+- **One clock for all three.** Three minutes, running only while a question is on screen. The
+  line under the bar always says so ("One clock for all three questions", then "Clock stopped
+  with 2:54 left"). If it runs out, the question on screen and any not yet reached turn red.
+
+The score is how many greens, with total time to break a tie. Party and endless mode keep a
+clock per question (a minute each), because there the questions belong to different players or
+never end.
 
 Every screen is built around that:
 
 - The front page says the goal, shows the three lights and has one yellow button.
 - A question shows the lights on the left, the time in large digits on the right and a bar under
-  both that runs down. The question never moves.
-- After an answer the same screen stays. The light changes, the verdict takes the clock's place,
-  and under the question sit the answer, one line on why, and one yellow button.
-- The score is the same three lights, large, and one number.
+  both that runs down. The question never moves. The answer field has a yellow ring and a
+  blinking caret, so it is plain where the number goes.
+- The stop screen ends on its one button, pinned to the bottom of the screen where the Lock in
+  key was, so it is in view on any phone.
+- The score is one complete screen that never needs scrolling: the three lights, one number, one
+  button, and when the next three arrive. Once today is done it is also the home screen, so
+  there is nowhere to go back to. The answers are one tap away.
 
-Yellow always means the thing to act on: the live light, and the single primary button.
+Yellow always means the thing to act on: the live light, the answer field, the one primary button.
 
 The night road behind is only a backdrop. It moves on a stretch each time a light turns green,
-from street lamps in town out to open country, so three greens end under a full sky. Nothing on
-it carries a number, and no animation ever holds up the next question.
+from street lamps in town out to open country, so three greens end under a full sky.
 
 ## What a refresh does
 
@@ -47,7 +59,8 @@ Every answer is saved the moment it is locked in, and the page reopens where it 
 
 - mid-question, back on the question with the time that is left (a refresh buys neither time nor a
   second guess);
-- on a verdict, the verdict again;
+- on a red light, the stop screen again; just after a green, the next question;
+- after the third, the score, which is the home screen for the rest of the day;
 - endless mode, a pass-the-phone party and a private round are saved step by step and resume;
 - two tabs share one game: an answer given in one shows in the other, and counts once.
 
