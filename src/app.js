@@ -241,10 +241,15 @@
   function replay(el, cls) { if (!el || calm) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
   function lamp(state, extra) { return '<i class="lt ' + state + (extra ? ' ' + extra : '') + '"></i>'; }
   function lightOf(r) { return r.f === 'right' ? 'green' : 'red'; }
-  // Three lights are the goal and the score in one. now: the question being asked. lit: the one that has just changed.
+  // Three lights are the goal and the score in one. now: the question being asked. lit: the one that has
+  // just changed. When the clock ran out there, the lights it took with it turn red one after another.
   function lightsHtml(res, now, cls, lit) {
-    var h = '', g = 0, k, r;
-    for (k = 0; k < 3; k++) { r = res[k]; if (r && r.f === 'right') g++; h += lamp(r ? lightOf(r) : k === now ? 'now' : 'off', k === lit ? 'lit' : ''); }
+    var h = '', g = 0, k, r, out = lit >= 0 && res[lit] && res[lit].f === 'time';
+    for (k = 0; k < 3; k++) {
+      r = res[k]; if (r && r.f === 'right') g++;
+      var fresh1 = k === lit || (out && k > lit && r && r.skip);
+      h += '<i class="lt ' + (r ? lightOf(r) : k === now ? 'now' : 'off') + (fresh1 ? ' lit' : '') + '"' + (fresh1 && k > lit ? ' style="animation-delay:' + ((k - lit) * 0.22) + 's"' : '') + '></i>';
+    }
     return '<div class="lights' + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + g + ' of 3 green">' + h + '</div>';
   }
   function react(f) { SFX[f](); buzz(f === 'right' ? [15, 40, 25] : 60); }
@@ -651,14 +656,16 @@
         '<button class="zero" data-act="key" data-k="0">0</button>' +
       '</div></div>';
   }
-  // The top of every question: where you stand on the left, the time on the right in big digits, and a
-  // bar under both that runs down. Once there is a verdict, the verdict takes the clock's place and the
-  // bar holds at what is left. lead: the lights, or a player's name. r: the answer, once given.
+  // The top of every question is one instrument: the lights on the left, the clock on the right, and
+  // between them a fuse that burns from the clock towards the lights. Nobody has to be told what
+  // happens when it gets there. In the last seconds the lights still to be won flash red.
+  // Once there is an answer the clock stays where it is, visibly stopped.
+  // lead: the lights, or a player's name. r: the answer, once given.
   function hudHtml(left, total, lead, r) {
-    var f = r ? lightOf(r) : '';
-    return '<div class="hud">' + lead +
-        (r ? '<b class="say ' + f + '" role="status">' + WORD[r.f] + '</b>' : '<b class="clock' + (left <= 15 ? ' low' : '') + '" id="clock" role="timer" aria-label="Time left">' + mmss(Math.ceil(left)) + '</b>') +
-      '</div><div class="bar' + (f ? ' ' + f : left <= 15 ? ' low' : '') + '"><i id="bar" style="transform:scaleX(' + Math.max(0, Math.min(1, left / total)) + ')"></i></div>';
+    var f = Math.max(0, Math.min(1, left / total));
+    return '<div class="hud' + (r ? ' stopped' : left <= 15 ? ' low' : '') + '" id="hud">' + lead +
+      '<div class="fuse" aria-hidden="true"><i id="bar" style="transform:scaleX(' + f + ')"></i><b id="spark" style="left:' + (f * 100) + '%"></b></div>' +
+      '<b class="clock" id="clock" role="timer" aria-label="' + (r ? 'Clock stopped. Time left' : 'Time left') + '">' + mmss(Math.ceil(left)) + '</b></div>';
   }
   function timeLeft(limit, start) { return Math.max(0, limit - (Date.now() - start) / 1000); }
   function plateHtml(q, label) {
@@ -677,11 +684,13 @@
     if (!ask) return;
     var left = ask.limit - (Date.now() - ask.start) / 1000;
     if (left <= 0) { lock(true); return; }
-    var c = document.getElementById('clock'), bar = document.getElementById('bar');
+    var c = document.getElementById('clock'), bar = document.getElementById('bar'), spark = document.getElementById('spark'), hud = document.getElementById('hud');
     if (!c) return;
-    var whole = Math.ceil(left), low = left <= 15;
-    c.textContent = mmss(whole); c.className = 'clock' + (low ? ' low' : '');
-    if (bar) { bar.style.transform = 'scaleX(' + Math.max(0, left / (ask.total || ask.limit)) + ')'; bar.parentNode.className = 'bar' + (low ? ' low' : ''); }
+    var whole = Math.ceil(left), f = Math.max(0, left / (ask.total || ask.limit));
+    c.textContent = mmss(whole);
+    if (bar) bar.style.transform = 'scaleX(' + f + ')';
+    if (spark) spark.style.left = (f * 100) + '%';
+    if (hud) hud.className = 'hud' + (left <= 15 ? ' low' : '');
     if (whole <= 10 && whole !== lastBeep) { lastBeep = whole; SFX.beep(); }
   }
   function paintTyped(pop) {
@@ -733,6 +742,7 @@
   function resultHtml(q, r, i, nextLabel) {
     var ans = E.show(q, q.a);
     return '<div class="result">' +
+      '<p class="say ' + lightOf(r) + '" role="status">' + WORD[r.f] + '</p>' +
       '<p class="lab">The answer</p><p class="big' + (ans.length > 10 ? ' sm' : '') + '">' + esc(ans) + '</p>' +
       '<p class="you">' + esc(youLine(q, r)) + '</p>' +
       '<p class="why">' + esc(q.why) + '</p>' +
@@ -763,7 +773,6 @@
     view.innerHTML =
       '<section class="play">' +
         hudHtml(left, LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
-        '<p class="cap">' + (!r ? 'One clock for all three questions.' : r.f === 'time' ? 'The clock ran out.' : 'Clock stopped with ' + mmss(left) + ' left.') + '</p>' +
         plateHtml(q, 'Question ' + (i + 1) + ' of 3') +
         (r ? resultHtml(q, r, i, last ? 'See your result' : 'Next question') : entryHtml()) +
       '</section>';

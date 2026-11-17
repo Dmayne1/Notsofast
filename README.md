@@ -28,9 +28,14 @@ running out of time turns it red. The goal is three greens.
 - **Green means go.** The light changes and the next question arrives by itself. Nothing to press.
 - **Red means stop.** The clock stops and the screen shows the answer and one line on why, with
   one button to carry on.
-- **One clock for all three.** Three minutes, running only while a question is on screen. The
-  line under the bar always says so ("One clock for all three questions", then "Clock stopped
-  with 2:54 left"). If it runs out, the question on screen and any not yet reached turn red.
+- **One clock for all three.** Three minutes, running only while a question is on screen. If it
+  runs out, the question on screen and any not yet reached turn red; greens already won stay.
+
+The clock's consequence is shown, not written. The top of the screen is one instrument: the
+lights on the left, the clock on the right, and between them a fuse that burns from the clock
+towards the lights, with a spark at the burning end. In the last fifteen seconds the fuse turns
+red and every light still to be won flashes red. When the spark arrives, those lights turn red
+one after another. On a stop screen the clock keeps its place, greyed, with a pause mark.
 
 The score is how many greens, with total time to break a tie. Party and endless mode keep a
 clock per question (a minute each), because there the questions belong to different players or
@@ -39,8 +44,7 @@ never end.
 Every screen is built around that:
 
 - The front page says the goal, shows the three lights and has one yellow button.
-- A question shows the lights on the left, the time in large digits on the right and a bar under
-  both that runs down. The question never moves. The answer field has a yellow ring and a
+- A question shows the lights, the fuse and the time in large digits on one line. The question never moves. The answer field has a yellow ring and a
   blinking caret, so it is plain where the number goes.
 - The stop screen ends on its one button, pinned to the bottom of the screen where the Lock in
   key was, so it is in view on any phone.

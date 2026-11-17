@@ -163,7 +163,10 @@ async def first_visit(b):
         q = await screen(s.page)
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
         check('Play goes straight to question one with a big clock', q['entry'] and q['clock'] in ('3:00', '2:59'), q['clock'])
-        check('the screen says it is one clock for all three', 'One clock for all three questions' in q['text'], q['text'][:120])
+        g = await s.page.evaluate("""() => { const r = e => e.getBoundingClientRect(), hud = document.getElementById('hud'), L = r(hud.querySelector('.lights')), F = r(hud.querySelector('.fuse')), C = r(document.getElementById('clock')), S = r(document.getElementById('spark'));
+          return { order: L.right <= F.left + 6 && F.right <= C.left + 2, joined: F.left - L.right, toClock: C.left - F.right, level: Math.abs((L.top + L.bottom) / 2 - (F.top + F.bottom) / 2), fuse: F.width, spark: S.left + S.width / 2 - F.left, words: !!document.querySelector('#view .cap') }; }""")
+        check('a fuse runs from the clock into the lights, on one line, with no caption', g['order'] and g['joined'] <= 8 and g['toClock'] <= 20 and g['level'] <= 3 and g['fuse'] >= 60 and not g['words'], g)
+        check('the spark starts at the clock end of the fuse', g['spark'] >= g['fuse'] * 0.9, g)
         check('the first light is live and the others are off', len(lights) == 3 and 'now' in lights[0] and 'off' in lights[1] and 'off' in lights[2], lights)
         size = await s.page.evaluate("() => parseFloat(getComputedStyle(document.getElementById('clock')).fontSize)")
         check('the clock is large', size >= 38, size)
@@ -194,7 +197,10 @@ async def refresh_daily(b):
         check('the clock carries on from where it was, it does not reset', q2['clock'] is not None and '2:40' <= q2['clock'] <= '2:57', q2['clock'])
         await answer(s.page, qs[1]['baits'][0] if qs[1]['baits'] else await wrong_for(s.page, qs[1]))
         r = await screen(s.page)
-        check('a wrong answer stops on the verdict', r['result'] and ('not so fast' in r['text'].lower() or 'wrong' in r['text'].lower()) and 'Clock stopped' in r['text'], r['text'][:160])
+        check('a wrong answer stops on the verdict', r['result'] and ('not so fast' in r['text'].lower() or 'wrong' in r['text'].lower()), r['text'][:160])
+        hud = await s.page.evaluate("() => ({ cls: document.getElementById('hud').className, spark: getComputedStyle(document.getElementById('spark')).display, wide: innerWidth })")
+        check('the clock stays on screen and shows it is stopped', 'stopped' in hud['cls'] and hud['spark'] == 'none' and r['clock'] is not None and r['clock'] >= '2:40', (hud, r['clock']))
+        check('nothing widens the page', hud['wide'] == 390, hud['wide'])
         yellow = await s.page.evaluate("() => [...document.querySelectorAll('#view button')].filter(b => getComputedStyle(b).backgroundImage.includes('255, 228, 92')).map(b => b.textContent)")
         check('the only yellow button is Next question', yellow == ['Next question'], yellow)
         hits = len([h for h in s.hits if h.startswith('hit/')])
@@ -263,7 +269,7 @@ async def out_of_fuel(b):
         await s.page.reload(); await s.page.wait_for_timeout(600)
         a = await screen(s.page)
         if not a['result'] and 'home' in a['cls']: await press(s.page, 'daily'); a = await screen(s.page)
-        check('coming back late shows out of time', a['result'] and 'ran out of time' in a['text'] and 'The clock ran out' in a['text'] and 'NaN' not in a['text'], a['text'][:200])
+        check('coming back late shows out of time', a['result'] and 'ran out of time' in a['text'] and a['clock'] == '0:00' and 'NaN' not in a['text'], a['text'][:200])
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
         check('with the clock gone, all three lights are red', all('red' in c for c in lights), lights)
         await press(s.page, 'next')
@@ -273,6 +279,24 @@ async def out_of_fuel(b):
         a3 = await screen(s.page)
         check('questions the clock never reached are marked as such', a3['sheetText'].count('not reached') == 2, a3['sheetText'][:200])
         check('no errors', not s.errors, s.errors)
+
+
+async def last_seconds(b):
+    print('the last seconds of the clock')
+    async with Site(b, calm=False) as s:
+        await s.returning()
+        await press(s.page, 'daily')
+        await s.page.evaluate("k => { const d = JSON.parse(localStorage.getItem(k)); d.daily.qStart = Date.now() - 170000; localStorage.setItem(k, JSON.stringify(d)); }", KEY)
+        await s.page.reload(); await s.page.wait_for_timeout(500)
+        w = await s.page.evaluate("""() => { const hud = document.getElementById('hud'), F = hud.querySelector('.fuse').getBoundingClientRect(), S = document.getElementById('spark').getBoundingClientRect();
+          return { cls: hud.className, anim: [...hud.querySelectorAll('.lt')].map(e => getComputedStyle(e).animationName), spark: (S.left + S.width / 2 - F.left) / F.width, clock: document.getElementById('clock').textContent }; }""")
+        check('with seconds left the spark is nearly at the lights', 'low' in w['cls'] and w['spark'] < 0.1 and w['clock'] <= '0:10', w)
+        check('and every light still to be won flashes red', w['anim'] == ['warnnow', 'warn', 'warn'], w['anim'])
+        await s.page.wait_for_timeout(10500)
+        a = await screen(s.page)
+        lights = await s.page.evaluate("() => [...document.querySelectorAll('#hud .lt')].map(e => e.className)")
+        check('when it gets there, all three turn red in front of you', a['result'] and all('red' in c for c in lights) and 'out of time' in a['text'].lower(), (lights, a['text'][:60]))
+        check('no errors in the last seconds', not s.errors, s.errors)
 
 
 async def two_tabs(b):
@@ -713,7 +737,7 @@ async def https(b):
         await s.open()
         check('other addresses (tests, the preview copy) are left alone', s.page.url.startswith('http://localhost'), s.page.url)
 
-ALL = [https, leaving, first_visit, refresh_daily, out_of_fuel, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
+ALL = [https, leaving, first_visit, refresh_daily, out_of_fuel, last_seconds, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
 
 async def main():
     want = sys.argv[1:]

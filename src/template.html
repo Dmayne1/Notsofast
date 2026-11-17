@@ -8,7 +8,7 @@
 if (location.protocol === 'http:' && /(^|\.)playnotsofast\.com$/.test(location.hostname)) location.replace('https://' + location.host + location.pathname + location.search + location.hash);
 </script>
 <link rel="canonical" href="https://playnotsofast.com/">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
 <title>Not So Fast</title>
 <meta name="description" content="Three trick questions a day. One guess each. The obvious answer is the trap.">
 <meta property="og:title" content="Not So Fast">
@@ -43,7 +43,8 @@ if (location.protocol === 'http:' && /(^|\.)playnotsofast\.com$/.test(location.h
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: #07090f; color: var(--fg); font-family: var(--body); font-weight: 500; font-size: 17px; line-height: 1.45; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+html { overflow-x: hidden; }   /* nothing may ever widen the page: on a phone that would resize everything behind it. On html only, so the page itself still scrolls. */
+body { margin: 0; background: #07090f; color: var(--fg); font-family: var(--body); font-weight: 500; font-size: 17px; line-height: 1.45; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
 button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; border: 0; background: none; padding: 0; -webkit-user-select: none; user-select: none; }
 :focus-visible { outline: 2px solid var(--sign); outline-offset: 3px; }
 [hidden] { display: none !important; }
@@ -100,21 +101,32 @@ main { flex: 1; display: flex; flex-direction: column; }
 .lights.big.fresh .lt:nth-child(2) { animation-delay: 0.14s; }
 .lights.big.fresh .lt:nth-child(3) { animation-delay: 0.28s; }
 
-/* Play: where you stand on the left, the time on the right, a bar under both that runs down */
+/* Play: one instrument. The lights, the clock, and a fuse burning from the clock towards the lights. */
 .play { flex: 1; display: flex; flex-direction: column; }
-.hud { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; flex: none; }
-.chip { min-width: 0; margin-right: auto; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.7rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hudn { margin-right: auto; color: #d8d9dd; font-size: 0.98rem; font-weight: 700; white-space: nowrap; }
+.hud { display: flex; align-items: center; height: 56px; flex: none; }
+.hud .lights { gap: 8px; }
+.hud .lt { width: 30px; height: 30px; }
+.chip { min-width: 0; max-width: 46%; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.7rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hudn { margin-left: 10px; color: #d8d9dd; font-size: 0.98rem; font-weight: 700; white-space: nowrap; }
+.fuse { position: relative; flex: 1; min-width: 30px; height: 6px; margin: 0 14px 0 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.13); }
+.chip + .fuse, .hudn + .fuse { margin-left: 12px; }
+.fuse i { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 3px; background: var(--sign); box-shadow: 0 0 10px rgba(255, 210, 31, 0.55); transform-origin: left center; transition: transform 0.2s linear; }
+.fuse b { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle, #fff 0, #fff 22%, #FFD21F 44%, rgba(255, 150, 31, 0) 72%); box-shadow: 0 0 16px 4px rgba(255, 190, 31, 0.85); transition: left 0.2s linear; animation: spark 0.34s steps(2) infinite; }
 .clock { flex: none; color: var(--fg); font-family: var(--disp); font-weight: 800; font-size: 2.9rem; line-height: 1; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7); }
-.clock.low { color: #ff5a4d; }
-.say { flex: none; font-family: var(--disp); font-weight: 800; font-size: 2.3rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; animation: arrive 0.25s ease-out both; }
+/* the last seconds: the fuse is nearly at the lights, and every light still to be won flashes red */
+.hud.low .clock { color: #ff5a4d; }
+.hud.low .fuse i { background: #ff4133; box-shadow: 0 0 10px rgba(255, 65, 51, 0.6); }
+.hud.low .fuse b { background: radial-gradient(circle, #fff 0, #fff 22%, #ff4133 44%, rgba(255, 65, 51, 0) 72%); box-shadow: 0 0 16px 4px rgba(255, 65, 51, 0.85); }
+.hud.low .lt.off { animation: warn 0.6s steps(1) infinite; }
+.hud.low .lt.now { animation: warnnow 0.6s steps(1) infinite; }
+/* stopped: the clock keeps its place and shows it is paused */
+.hud.stopped .clock { color: rgba(243, 243, 241, 0.5); }
+.hud.stopped .clock::before { content: ""; display: inline-block; width: 5px; height: 0.56em; margin-right: 10px; border-left: 5px solid currentColor; border-right: 5px solid currentColor; vertical-align: 0.07em; }
+.hud.stopped .fuse i { background: rgba(255, 255, 255, 0.45); box-shadow: none; }
+.hud.stopped .fuse b { display: none; }
+.say { font-family: var(--disp); font-weight: 800; font-size: 2.3rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; animation: arrive 0.25s ease-out both; }
 .say.green { color: #3ddc84; text-shadow: 0 0 24px rgba(34, 213, 114, 0.5); }
 .say.red { color: #ff5a4d; text-shadow: 0 0 24px rgba(255, 65, 51, 0.45); }
-.bar { height: 6px; flex: none; margin-top: 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
-.bar i { display: block; height: 100%; border-radius: 3px; background: var(--sign); transform-origin: left center; transition: transform 0.2s linear; }
-.bar.low i, .bar.red i { background: #ff4133; }
-.bar.green i { background: #22d572; }
-.cap { margin-top: 7px; color: #c3c5cc; font-size: 0.86rem; line-height: 1; text-align: right; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
 
 /* The question is set straight on the road: no card */
 .plate-q { flex: none; margin-top: 12px; padding: 14px 16px 16px; border-radius: 14px; background: rgba(8, 9, 13, 0.84); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 10px 30px rgba(0, 0, 0, 0.4); }
@@ -161,8 +173,9 @@ body.desk .pad button:hover { filter: brightness(1.14); }
 /* a soft dim over the whole backdrop wherever there is a lot to read: no edges */
 .result::before, .pass::before, .rev::before, .numbers::before { content: ""; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: -1; background: rgba(7, 9, 15, 0.42); pointer-events: none; }
 .pass::before, .rev::before, .numbers::before { background: rgba(7, 9, 15, 0.74); }
+.result .say { align-self: flex-start; margin-bottom: 12px; transform-origin: left center; }
 .result .lab { color: var(--mut); font-weight: 700; font-size: 0.92rem; }
-.result .big { font-family: var(--disp); font-weight: 800; font-size: 3.1rem; line-height: 1.02; letter-spacing: 0.01em; }
+.result .big { font-family: var(--disp); font-weight: 800; font-size: 2.7rem; line-height: 1.02; letter-spacing: 0.01em; }
 .result .big.sm { font-size: 2.2rem; }
 .result .you { margin-top: 4px; font-size: 1.04rem; line-height: 1.3; }
 .why { margin-top: 12px; color: #e3e3e0; font-size: 1.04rem; line-height: 1.45; }
@@ -288,6 +301,9 @@ body.desk .foot { margin-top: 26px; }
 @keyframes pop { 0% { transform: scale(0.94); } 100% { transform: scale(1); } }
 @keyframes hold { 0% { opacity: 1; } 100% { opacity: 0.5; } }
 @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes spark { 0% { transform: scale(1); } 50% { transform: scale(1.4); } }
+@keyframes warn { 0%, 49% { background: radial-gradient(circle at 36% 30%, #ffd0ca, #ff4133 46%, #b0180d); box-shadow: 0 0 0 3px rgba(255, 65, 51, 0.18), 0 0 18px rgba(255, 65, 51, 0.7); } 50%, 100% { background: rgba(8, 9, 13, 0.75); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.24); } }
+@keyframes warnnow { 0%, 49% { background: radial-gradient(circle at 36% 30%, #ffd0ca, #ff4133 46%, #b0180d); box-shadow: 0 0 0 3px rgba(255, 65, 51, 0.18), 0 0 18px rgba(255, 65, 51, 0.7); } 50%, 100% { background: radial-gradient(circle at 36% 30%, #fff6c2, #FFD21F 46%, #c79a00); box-shadow: 0 0 0 3px rgba(255, 210, 31, 0.18), 0 0 20px rgba(255, 210, 31, 0.75); } }
 @keyframes live { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @keyframes lit { 0% { transform: scale(0.55); filter: brightness(2.4); } 100% { transform: none; filter: none; } }
 
@@ -304,9 +320,11 @@ body.desk .foot { margin-top: 26px; }
 }
 @media (max-height: 650px) {
   .top { height: 46px; }
-  .hud { height: 44px; }
+  .hud { height: 46px; }
+  .hud .lt { width: 26px; height: 26px; }
   .clock { font-size: 2.4rem; }
   .say { font-size: 2rem; }
+  .result .say { margin-bottom: 8px; }
   .plate-q { margin-top: 8px; padding: 10px 14px 12px; }
   .lvl { margin-bottom: 8px; }
   .q { font-size: 1.3rem; }
@@ -317,7 +335,7 @@ body.desk .foot { margin-top: 26px; }
   .pad { gap: 7px; margin-top: 8px; }
   .pad button { height: 42px; font-size: 1.25rem; }
   .hero .sg { width: 112px; height: 112px; }
-  .result .big { font-size: 2.5rem; }
+  .result .big { font-size: 2.3rem; }
   .tally { margin-top: 12px; font-size: 4rem; }
   .lights.big .lt { width: 50px; height: 50px; }
   .endno { margin-bottom: 12px; }
@@ -333,8 +351,8 @@ body.desk .foot { margin-top: 26px; }
   .read { height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .read.shake, .read.pop .v, .read.locking, .hero .sg, .say, .read .ph::before, .read .v b::after, .lt.now, .lt.lit, .lights.big.fresh .lt, .prow.show .lt { animation: none; }
-  .bar i { transition: none; }
+  .read.shake, .read.pop .v, .read.locking, .hero .sg, .say, .fuse b, .hud.low .lt.off, .hud.low .lt.now, .read .ph::before, .read .v b::after, .lt.now, .lt.lit, .lights.big.fresh .lt, .prow.show .lt { animation: none; }
+  .fuse i, .fuse b { transition: none; }
 }
 </style>
 </head>
