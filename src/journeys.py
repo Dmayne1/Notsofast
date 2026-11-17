@@ -737,7 +737,71 @@ async def https(b):
         await s.open()
         check('other addresses (tests, the preview copy) are left alone', s.page.url.startswith('http://localhost'), s.page.url)
 
-ALL = [https, leaving, first_visit, refresh_daily, out_of_fuel, last_seconds, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
+async def analytics(b):
+    print('analytics')
+    import os
+    html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'), encoding='utf-8').read()
+    STUB = "window.posthog = { init: function (k, c) { window.__phInit = [k, c]; }, capture: function (n, p) { (window.__ph = window.__ph || []).push([n, p]); } };"
+    KEYED = "window.__NSF_PH_KEY = 'phc_test';"
+    async def live(s, asked):
+        async def page(route): await route.fulfill(status=200, content_type='text/html', body=html)
+        async def lib(route):
+            asked.append(route.request.url)
+            await route.fulfill(status=200, content_type='application/javascript', headers={'access-control-allow-origin': '*'}, body=STUB)
+        await s.ctx.route(re.compile(r'^https://playnotsofast\.com/'), page)
+        await s.ctx.route(re.compile(r'posthog\.com/'), lib)
+    asked = []
+    async with Site(b) as s:                              # no key set: nothing is loaded and nothing is sent
+        await live(s, asked)
+        await s.page.goto('https://playnotsofast.com/'); await s.page.wait_for_timeout(500)
+        await play_day(s)
+        check('with no key, the analytics library is never fetched', not asked and not await s.page.evaluate("() => !!window.posthog"), asked)
+    asked = []
+    async with Site(b, init=(KEYED,)) as s:               # a key, but not the live site: still nothing
+        await live(s, asked)
+        await s.open(); await play_day(s)
+        check('away from the live site nothing is sent, even with a key', not asked, asked)
+    asked = []
+    async with Site(b, init=(KEYED,), ua=TIKTOK) as s:
+        await live(s, asked)
+        await s.page.goto('https://playnotsofast.com/?utm_source=tiktok&c=Maya_K'); await s.page.wait_for_timeout(600)
+        cfg = await s.page.evaluate("() => window.__phInit")
+        check('on the live site it loads from the EU and starts cookieless',
+              bool(cfg) and cfg[0] == 'phc_test' and cfg[1].get('api_host') == 'https://eu.i.posthog.com' and cfg[1].get('cookieless_mode') == 'always'
+              and cfg[1].get('person_profiles') == 'never' and cfg[1].get('autocapture') is False and cfg[1].get('disable_session_recording') is True
+              and len(asked) == 1 and asked[0].startswith('https://eu-assets.i.posthog.com/static/'), (cfg, asked))
+        qs = await play_day(s, how=('right', 'bait', 'wrong'))
+        await press(s.page, 'copy'); await press(s.page, 'close')
+        await press(s.page, 'answers'); await press(s.page, 'close')
+        ev = await s.page.evaluate("() => window.__ph || []")
+        names = [e[0] for e in ev]
+        check('one day of play is one clean run of events', names == ['game_start', 'question_answered', 'question_answered', 'question_answered', 'game_finish', 'share', 'answers_opened'], names)
+        ans = [e[1] for e in ev if e[0] == 'question_answered']
+        want = ['right', 'trap' if qs[1]['baits'] else 'wrong', 'wrong']
+        check('each answer says which question, how hard, and how it went',
+              [a['slot'] for a in ans] == [1, 2, 3] and [a['grade'] for a in ans] == [2, 3, 4] and [a['verdict'] for a in ans] == want
+              and all(re.match(r'^[a-z0-9]+$', a['kind']) and a['mode'] == 'daily' and isinstance(a['secs'], int) for a in ans), ans)
+        fin = [e[1] for e in ev if e[0] == 'game_finish'][0]
+        check('the finish says how the day went', fin['greens'] == 1 and fin['mode'] == 'daily' and fin['timed_out'] is False and fin['game_day'] >= 1, fin)
+        check('every event carries where the visit came from', all(e[1]['src'] == 'tiktok' and e[1]['creator'] == 'maya_k' and e[1]['in_app'] == 'TikTok' and e[1]['keypad'] in ('phone', 'computer') for e in ev), ev[0][1])
+        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'verdict', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
+        extra = sorted({k for e in ev for k in e[1]} - allowed)
+        check('no event carries anything about the person', not extra, extra)
+        kept = await s.page.evaluate("() => ({ cookies: document.cookie, local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() })")
+        check('nothing extra is stored on the device', kept['cookies'] == '' and kept['local'] == ['nsf.v4'] and all(k == 'nsf.field' for k in kept['session']), kept)
+        check('no errors with analytics on', not s.errors, s.errors)
+    asked = []
+    async with Site(b, init=(KEYED,)) as s:               # a friend's link, and the library failing to load
+        async def page(route): await route.fulfill(status=200, content_type='text/html', body=html)
+        await s.ctx.route(re.compile(r'^https://playnotsofast\.com/'), page)
+        await s.ctx.route(re.compile(r'posthog\.com/'), lambda r: r.abort())
+        d = await (await s.tab()).evaluate("() => 1")
+        await s.page.goto('https://playnotsofast.com/#tABC-1-2-300'); await s.page.wait_for_timeout(500)
+        await play_day(s)
+        e = await screen(s.page)
+        check('if the analytics library cannot load, the game is untouched', 'end' in e['cls'] and not s.errors, (e['cls'], s.errors))
+
+ALL = [analytics, https, leaving, first_visit, refresh_daily, out_of_fuel, last_seconds, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
 
 async def main():
     want = sys.argv[1:]

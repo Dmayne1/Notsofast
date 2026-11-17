@@ -1354,6 +1354,55 @@ body.desk .foot { margin-top: 26px; }
     return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
   }
 
+  /* ---------- Analytics: who comes, where from, and how they get on ----------
+     PostHog, on its EU cloud, in cookieless mode: nothing is stored on the player's device and no
+     identifier is kept, so a visitor is counted by a hash that changes every day. Every event carries
+     only what just happened in the game. PH_KEY is the project key from PostHog (public by design);
+     while it is empty nothing is loaded and nothing is sent. It only ever runs on the live site. */
+  var PH_KEY = window.__NSF_PH_KEY || '';
+  var PH_HOST = 'https://eu.i.posthog.com';
+  var LIVE = /(^|\.)playnotsofast\.com$/.test(location.hostname);
+  var ph = null, phq = [];
+  // Where this visit came from: a tagged link (?utm_source=tiktok, or ?c=name for one creator's link), the app it was opened in, or the referring site.
+  var CREATOR = (function () { var m = /[?&]c=([A-Za-z0-9_-]{1,30})(&|#|$)/.exec(location.search || ''); return m ? m[1].toLowerCase() : ''; })();
+  var SRC = (function () {
+    var m = /[?&]utm_source=([A-Za-z0-9_.-]{1,30})(&|#|$)/.exec(location.search || '');
+    if (m) return m[1].toLowerCase();
+    if (CREATOR) return 'creator';
+    if (INAPP) return INAPP.toLowerCase();
+    try { var h = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; return !h || /playnotsofast\.com$/.test(h) ? 'direct' : h.slice(0, 40); } catch (e) { return 'direct'; }
+  })();
+  function track(name, props) {
+    if (!PH_KEY || !LIVE) return;
+    var p = { src: SRC, in_app: INAPP || 'no', keypad: desk ? 'computer' : 'phone' }, k;
+    if (CREATOR) p.creator = CREATOR;
+    for (k in props) p[k] = props[k];
+    if (ph) { try { ph.capture(name, p); } catch (e) { /* analytics never breaks the game */ } }
+    else if (phq.length < 300) phq.push([name, p]);
+  }
+  function loadAnalytics() {
+    if (!PH_KEY || !LIVE || ph) return;
+    var s = document.createElement('script');
+    s.async = true; s.crossOrigin = 'anonymous';
+    s.src = PH_HOST.replace('.i.posthog.com', '-assets.i.posthog.com') + '/static/array.js';
+    s.onload = function () {
+      try {
+        var lib = window.posthog;
+        lib.init(PH_KEY, { api_host: PH_HOST, defaults: '2026-01-30', cookieless_mode: 'always', person_profiles: 'never',
+          autocapture: false, capture_pageview: true, capture_pageleave: true, disable_session_recording: true, disable_surveys: true, advanced_disable_flags: true });
+        ph = window.posthog || lib;
+        phq.forEach(function (e) { ph.capture(e[0], e[1]); }); phq = [];
+      } catch (e) { ph = null; }
+    };
+    document.head.appendChild(s);
+  }
+  // The few facts worth knowing about one answer, the same in every mode.
+  function trackAnswer(mode, q, r, slot, extra) {
+    var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
+    for (k in extra) p[k] = extra[k];
+    track('question_answered', p);
+  }
+
   /* ---------- Live counters ---------- */
   // A refused or garbled reply is a failure, never a zero: a wrong number on screen is worse than none.
   // After any failure the game leaves the service alone for a minute rather than keep knocking.
@@ -1418,7 +1467,7 @@ body.desk .foot { margin-top: 26px; }
     if ((m = /^(d\d{1,5})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: m[1], n: +m[2], s: +m[3] };
     else if ((m = /^(t[A-Z0-9]{1,8}-[1-9]\d?)-([0-3])-(\d{1,3})$/.exec(h))) v = { key: m[1], n: +m[2], s: +m[3] };
     if (v) v = okRival(v);
-    if (v) { store.rival = v; save(); }
+    if (v) { store.rival = v; save(); track('challenge_arrived', { mode: v.code ? 'private' : 'daily' }); }
     if (h && h !== 'numbers') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } }
     return h;
   }
@@ -1469,14 +1518,14 @@ body.desk .foot { margin-top: 26px; }
   function startDaily() {
     if (adopt()) save();   // another tab may have played on
     var d = today();
-    if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); }
+    if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); track('game_start', { mode: 'daily', game_day: d }); }
     game = { mode: 'daily', day: d, set: E.buildDaily(d), st: store.daily };
     fresh = false;
     if (game.st.done) end(false); else play();
   }
   function startTable(code, round) {
     game = { mode: 'table', code: code, round: round, set: E.buildTable(code, round), st: { idx: 0, res: [], qStart: Date.now(), done: false } };
-    fresh = false; keep();
+    fresh = false; keep(); track('game_start', { mode: 'private' });
     play();
   }
   function persist() { if (!game) return; if (game.mode === 'daily') save(); else keep(); }
@@ -1682,6 +1731,7 @@ body.desk .foot { margin-top: 26px; }
         st.res[i] = res;
         if (res.f === 'time') for (var k = i + 1; k < 3; k++) st.res[k] = { t: '', f: 'time', secs: 0, skip: 1 };   // the clock ran out: the rest are never reached
         persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res);
+        trackAnswer(mode === 'daily' ? 'daily' : 'private', q, res, i + 1, mode === 'daily' ? { game_day: day, clock_left: Math.max(0, budget - res.secs) } : { clock_left: Math.max(0, budget - res.secs) });
       },
       reveal: function (res) {
         if (res.f !== 'right') { fresh = true; play(); fresh = false; react(res.f); return; }   // red: stop, and see why
@@ -1710,6 +1760,7 @@ body.desk .foot { margin-top: 26px; }
       }
     }
     var first = !st.done;
+    if (first) track('game_finish', { mode: game.mode === 'daily' ? 'daily' : 'private', game_day: game.day || 0, greens: rightCount(st), secs: totalSecs(st), timed_out: st.res.some(function (r) { return r.f === 'time'; }), vs_friend: !!rivalHere() });
     st.done = true;
     if (game.mode === 'table' && rivalHere()) store.rival.played = 1;   // the challenge has been answered: do not offer it again
     persist();
@@ -1808,6 +1859,7 @@ body.desk .foot { margin-top: 26px; }
   function startRun() {
     if (adopt()) save();
     game = { mode: 'run', n: 0, lives: RUN_LIVES, right: 0, strikes: [], recent: [], cur: null, res: null, seed: Date.now() + '-' + Math.random() };
+    track('game_start', { mode: 'endless' });
     runNext();
   }
   function runNext() {
@@ -1838,7 +1890,7 @@ body.desk .foot { margin-top: 26px; }
       '</section>';
     if (r) return;
     beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
-      commit: function (res) { game.res = res; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); },
+      commit: function (res) { game.res = res; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); keep(); trackAnswer('endless', q, res, game.n); },
       reveal: function (res) {
         if (res.f !== 'right') { fresh = true; runPlay(); fresh = false; react(res.f); return; }
         var n = view.querySelector('.hudn'), g = game; if (n) n.textContent = game.right + ' green';
@@ -1850,6 +1902,7 @@ body.desk .foot { margin-top: 26px; }
     stopTimers(); ask = null;
     var s = store.stats, old = again ? game.was : s.runTop || 0, isBest = game.right > old;
     if (isBest) s.runTop = Math.max(s.runTop || 0, game.right);
+    if (!again) track('game_finish', { mode: 'endless', greens: game.right, questions: game.n, best: isBest });
     game.over = true; game.was = old;
     save(); keep();
     setRoad(game.right * RUN_STEP);
@@ -1871,7 +1924,7 @@ body.desk .foot { margin-top: 26px; }
     var seed = Date.now() + '-' + Math.random();
     game = { mode: 'party', players: names.map(function (nm) { return { name: nm, right: 0, bait: 0, secs: 0 }; }),
       seed: seed, set: E.buildParty(seed, count), k: 0, turn: 0, ans: [], scored: [], at: 'pass', start: 0 };
-    setRoad(0);
+    setRoad(0); track('game_start', { mode: 'party', players: names.length, questions: count });
     partyPass();
   }
   function order() { var n = game.players.length, o = []; for (var i = 0; i < n; i++) o.push((game.k + i) % n); return o; }   // a different player goes first each time
@@ -1908,7 +1961,7 @@ body.desk .foot { margin-top: 26px; }
         plateHtml(q, 'Question ' + (k + 1) + ' of ' + game.set.length) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: game.start, beat: false,
-      commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; game.turn++; game.at = game.turn < game.players.length ? 'pass' : 'gather'; keep(); },
+      commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; game.turn++; game.at = game.turn < game.players.length ? 'pass' : 'gather'; keep(); trackAnswer('party', q, r, k + 1); },
       reveal: function () { SFX.lock(); if (game.turn < game.players.length) partyPass(); else partyGather(); } });
   }
   function partyGather() {
@@ -1964,7 +2017,9 @@ body.desk .foot { margin-top: 26px; }
   }
   function listNames(ps) { var n = ps.map(function (p) { return p.name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; }
   function partyFinal() {
-    stopTimers(); game.at = 'final'; keep();
+    stopTimers();
+    if (game.at !== 'final') track('game_finish', { mode: 'party', players: game.players.length, questions: game.set.length });
+    game.at = 'final'; keep();
     var r = ranked(), top = r.filter(function (p) { return p.right === r[0].right && p.secs === r[0].secs; });
     var most = Math.max.apply(null, r.map(function (p) { return p.bait; })), trapped = r.filter(function (p) { return p.bait === most; });
     view.innerHTML =
@@ -2006,7 +2061,7 @@ body.desk .foot { margin-top: 26px; }
       '</div>' +
       '<p>The questions go from easy to hard. A new three arrive at midnight.</p>' +
       '<p>Your result comes with a link, so a friend can play the same three and see who won.</p>' +
-      '<p class="small">To show how other players did, the game sends anonymous counts of answers. Nothing about you is sent or stored.</p>');
+      '<p class="small">To show how players are doing, the game sends anonymous counts of visits and answers. It stores nothing on your device to follow you, and sends nothing that says who you are.</p>');
   }
   function stats() { sheet('Your record', statsBlock()); }
   function stepper(label, value, minus, plus) {
@@ -2094,6 +2149,7 @@ body.desk .foot { margin-top: 26px; }
     try { if (window.console) console.error('Not So Fast:', e && (e.message || e)); } catch (x) { /* no console */ }
     try { if (STATS && window.fetch) api('hit', SETV + 'err').catch(function () {}); } catch (x) { /* fine */ }
     var el = document.getElementById('oops'); if (el) el.hidden = false;
+    track('game_error', { message: String((e && (e.message || e)) || '').slice(0, 120) });
   }
   window.addEventListener('error', function (e) { if (e && e.filename && e.filename.split('#')[0] === location.href.split('#')[0]) oops(e); });
   document.addEventListener('click', function (e) { try { tap(e); } catch (x) { oops(x); } });
@@ -2113,24 +2169,24 @@ body.desk .foot { margin-top: 26px; }
       else runNext();
     }
     else if (act === 'run') { closeSheet(); startRun(); }
-    else if (act === 'runshare') send(NAME + ', endless mode\n' + EMOJI.right + ' ' + game.right + ' green ' + (game.right === 1 ? 'light' : 'lights') + ' before three reds\n' + SITE, 'Copied. Paste it anywhere.');
+    else if (act === 'runshare') { track('share', { what: 'endless', mode: 'endless', greens: game.right }); send(NAME + ', endless mode\n' + EMOJI.right + ' ' + game.right + ' green ' + (game.right === 1 ? 'light' : 'lights') + ' before three reds\n' + SITE, 'Copied. Paste it anywhere.'); }
     else if (act === 'daily') startDaily();
     else if (act === 'friends') friendsSheet();
     else if (act === 'party') partySheet();
     else if (act === 'table') tableSheet();
-    else if (act === 'help') help();
+    else if (act === 'help') { help(); track('help_opened', {}); }
     else if (act === 'stats') stats();
-    else if (act === 'answers') answersSheet();
+    else if (act === 'answers') { answersSheet(); track('answers_opened', { mode: game.mode === 'daily' ? 'daily' : 'private' }); }
     else if (act === 'inapp') inAppSheet();
     else if (act === 'close') closeSheet();
-    else if (act === 'copy') send(shareText(), 'Copied. Paste it to a friend.');
-    else if (act === 'friend') { var fi = t.getAttribute('data-i'); send(fi === 'run' ? friendText(game.cur, game.res) : friendText(game.set[+fi], game.st.res[+fi]), 'Question copied. Paste it to a friend.'); }
+    else if (act === 'copy') { send(shareText(), 'Copied. Paste it to a friend.'); track('share', { what: 'result', mode: game.mode === 'daily' ? 'daily' : 'private', greens: rightCount(game.st) }); }
+    else if (act === 'friend') { track('share', { what: 'question', mode: game.mode }); var fi = t.getAttribute('data-i'); send(fi === 'run' ? friendText(game.cur, game.res) : friendText(game.set[+fi], game.st.res[+fi]), 'Question copied. Paste it to a friend.'); }
     else if (act === 'sound') { store.sound = !store.sound; save(); paintSound(); if (store.sound) SFX.key(); }
     else if (act === 'home') {
       var mid = game && ((game.mode === 'run' && !game.over) || (game.mode === 'party' && game.at !== 'final') || (game.mode === 'table' && !game.st.done));
       if (mid && !t.hasAttribute('data-sure')) leaveSheet(); else { closeSheet(); home(); }
     }
-    else if (act === 'copylink') copyText(LINK, 'Link copied. Paste it into ' + BROWSER + '.');
+    else if (act === 'copylink') { copyText(LINK, 'Link copied. Paste it into ' + BROWSER + '.'); track('share', { what: 'link', mode: 'daily' }); }
     else if (act === 'deal') deal();
     else if (act === 'rand') { table.code = randomCode(); var c = document.getElementById('code'); if (c) c.value = table.code; }
     else if (act === 'round-' || act === 'round+') {
@@ -2151,7 +2207,7 @@ body.desk .foot { margin-top: 26px; }
     else if (act === 'preveal') partyReveal();
     else if (act === 'pnext') partyNext();
     else if (act === 'pagain') startParty(game.players.map(function (p) { return p.name; }), game.set.length);
-    else if (act === 'pshare') send(partyShare(), 'Result copied. Paste it anywhere.');
+    else if (act === 'pshare') { send(partyShare(), 'Result copied. Paste it anywhere.'); track('share', { what: 'party', mode: 'party' }); }
   }
   document.addEventListener('keydown', function (e) { try { typedKey(e); } catch (x) { oops(x); } });
   function typedKey(e) {
@@ -2195,7 +2251,7 @@ body.desk .foot { margin-top: 26px; }
     else home();   // everyone else, new or not, starts at the front page: the goal, the lights, one button
   }
   function boot(snap) {
-    try { start(snap); }
+    try { start(snap); loadAnalytics(); }
     catch (e) {   // should be impossible; if it is not, drop the game in progress and keep the record
       oops(e); stopTimers(); game = null; ask = null; store.live = null; store.daily = null; store.rival = null; save();
       try { home(); } catch (e2) { /* the bar offers a reload */ }

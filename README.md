@@ -104,6 +104,35 @@ Those grades are estimates. The game keeps an anonymous lifetime tally for each 
 question; open the site with `#numbers` on the end of the address to read real difficulty
 back, then change the kind's number in `GRADE`.
 
+## Analytics
+
+The game reports to PostHog (EU cloud) so the owner can see visits, where they
+came from and how players do. It is switched off until `PH_KEY` in `src/app.js`
+holds a project key, and it only ever runs on playnotsofast.com.
+
+It runs in PostHog's cookieless mode: no cookie, nothing in storage, no person
+profiles, no session recording, no autocapture. Visitors are counted by a hash
+that PostHog rotates daily, so nobody can be followed from one day to the next.
+"Enable cookieless tracking" must be on in the PostHog project's web analytics
+settings or the events are dropped.
+
+| Event | Sent when | Carries |
+| --- | --- | --- |
+| `$pageview`, `$pageleave` | a visit starts and ends | PostHog's own page fields |
+| `game_start` | a game begins | `mode`, `game_day`, party `players`/`questions` |
+| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `verdict` (right, trap, wrong, time), `secs`, `clock_left` |
+| `game_finish` | a game ends | `mode`, `greens`, `secs`, `timed_out`, `vs_friend` |
+| `share` | a result or challenge is copied or sent | `what` |
+| `challenge_arrived` | someone opens a friend's link | `mode` |
+| `answers_opened`, `help_opened` | those sheets open | |
+| `game_error` | the Reload bar shows | `message` (the error text, 120 characters at most) |
+
+Every event also carries `src` (utm_source, else the app or site the visit came
+from, else `direct`), `creator` (from a `?c=name` link), `in_app` and `keypad`.
+Give each creator their own link, `playnotsofast.com/?c=name`, to see what they send.
+
+`python3 src/journeys.py analytics` checks all of this against a stand-in library.
+
 ## Typeface
 
 The game embeds a subset of Barlow and Barlow Condensed by Jeremy Tribby, used under the
