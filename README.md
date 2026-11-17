@@ -29,6 +29,11 @@ running out of time moves it nowhere. A perfect day is 810 m.
 
 Time is shown as a fuel gauge.
 
+The background is the road itself, drawn on a canvas from wherever the player has got to. Yellow
+boards count off every 100 m, name signs stand where each stretch begins, and houses give way to
+street lamps and then trees. Pressing "Drive on" clears the screen and drives the distance the
+last answer earned. There is no separate progress bar.
+
 A first-time visitor skips the front page and lands on one trap question, so the first thing the
 game does is catch them. Every question plate shows its
 level and what it is worth, so players can see the day goes from easiest to hardest.

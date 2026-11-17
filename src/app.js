@@ -133,12 +133,6 @@
     }
     return '<svg viewBox="0 0 120 120" role="img" aria-label="' + WORD[kind] + '">' + s + '</svg>';
   }
-  // The marker on the road: a snail as a road-sign pictogram. One flat colour, no face.
-  var SNAIL = '<svg class="snail" viewBox="0 0 66 46" aria-hidden="true">' +
-    '<path d="M52 13l-3-9M58 13l4-8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>' +
-    '<path d="M2 44c-1-6 6-11 15-11h29V19c0-4.6 3.8-8 8.5-8S63 14.400 63 19v16c0 6-4 9-10 9z" fill="currentColor"/>' +
-    '<circle cx="27" cy="23" r="18" fill="currentColor"/>' +
-    '<path d="M27 24a3.500 3.500 0 1 1 3.500-3.500A8 8 0 1 1 19 25" fill="none" stroke="#17181a" stroke-width="3.200" stroke-linecap="round"/></svg>';
   var ICON = {
     on: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     off: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M16 9l5.5 6M21.5 9L16 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
@@ -218,57 +212,173 @@
     el.setAttribute('aria-label', v + ' metres');
   }
 
-  // The road ahead, filling the screen behind everything. Lane dashes and roadside reflectors sit
-  // on a geometric series from the vanishing point, so scaling the group by one step loops perfectly.
+  // The road ahead fills the screen, and it is a real place: everything on it sits at a distance
+  // in metres, and the view is drawn from wherever you have got to. Yellow boards count off every
+  // 100 m like the markers on a driving range, name signs stand where each stretch begins, and
+  // houses give way to street lamps and then to trees. Answer right and you drive the distance.
   var GLOW = ['#ffb347', '#ffa23c', '#ff7d3c', '#6fa3ff', '#4fd6c4'];
-  var bgEl = document.getElementById('bg');
-  bgEl.innerHTML = (function () {
-    var flow = '', a = 1.2, r = 1.9, len = 1.45, n, f = function (v) { return v.toFixed(2); };
-    for (n = 0; n < 11; n++) {
-      var t0 = a * Math.pow(r, n), t1 = t0 * len, h0 = 0.03 * t0, h1 = 0.03 * t1;
-      flow += '<polygon points="' + f(160 - h0) + ',' + f(190 + t0) + ' ' + f(160 + h0) + ',' + f(190 + t0) + ' ' + f(160 + h1) + ',' + f(190 + t1) + ' ' + f(160 - h1) + ',' + f(190 + t1) + '" fill="#FFD21F"/>';
-      var tp = t0 * 1.38, dx = 0.57 * tp, rad = Math.max(0.35, 0.018 * tp);
-      flow += '<circle cx="' + f(160 - dx) + '" cy="' + f(190 + tp * 0.97) + '" r="' + f(rad) + '" fill="#ffe9a8"/><circle cx="' + f(160 + dx) + '" cy="' + f(190 + tp * 0.97) + '" r="' + f(rad) + '" fill="#fff"/>';
-    }
-    var stars = [[22, 30], [58, 96], [91, 44], [127, 18], [142, 120], [188, 70], [214, 26], [243, 132], [281, 52], [305, 104], [-60, 60], [-140, 110], [380, 40], [450, 120], [-240, 30], [560, 80]].map(function (p, k) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (k % 3 ? 0.7 : 1) + '" fill="#fff" opacity="' + (k % 2 ? 0.9 : 0.6) + '"/>'; }).join('');
-    return '<svg viewBox="0 0 320 640" preserveAspectRatio="xMidYMid meet">' +
-      '<defs><linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="190"><stop offset="0" stop-color="#04060c"/><stop offset="1" stop-color="#172038"/></linearGradient>' +
-      '<radialGradient id="hz" cx="0.5" cy="0.5" r="0.5"><stop offset="0" style="stop-color:var(--glow);stop-opacity:0.8"/><stop offset="1" style="stop-color:var(--glow);stop-opacity:0"/></radialGradient>' +
-      '<linearGradient id="tar" gradientUnits="userSpaceOnUse" x1="0" y1="190" x2="0" y2="640"><stop offset="0" stop-color="#101115"/><stop offset="1" stop-color="#34363d"/></linearGradient></defs>' +
-      '<rect x="-2000" y="-2000" width="4320" height="2190" fill="url(#sky)"/>' + stars +
-      '<circle cx="50" cy="150" r="8" fill="#ece8d6"/><circle cx="54" cy="147.500" r="7.300" fill="#131b30"/>' +
-      '<ellipse cx="160" cy="190" rx="270" ry="50" fill="url(#hz)"/>' +
-      '<path d="M-2000 191V181H-70q34-20 76-9t58-12 52 14 44 3 40-9 54 2 56-14 70 16 60 9H2320v10z" fill="#070910"/>' +
-      '<rect x="-2000" y="190" width="4320" height="2600" fill="#0a0b0e"/>' +
-      '<polygon points="158.600,190 161.400,190 400,650 -80,650" fill="url(#tar)"/>' +
-      '<path d="M158.600 190L-80 650M161.400 190L400 650" stroke="#fff" stroke-opacity="0.5" stroke-width="1.300" fill="none"/>' +
-      '<g class="flow">' + flow + '</g>' +
-      '<rect class="wash" x="-2000" y="-2000" width="4320" height="4700" fill="#D8281C"/></svg>';
-  })();
+  var bgEl = document.getElementById('bg'), cv = document.createElement('canvas'), g2 = cv.getContext && cv.getContext('2d');
+  bgEl.appendChild(cv);
+  var road = { d: 0, from: 0, to: 0, t0: 0, ms: 0, cb: null, W: 0, H: 0, dpr: 1, last: 0, dirty: true, car: 0, nextCar: 0 };
+  var STARS = (function () { var r = E.rngFrom('stars'), a = []; for (var i = 0; i < 46; i++) a.push([r(), r(), 0.6 + r() * 1.1, r() * 6.3]); return a; })();
+  function rnd(k) { var x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }   // the same "random" value for the same object every frame
+  function rgba(hex, a) { return 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) + ',' + a + ')'; }
   function placeIndex(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES.length - 1 - i; return 0; }
-  // m of max metres travelled. zone: name where you are. odo: show the rolling distance.
-  function sceneHtml(m, max, zone, odo) {
-    bgEl.style.setProperty('--glow', GLOW[zone ? placeIndex(m) : 2]);
-    return '<div class="scene" id="road" style="--p:' + Math.min(1, m / max) + '">' +
-      (zone ? '<span class="zone" id="zone">' + place(m) + '</span>' : '') +
-      (odo ? odoHtml(m, 'dist') : '') +
-      '<div class="route"><i></i></div>' + SNAIL + '</div>';
+  function fitRoad() {
+    road.dpr = Math.min(2, window.devicePixelRatio || 1); road.W = bgEl.clientWidth; road.H = bgEl.clientHeight;
+    cv.width = Math.round(road.W * road.dpr); cv.height = Math.round(road.H * road.dpr); road.dirty = true;
   }
-  // After the verdict clears, the road answers: a burst of speed and the odometer rolling on,
-  // or brake lights if you took the trap.
-  function crawl(from, to, max, f, zone) {
-    var road = document.getElementById('road');
-    if (!road) return;
-    var arrive = function () {
-      road.style.setProperty('--p', Math.min(1, to / max));
-      setOdo(document.getElementById('dist'), to);
-      var z = document.getElementById('zone');
-      if (z && zone) { z.textContent = place(to); bgEl.style.setProperty('--glow', GLOW[placeIndex(to)]); }
-    };
-    if (to <= from) { if (f === 'bait' && !calm) { bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); } return; }   // nothing gained: brake lights for the trap
-    if (calm) { arrive(); return; }
-    seq.push(setTimeout(function () { bgEl.classList.add('fast'); arrive(); SFX.crawl(); }, 700));
-    setTimeout(function () { bgEl.classList.remove('fast'); }, 1750);
+  function paintRoad(now) {
+    var c = g2, W = road.W, H = road.H, d = road.d, k, z, s, x, y, side;
+    if (!c || !W) return;
+    c.setTransform(road.dpr, 0, 0, road.dpr, 0, 0); c.globalAlpha = 1;
+    var hy = Math.round(H * 0.3) + (road.ms ? Math.sin(now / 36) * 1.3 : 0), cx = W / 2, S = Math.min(W, H * 0.66);
+    var zn = 5, A = zn * (H - hy), P = 0.8 * S * zn / 3.3, far = 300;
+    var Y = function (zz) { return hy + A / zz; }, X = function (xx, zz) { return cx + xx * P / zz; };
+    var glow = GLOW[Math.min(GLOW.length - 1, placeIndex(Math.max(0, d)))];
+    var near = function (zz) { return road.ms ? 1 : Math.max(0, Math.min(1, (zz - 11) / 14)); };   // stopped: fade out whatever is right beside you
+
+    // sky, stars, moon, the glow on the horizon, far hills
+    var sky = c.createLinearGradient(0, 0, 0, hy); sky.addColorStop(0, '#04060c'); sky.addColorStop(1, '#182139');
+    c.fillStyle = sky; c.fillRect(0, 0, W, hy + 2);
+    c.fillStyle = '#fff';
+    for (k = 0; k < STARS.length; k++) { c.globalAlpha = calm ? 0.7 : 0.45 + 0.4 * Math.sin(now / 900 + STARS[k][3]); c.fillRect(STARS[k][0] * W, STARS[k][1] * hy * 0.9, STARS[k][2], STARS[k][2]); }
+    c.globalAlpha = 1;
+    var mr = Math.max(7, S * 0.024), mx = cx - S * 0.36, my = hy * 0.62;
+    c.fillStyle = '#ece8d6'; c.beginPath(); c.arc(mx, my, mr, 0, 6.3); c.fill();
+    c.fillStyle = '#131a2f'; c.beginPath(); c.arc(mx + mr * 0.5, my - mr * 0.3, mr * 0.9, 0, 6.3); c.fill();
+    c.save(); c.translate(cx, hy); c.scale(1, 0.26);
+    var gr = c.createRadialGradient(0, 0, 0, 0, 0, S * 0.95); gr.addColorStop(0, rgba(glow, 0.85)); gr.addColorStop(1, rgba(glow, 0));
+    c.fillStyle = gr; c.beginPath(); c.arc(0, 0, S * 0.95, 0, 6.3); c.fill(); c.restore();
+    c.fillStyle = '#070910'; c.beginPath(); c.moveTo(0, hy + 2);
+    for (x = 0; x <= W + 8; x += 8) { var u = (x - cx) / S + d * 0.00012; c.lineTo(x, hy - S * (0.014 + 0.024 * (Math.sin(u * 5.1 + 1) + 1) + 0.012 * (Math.sin(u * 11.3 + 2) + 1)) * (0.3 + Math.min(1, Math.abs((x - cx) / S) * 2.4))); }
+    c.lineTo(W, hy + 2); c.fill();
+
+    // ground and tarmac
+    c.fillStyle = '#0a0b0e'; c.fillRect(0, hy, W, H - hy);
+    var rg = c.createLinearGradient(0, hy, 0, H); rg.addColorStop(0, '#101115'); rg.addColorStop(1, '#383a42');
+    c.fillStyle = rg; c.beginPath(); c.moveTo(cx - 1.2, hy); c.lineTo(cx + 1.2, hy); c.lineTo(X(3.3, zn), H); c.lineTo(X(-3.3, zn), H); c.fill();
+
+    // what stands beside the road, far to near: houses, then town blocks, then trees
+    for (k = Math.floor((d + far) / 17); k >= Math.max(0, Math.floor(d / 17)); k--) {
+      var at = k * 17 + 9; z = at - d; if (z < 4 || z > far) continue;
+      s = P / z; y = Y(z); side = k % 2 ? 1 : -1; c.globalAlpha = Math.min(1, 150 / z) * near(z);
+      if (at < 700) {
+        var town = at >= 260, bw = (town ? 9 : 7) * s, bh = (town ? 7 + 7 * rnd(k) : 4.4) * s; x = X(side * (town ? 13 : 11 + 3 * rnd(k)), z);
+        c.fillStyle = '#0c0e16'; c.fillRect(x - bw / 2, y - bh, bw, bh);
+        if (!town) { c.beginPath(); c.moveTo(x - bw * 0.58, y - bh); c.lineTo(x, y - bh - 2.3 * s); c.lineTo(x + bw * 0.58, y - bh); c.fill(); }
+        var cols = town ? 3 : 2, rows = town ? Math.max(1, Math.floor(bh / s / 3)) : 1;
+        for (var wy = 0; wy < rows; wy++) for (var wx = 0; wx < cols; wx++) {
+          c.fillStyle = rnd(k * 31 + wy * 7 + wx) > 0.45 ? '#ffd27a' : '#1a2032';
+          c.fillRect(x - bw / 2 + bw * (wx + 0.5) / cols - 0.5 * s, y - bh + (0.9 + wy * 3) * s, s, 1.3 * s);
+        }
+      } else {
+        var th = (7 + 5 * rnd(k)) * s; x = X(side * (7.5 + 5 * rnd(k + 3)), z);
+        c.fillStyle = '#05070b'; c.beginPath(); c.moveTo(x - 2.1 * s, y - 1.2 * s); c.lineTo(x, y - th); c.lineTo(x + 2.1 * s, y - 1.2 * s); c.fill(); c.fillRect(x - 0.2 * s, y - 1.3 * s, 0.4 * s, 1.3 * s);
+      }
+    }
+    // street lamps through the built-up stretch, each with a pool of light on the road
+    for (k = Math.floor((d + far) / 45); k >= Math.max(0, Math.floor(d / 45)); k--) {
+      var la = k * 45 + 30; z = la - d; if (z < 4 || z > far || la < 100 || la > 700) continue;
+      s = P / z; y = Y(z); side = k % 2 ? 1 : -1; x = X(side * 5.1, z); var lx = X(side * 3.5, z), ly = y - 6.2 * s;
+      c.globalAlpha = Math.min(1, 120 / z) * near(z);
+      c.fillStyle = 'rgba(255,207,122,0.1)'; c.beginPath(); c.ellipse(X(side * 2, z), y, 3 * s, Math.max(1, 4 * A / (z * z)), 0, 0, 6.3); c.fill();
+      c.strokeStyle = '#2a2c33'; c.lineWidth = Math.max(1, 0.12 * s); c.beginPath(); c.moveTo(x, y); c.lineTo(x, ly); c.lineTo(lx, ly); c.stroke();
+      var lg = c.createRadialGradient(lx, ly, 0, lx, ly, 2.4 * s); lg.addColorStop(0, 'rgba(255,214,140,0.9)'); lg.addColorStop(0.25, 'rgba(255,207,122,0.35)'); lg.addColorStop(1, 'rgba(255,207,122,0)');
+      c.fillStyle = lg; c.beginPath(); c.arc(lx, ly, 2.4 * s, 0, 6.3); c.fill();
+    }
+    c.globalAlpha = 1;
+    // edge lines, lane dashes and reflector posts
+    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(cx - 1.2, hy); c.lineTo(X(-3.3, zn), H); c.moveTo(cx + 1.2, hy); c.lineTo(X(3.3, zn), H); c.stroke();
+    c.fillStyle = '#FFD21F';
+    for (k = Math.floor((d + far) / 9); k >= Math.floor(d / 9); k--) {
+      var z0 = k * 9 - d, z1 = z0 + 3.2; if (z1 < 2.4) continue; if (z0 < 2.4) z0 = 2.4;
+      c.globalAlpha = Math.min(1, 30 / z0);
+      c.beginPath(); c.moveTo(X(-0.1, z0), Y(z0)); c.lineTo(X(0.1, z0), Y(z0)); c.lineTo(X(0.1, z1), Y(z1)); c.lineTo(X(-0.1, z1), Y(z1)); c.fill();
+    }
+    for (k = Math.floor((d + far) / 20); k >= Math.floor(d / 20); k--) {
+      z = k * 20 + 10 - d; if (z < 3) continue; s = P / z; c.globalAlpha = Math.min(1, 46 / z);
+      c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(X(-3.9, z), Y(z) - 0.6 * s, Math.max(0.7, 0.075 * s), 0, 6.3); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(X(3.9, z), Y(z) - 0.6 * s, Math.max(0.7, 0.075 * s), 0, 6.3); c.fill();
+    }
+    c.globalAlpha = 1; c.textAlign = 'center'; c.textBaseline = 'middle';
+    // name signs where each stretch begins, and a yellow board every 100 m on both verges
+    for (k = 0; k < PLACES.length - 2; k++) {
+      z = PLACES[k][0] - d; if (z < 4 || z > 170) continue; s = P / z; x = X(-6.4, z); y = Y(z); c.globalAlpha = near(z);
+      c.fillStyle = '#8f9198'; c.fillRect(x - 1.7 * s, y - 2.3 * s, 0.12 * s, 2.3 * s); c.fillRect(x + 1.6 * s, y - 2.3 * s, 0.12 * s, 2.3 * s);
+      c.fillStyle = '#f4f4f1'; c.fillRect(x - 2.4 * s, y - 3.7 * s, 4.8 * s, 1.5 * s);
+      c.strokeStyle = '#000'; c.lineWidth = Math.max(1, 0.07 * s); c.strokeRect(x - 2.28 * s, y - 3.58 * s, 4.56 * s, 1.26 * s);
+      if (0.46 * s >= 5) { c.fillStyle = '#000'; c.font = '800 ' + (0.46 * s) + 'px "Barlow Condensed", "Arial Narrow", sans-serif'; c.fillText(PLACES[k][1].toUpperCase(), x, y - 2.93 * s, 4.3 * s); }
+    }
+    for (k = Math.floor((d + 200) / 100); k >= Math.max(1, Math.floor(d / 100)); k--) {
+      z = k * 100 - d; if (z < 4) continue; s = P / z; y = Y(z); c.globalAlpha = near(z);
+      for (side = -1; side <= 1; side += 2) {
+        x = X(side * 4.75, z);
+        c.fillStyle = '#d6d6d2'; c.fillRect(x - 0.07 * s, y - 1.5 * s, 0.14 * s, 1.5 * s);
+        c.fillStyle = '#FFD21F'; c.fillRect(x - 0.8 * s, y - 2.2 * s, 1.6 * s, 0.78 * s);
+        if (0.6 * s >= 5) { c.fillStyle = '#000'; c.font = '800 ' + (0.6 * s) + 'px "Barlow Condensed", "Arial Narrow", sans-serif'; c.fillText(String(k * 100), x, y - 1.79 * s, 1.5 * s); }
+      }
+    }
+    // a warning sign now and then: snails crossing
+    for (k = Math.floor((d + 160 - 60) / 400); k >= Math.max(0, Math.floor((d - 60) / 400)); k--) {
+      z = k * 400 + 60 - d; if (z < 4 || z > 160) continue; s = P / z; x = X(5.6, z); y = Y(z); c.globalAlpha = near(z);
+      c.fillStyle = '#8f9198'; c.fillRect(x - 0.06 * s, y - 1.6 * s, 0.12 * s, 1.6 * s);
+      c.save(); c.translate(x, y - 2.3 * s); c.rotate(Math.PI / 4); c.fillStyle = '#FFD21F'; c.fillRect(-0.7 * s, -0.7 * s, 1.4 * s, 1.4 * s); c.strokeStyle = '#000'; c.lineWidth = Math.max(1, 0.07 * s); c.strokeRect(-0.6 * s, -0.6 * s, 1.2 * s, 1.2 * s); c.restore();
+      c.fillStyle = '#000'; c.beginPath(); c.arc(x - 0.12 * s, y - 2.36 * s, 0.26 * s, 0, 6.3); c.fill(); c.fillRect(x - 0.48 * s, y - 2.18 * s, 0.9 * s, 0.16 * s); c.fillRect(x + 0.3 * s, y - 2.5 * s, 0.12 * s, 0.4 * s);
+    }
+    c.globalAlpha = 1;
+    // a car coming the other way, now and then, while you are stopped
+    if (road.car > 0) {
+      z = road.car; s = P / z; y = Y(z) - 0.65 * s;
+      for (side = -1; side <= 1; side += 2) {
+        x = X(1.75 + side * 0.72, z); var hr = Math.max(1.2, 0.13 * s), hg = c.createRadialGradient(x, y, 0, x, y, hr * 7);
+        hg.addColorStop(0, 'rgba(255,255,255,0.95)'); hg.addColorStop(0.15, 'rgba(255,248,224,0.5)'); hg.addColorStop(1, 'rgba(255,248,224,0)');
+        c.fillStyle = hg; c.beginPath(); c.arc(x, y, hr * 7, 0, 6.3); c.fill();
+      }
+    }
+    // your own headlights on the road in front
+    var hl = c.createRadialGradient(cx, H * 1.02, 0, cx, H * 1.02, S * 0.85); hl.addColorStop(0, 'rgba(255,244,214,0.16)'); hl.addColorStop(1, 'rgba(255,244,214,0)');
+    c.fillStyle = hl; c.fillRect(0, hy, W, H - hy);
+  }
+  function roadLoop(now) {
+    requestAnimationFrame(roadLoop);
+    if (document.hidden || !road.W) return;
+    if (road.ms) {   // driving: ease in, ease out
+      var k = Math.min(1, (now - road.t0) / road.ms), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      road.d = road.from + (road.to - road.from) * e; road.car = 0;
+      if (k >= 1) { road.ms = 0; var cb = road.cb; road.cb = null; road.d = road.to; document.body.classList.remove('clear'); paintRoad(now); road.last = now; if (cb) cb(); return; }
+    } else {
+      if (calm) { if (!road.dirty) return; }
+      else {
+        if (now - road.last < 45 && !road.dirty) return;   // idle: about 20 frames a second is plenty for stars and the odd car
+        if (!road.car && now > road.nextCar) { road.car = road.nextCar ? 240 : 0; road.nextCar = now + 7000 + Math.random() * 9000; }
+        if (road.car > 0) { road.car -= 240 * Math.min(100, now - road.last) / 2200; if (road.car < 2.5) road.car = 0; }
+      }
+    }
+    road.dirty = false; road.last = now;
+    paintRoad(now);
+  }
+  function setRoad(m) { if (road.ms) return; road.d = m; road.dirty = true; }
+  function drive(to, ms, cb) {
+    if (calm || !g2) { road.d = to; road.dirty = true; if (cb) cb(); return; }
+    road.from = road.d; road.to = to; road.ms = ms; road.cb = cb || null; road.t0 = performance.now();
+    document.body.classList.add('clear');   // lift the dimming so the drive is seen properly
+  }
+  function brake() { if (calm) return; bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); }
+  fitRoad(); window.addEventListener('resize', fitRoad);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { road.dirty = true; });
+  requestAnimationFrame(roadLoop);
+
+  // The head-up row: where you are and how far you have come. zone: name the stretch. odo: show the rolling distance.
+  function sceneHtml(m, zone, odo) {
+    setRoad(m);
+    return '<div class="scene" id="road">' + (zone ? '<span class="zone" id="zone">' + place(m) + '</span>' : '') + (odo ? odoHtml(m, 'dist') : '') + '</div>';
+  }
+  // Drive one leg: the screen clears, the road runs under you to the new distance, the odometer rolls.
+  function leg(to, cb) {
+    var p = view.querySelector('.play'); if (p) p.classList.add('driving');
+    setOdo(document.getElementById('dist'), to); SFX.crawl();
+    drive(to, 1500, cb);
   }
 
   /* ---------- How today's whole field is doing: anonymous counts of finishing distances ---------- */
@@ -376,7 +486,7 @@
   /* ---------- Home ---------- */
   function home() {
     stopTimers(); game = null; ask = null;
-    night(false); bgEl.style.setProperty('--glow', GLOW[0]);
+    night(false); setRoad(dailyState() === 'new' ? 0 : totalM(store.daily));
     if (store.rival && (typeof store.rival.m !== 'number' || (!store.rival.code && store.rival.key !== 'd' + today()))) { store.rival = null; save(); }   // yesterday's challenge has expired
     var state = dailyState(), streak = liveStreak();
     var label = state === 'done' ? 'See how far I got' : state === 'going' ? 'Back on the road' : 'Hit the road';
@@ -399,6 +509,7 @@
   function demo() {
     night(true);
     var todayFirst = E.buildDaily(today())[0].fam, id = todayFirst === 'race' ? 'hands' : 'race';
+    setRoad(0);
     game = { mode: 'demo', cur: E.make(E.families.filter(function (f) { return f.id === id; })[0], 'first-visit', 0), res: null };
     demoPlay();
   }
@@ -545,28 +656,26 @@
   function play() {
     stopTimers(); ask = null;
     var st = game.st, i = st.idx, q = game.set[i], r = st.res[i], hud = '';
-    var shown = totalM(st) - (fresh && r ? mOf(r) : 0);   // on a fresh verdict the snail starts where it was, then crawls
+    var shown = totalM(st) - (r ? mOf(r) : 0);   // what this answer earned is driven when you press Drive on
     for (var k = 0; k < 3; k++) { var p = st.res[k]; hud += p ? sign(p.f, false) : '<i class="dot' + (k === i ? ' now' : '') + '">' + (k + 1) + '</i>'; }
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud">' + hud + fuelHtml(LIMIT, r ? LIMIT - r.secs : LIMIT) + '</div>' +
-        sceneHtml(shown, DAY_MAX, true, true) + plateHtml(q, !r) +
+        sceneHtml(shown, true, true) + plateHtml(q, !r) +
         (r ? resultHtml(q, r, i) : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
     beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
       commit: function (res) { st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
-      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res)); crawl(totalM(st) - mOf(res), totalM(st), DAY_MAX, res.f, true); } });
+      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f, mOf(res)); if (res.f === 'bait') brake(); } });
   }
   function next() {
-    var st = game.st;
-    if (!st.res[st.idx]) return;
+    var st = game.st, r = st.res[st.idx];
+    if (!r || road.ms) return;
     if (st.idx >= 2) { finish(); return; }
-    st.idx++; st.qStart = Date.now();
-    persist();
-    play();
-    window.scrollTo(0, 0);
+    var on = function () { if (!game || game.st !== st) return; st.idx++; st.qStart = Date.now(); persist(); play(); window.scrollTo(0, 0); };
+    if (mOf(r) > 0) leg(totalM(st), on); else on();   // drive what you earned, then the next question
   }
   function finish() {
     var st = game.st;
@@ -642,7 +751,7 @@
       '<section class="end">' +
         '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
         '<div class="endsigns' + (first ? ' fresh' : '') + '">' + signs + '</div>' +
-        sceneHtml(first ? 0 : went, DAY_MAX, true, false) +
+        sceneHtml(first ? 0 : went, true, false) +
         '<p class="far">' + odoHtml(first ? 0 : went, 'tot', 'big') + '</p>' +
         '<p class="rank">' + place(went) + '</p>' +
         '<p class="total">' + n + ' of 3 right in ' + mmss(totalSecs(st)) + '.' + (daily ? (game.newBest ? ' Your best day yet.' : store.stats.far > went ? ' Your best day is ' + store.stats.far + ' m.' : '') : '') + '</p>' +
@@ -656,14 +765,11 @@
       '</section>';
     window.scrollTo(0, 0);
     if (daily) runCountdown();
-    if (first && went > 0) {   // replay the whole journey: the snail crawls the distance while the number counts up
-      var road = document.getElementById('road'), tot = document.getElementById('tot');
-      var arrive = function () { road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); bgEl.style.setProperty('--glow', GLOW[placeIndex(went)]); setOdo(tot, went); document.getElementById('zone').textContent = place(went); };
-      if (calm) arrive();
-      else {
-        seq.push(setTimeout(function () { bgEl.classList.add('fast'); arrive(); SFX.crawl(); }, 450));
-        setTimeout(function () { bgEl.classList.remove('fast'); }, 1900);
-      }
+    if (first && went > 0) {   // replay the whole journey from the doorstep while the number rolls up
+      seq.push(setTimeout(function () {
+        setOdo(document.getElementById('tot'), went); SFX.crawl();
+        drive(went, 1900, function () { var z = document.getElementById('zone'); if (z) z.textContent = place(went); });
+      }, calm ? 0 : 450));
     }
     if (daily && first && STATS && window.fetch) {
       readField(game.day, mBand(went)).then(function (c) {
@@ -689,22 +795,21 @@
     runPlay();
     window.scrollTo(0, 0);
   }
-  function runGoal() { return Math.max(1000, store.stats.runBest || 0); }
   function runPlay() {
     stopTimers(); ask = null;
     var q = game.cur, r = game.res, hud = '';
     for (var k = 0; k < RUN_LIVES; k++) hud += k < game.strikes.length ? sign(game.strikes[k], false) : '<i class="dot life" aria-hidden="true"></i>';
-    var shown = game.m - (fresh && r ? r.m : 0);
+    var shown = game.m - (r ? r.m : 0);
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud"><span role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' wrong turns used" style="display:contents">' + hud + '</span><span class="hudn">Question ' + game.n + '</span>' + fuelHtml(RUN_LIMIT, r ? RUN_LIMIT - r.secs : RUN_LIMIT) + '</div>' +
-        sceneHtml(shown, runGoal(), false, true) + plateHtml(q, !r) +
+        sceneHtml(shown, false, true) + plateHtml(q, !r) +
         (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Drive on' : 'See how far I got') : entryHtml()) +
       '</section>';
     if (r) return;
     beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
       commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); },
-      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m); crawl(game.m - res.m, game.m, runGoal(), res.f, false); } });
+      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f, res.m); if (res.f === 'bait') brake(); } });
   }
   function runEnd() {
     stopTimers(); ask = null;
@@ -714,7 +819,7 @@
     view.innerHTML =
       '<section class="end">' +
         '<p class="endno">The long road</p>' +
-        sceneHtml(0, Math.max(1000, old, game.m), false, false) +
+        sceneHtml(0, false, false) +
         '<p class="far">' + odoHtml(0, 'tot', 'big') + '</p>' +
         '<p class="rank">' + (isBest && old ? 'Your longest road yet' : game.right === 0 ? 'Stalled at the start' : 'Three wrong turns') + '</p>' +
         '<p class="total">' + game.right + ' right out of ' + game.n + '.' + (!isBest && old ? ' Your longest road is ' + far(old) + '.' : '') + '</p>' +
@@ -722,12 +827,12 @@
         '<div class="endbtns"><button class="btn" data-act="run" data-enter>Go again</button><button class="btn plate" data-act="runshare">Share it</button><button class="btn plate" data-act="home">Back to today</button></div>' +
       '</section>';
     window.scrollTo(0, 0);
-    var road = document.getElementById('road'), tot = document.getElementById('tot'), went = game.m, top = Math.max(1000, old, went);
+    var went = game.m;
     if (!went) return;
-    if (calm) { road.style.setProperty('--p', went / top); setOdo(tot, went); return; }
-    seq.push(setTimeout(function () { bgEl.classList.add('fast'); road.style.setProperty('--p', went / top); setOdo(tot, went); SFX.crawl(); }, 400));
-    setTimeout(function () { bgEl.classList.remove('fast'); }, 1850);
-    seq.push(setTimeout(function () { if (isBest) { SFX.sweep(); flash('#12924A'); } }, 1850));
+    seq.push(setTimeout(function () {
+      setOdo(document.getElementById('tot'), went); SFX.crawl();
+      drive(went, 1900, function () { if (isBest) { SFX.sweep(); flash('#12924A'); } });
+    }, calm ? 0 : 400));
   }
 
   /* ---------- One phone, passed round ---------- */
@@ -766,7 +871,7 @@
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span>' + fuelHtml(PARTY_LIMIT, PARTY_LIMIT) + '</div>' +
-        sceneHtml(game.players[pi].m, partyMax(), false, true) + plateHtml(q, true) + entryHtml() +
+        sceneHtml(game.players[pi].m, false, true) + plateHtml(q, true) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false,
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; },
@@ -953,7 +1058,13 @@
     var act = t.getAttribute('data-act');
     if (act === 'key') key(t.getAttribute('data-k'));
     else if (act === 'enter') lock(false);
-    else if (act === 'next') { if (game.mode === 'run') { if (game.lives > 0) runNext(); else runEnd(); } else next(); }
+    else if (act === 'next') {
+      if (game.mode !== 'run') next();
+      else if (road.ms) { /* already driving */ }
+      else if (game.lives <= 0) runEnd();
+      else if (game.res && game.res.m > 0) leg(game.m, function () { if (game && game.mode === 'run') runNext(); });
+      else runNext();
+    }
     else if (act === 'run') { closeSheet(); startRun(); }
     else if (act === 'runshare') send(NAME + ', the long road\n\uD83D\uDC0C ' + game.m + ' m before three wrong turns\n' + SITE, 'Copied. Paste it anywhere.');
     else if (act === 'daily') startDaily();

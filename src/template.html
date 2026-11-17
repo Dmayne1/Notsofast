@@ -45,15 +45,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 [hidden] { display: none !important; }
 p { margin: 0; }
 
-/* The road fills the screen behind everything. Lane dashes and reflectors loop by scaling from the vanishing point. */
-#bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #07090f; --glow: #ffb347; }
-#bg svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-#bg .flow { transform-origin: 160px 190px; animation: drive 2.4s linear infinite; }
-#bg.fast .flow { animation-duration: 0.28s; }
-#bg.brake .flow { animation-play-state: paused; }
-#bg .wash { opacity: 0; }
-#bg.brake .wash { animation: wash 0.9s ease-out; }
-#bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(7, 9, 15, 0) 0%, rgba(7, 9, 15, 0) 33%, rgba(7, 9, 15, 0.56) 52%, rgba(7, 9, 15, 0.82) 100%); }
+/* The road fills the screen behind everything. It is drawn on a canvas from wherever you have got to. */
+#bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #07090f; }
+#bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#bg::before { content: ""; position: absolute; inset: 0; z-index: 1; background: #D8281C; opacity: 0; }
+#bg.brake::before { animation: wash 0.9s ease-out; }
+#bg::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(to bottom, rgba(7, 9, 15, 0) 0%, rgba(7, 9, 15, 0) 36%, rgba(7, 9, 15, 0.42) 56%, rgba(7, 9, 15, 0.72) 100%); transition: opacity 0.25s; }
+body.clear #bg::after { opacity: 0.25; }
 .app { position: relative; z-index: 1; max-width: 460px; min-height: 100%; min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 0 18px calc(14px + env(safe-area-inset-bottom)); }
 .app.quake { animation: quake 0.3s; }
 main { flex: 1; display: flex; flex-direction: column; }
@@ -106,13 +104,11 @@ main { flex: 1; display: flex; flex-direction: column; }
 .fuel.low .clock { background: var(--stop); color: #fff; text-shadow: none; box-shadow: 0 0 18px rgba(216, 40, 28, 0.6); }
 .clock { color: var(--sign); text-shadow: 0 0 14px rgba(255, 210, 31, 0.45); padding: 1px 7px; border-radius: 6px; font-family: var(--disp); font-weight: 800; font-size: 1.55rem; line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .clock.low { background: var(--stop); color: #fff; text-shadow: none; box-shadow: 0 0 18px rgba(216, 40, 28, 0.6); }
-.scene { position: relative; height: 46px; flex: none; margin: 8px 0 0; }
-.scene .zone { position: absolute; left: 0; top: 5px; color: rgba(255, 255, 255, 0.88); font-weight: 700; font-size: 0.82rem; line-height: 1; text-shadow: 0 1px 3px #000; }
-.scene .odo { position: absolute; right: 0; top: 0; }
-.scene .route { position: absolute; left: 0; right: 0; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); }
-.scene .route i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); border-radius: 2px; background: var(--sign); box-shadow: 0 0 10px rgba(255, 210, 31, 0.8); transition: width 0.95s cubic-bezier(0.25, 0.8, 0.3, 1); }
-.snail { color: var(--sign); }
-.scene .snail { position: absolute; bottom: 8px; left: calc(var(--p, 0) * (100% - 24px)); width: 24px; height: 17px; filter: drop-shadow(0 0 5px rgba(255, 210, 31, 0.7)); transition: left 0.95s cubic-bezier(0.25, 0.8, 0.3, 1); }
+.scene { position: relative; height: 30px; flex: none; margin: 6px 0 0; }
+.scene .zone { position: absolute; left: 0; top: 8px; color: rgba(255, 255, 255, 0.9); font-weight: 700; font-size: 0.86rem; line-height: 1; text-shadow: 0 1px 3px #000; }
+.scene .odo { position: absolute; right: 0; top: 2px; }
+.play > * { transition: opacity 0.2s; }
+.play.driving > :not(.hud):not(.scene) { opacity: 0; pointer-events: none; }
 .odo { display: inline-flex; align-items: center; gap: 2px; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.3rem; line-height: 1; }
 .odo i { display: block; width: 0.68em; height: 1.2em; overflow: hidden; border-radius: 3px; background: linear-gradient(#000, #1d1d21 50%, #000); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09); font-style: normal; text-align: center; }
 .odo b { display: block; line-height: 1.2; transform: translateY(calc(var(--d, 0) * -1.2em)); transition: transform 0.95s cubic-bezier(0.2, 0.8, 0.2, 1); text-shadow: 0 0 10px rgba(255, 210, 31, 0.55); }
@@ -122,7 +118,7 @@ main { flex: 1; display: flex; flex-direction: column; }
 .odo.big b { transition-duration: 1.4s; }
 
 /* The question is set straight on the road: no card */
-.plate-q { flex: none; margin-top: 12px; padding: 14px 16px 16px; border-radius: 14px; background: rgba(8, 9, 13, 0.68); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 10px 30px rgba(0, 0, 0, 0.4); }
+.plate-q { flex: none; margin-top: 12px; padding: 14px 16px 16px; border-radius: 14px; background: rgba(8, 9, 13, 0.84); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 10px 30px rgba(0, 0, 0, 0.4); }
 .plate-q.solo { margin: auto 0; }
 .lvl { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--sign); font-weight: 700; font-size: 0.92rem; line-height: 1; }
 .lvl b { margin-left: auto; color: var(--mut); font-weight: 500; }
@@ -189,7 +185,6 @@ body.desk .read { height: 70px; }
 .endsigns.fresh .sg:nth-child(2) { animation-delay: 0.1s; }
 .endsigns.fresh .sg:nth-child(3) { animation-delay: 0.2s; }
 .end .scene { margin: 4px 0 14px; }
-.end .scene .snail, .end .scene .route i { transition-duration: 1.4s; }
 .standing { margin-top: 10px; padding: 10px 14px; border-radius: 10px; background: linear-gradient(rgba(255, 210, 31, 0.16), rgba(255, 210, 31, 0.06)); box-shadow: inset 0 0 0 1px rgba(255, 210, 31, 0.3); font-weight: 700; }
 .standing:empty { display: none; }
 .far { line-height: 1; }
@@ -299,7 +294,6 @@ body.desk .read { height: 70px; }
 @keyframes shake { 10%, 90% { transform: translateX(-1px); } 30%, 70% { transform: translateX(-4px); } 50% { transform: translateX(4px); } }
 @keyframes pop { 0% { transform: scale(0.94); } 100% { transform: scale(1); } }
 @keyframes hold { 0% { opacity: 1; } 100% { opacity: 0.5; } }
-@keyframes drive { from { transform: scale(1); } to { transform: scale(1.9); } }
 @keyframes wash { 0% { opacity: 0.55; } 100% { opacity: 0; } }
 @keyframes take { 0% { opacity: 0; } 14% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes land { 0% { transform: scale(0.35); } 24% { transform: scale(1.07); } 36%, 100% { transform: scale(1); } }
@@ -320,7 +314,7 @@ body.desk .read { height: 70px; }
 }
 @media (max-height: 650px) {
   .top { height: 46px; }
-  .scene { height: 40px; margin-top: 2px; }
+  .scene { margin-top: 2px; }
   .plate-q { margin-top: 8px; padding: 10px 14px 12px; }
   .lvl { margin-bottom: 8px; }
   .q { font-size: 1.3rem; }
@@ -337,13 +331,11 @@ body.desk .read { height: 70px; }
   .q.long { font-size: 1.06rem; }
   .pad button { height: 37px; }
   .pad { gap: 7px 8px; }
-  .scene .zone { display: none; }
-  .scene { height: 34px; }
   .read { height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, #bg .flow, #bg.brake .wash, .endsigns.fresh .sg, .hero .sg, #flash.go, #take.go, #take.go .sg { animation: none; }
-  .scene .snail, .scene .route i, .odo b { transition: none; }
+  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, #bg.brake::before, .endsigns.fresh .sg, .hero .sg, #flash.go, #take.go, #take.go .sg { animation: none; }
+  .odo b { transition: none; }
 }
 </style>
 </head>
