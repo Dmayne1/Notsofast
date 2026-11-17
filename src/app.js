@@ -217,36 +217,38 @@
     el.setAttribute('aria-label', v + ' metres');
   }
 
-  // The view through the windscreen. Lane dashes and roadside reflectors sit on a geometric
-  // series from the vanishing point, so scaling the group by one step loops perfectly.
+  // The road ahead, filling the screen behind everything. Lane dashes and roadside reflectors sit
+  // on a geometric series from the vanishing point, so scaling the group by one step loops perfectly.
   var GLOW = ['#ffb347', '#ffa23c', '#ff7d3c', '#6fa3ff', '#4fd6c4'];
-  var VIEW = (function () {
-    var flow = '', a = 1.2, r = 1.9, len = 1.45, n;
-    for (n = 0; n < 7; n++) {
-      var t0 = a * Math.pow(r, n), t1 = t0 * len, h0 = 0.032 * t0, h1 = 0.032 * t1;
-      flow += '<polygon points="' + (160 - h0) + ',' + (40 + t0) + ' ' + (160 + h0) + ',' + (40 + t0) + ' ' + (160 + h1) + ',' + (40 + t1) + ' ' + (160 - h1) + ',' + (40 + t1) + '" fill="#FFD21F"/>';
-      var tp = t0 * 1.38, dx = 2.24 * tp, rad = Math.max(0.3, 0.045 * tp);
-      flow += '<circle cx="' + (160 - dx) + '" cy="' + (40 + tp * 0.86) + '" r="' + rad + '" fill="#ffe9a8"/><circle cx="' + (160 + dx) + '" cy="' + (40 + tp * 0.86) + '" r="' + rad + '" fill="#fff"/>';
+  var bgEl = document.getElementById('bg');
+  bgEl.innerHTML = (function () {
+    var flow = '', a = 1.2, r = 1.9, len = 1.45, n, f = function (v) { return v.toFixed(2); };
+    for (n = 0; n < 11; n++) {
+      var t0 = a * Math.pow(r, n), t1 = t0 * len, h0 = 0.03 * t0, h1 = 0.03 * t1;
+      flow += '<polygon points="' + f(160 - h0) + ',' + f(190 + t0) + ' ' + f(160 + h0) + ',' + f(190 + t0) + ' ' + f(160 + h1) + ',' + f(190 + t1) + ' ' + f(160 - h1) + ',' + f(190 + t1) + '" fill="#FFD21F"/>';
+      var tp = t0 * 1.38, dx = 0.57 * tp, rad = Math.max(0.35, 0.018 * tp);
+      flow += '<circle cx="' + f(160 - dx) + '" cy="' + f(190 + tp * 0.97) + '" r="' + f(rad) + '" fill="#ffe9a8"/><circle cx="' + f(160 + dx) + '" cy="' + f(190 + tp * 0.97) + '" r="' + f(rad) + '" fill="#fff"/>';
     }
-    return '<svg class="view" viewBox="0 0 320 98" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
-      '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05070d"/><stop offset="1" stop-color="#151c30"/></linearGradient>' +
-      '<radialGradient id="hz" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="var(--glow)" stop-opacity="0.75"/><stop offset="1" stop-color="var(--glow)" stop-opacity="0"/></radialGradient>' +
-      '<linearGradient id="tar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121317"/><stop offset="1" stop-color="#33353c"/></linearGradient></defs>' +
-      '<rect width="320" height="40" fill="url(#sky)"/>' +
-      '<circle cx="42" cy="9" r="0.7" fill="#fff"/><circle cx="88" cy="20" r="0.5" fill="#fff"/><circle cx="121" cy="7" r="0.6" fill="#fff"/><circle cx="197" cy="12" r="0.5" fill="#fff"/><circle cx="228" cy="24" r="0.6" fill="#fff"/><circle cx="291" cy="8" r="0.7" fill="#fff"/><circle cx="18" cy="26" r="0.5" fill="#fff"/>' +
-      '<circle cx="262" cy="15" r="5" fill="#ece8d6"/><circle cx="264.500" cy="13.500" r="4.600" fill="#0a0d16"/>' +
-      '<ellipse cx="160" cy="40" rx="150" ry="20" fill="url(#hz)"/>' +
-      '<path d="M0 40V33q22-8 46-2t44-4 40 5 30-3 36 2 44-6 40 4 40-2v13z" fill="#080a10"/>' +
-      '<rect y="40" width="320" height="58" fill="#0c0d10"/>' +
-      '<polygon points="158.800,40 161.200,40 290,98 30,98" fill="url(#tar)"/>' +
-      '<path d="M158.800 40L30 98M161.200 40L290 98" stroke="#fff" stroke-opacity="0.5" stroke-width="1" fill="none"/>' +
+    var stars = [[22, 30], [58, 96], [91, 44], [127, 18], [142, 120], [188, 70], [214, 26], [243, 132], [281, 52], [305, 104], [-60, 60], [-140, 110], [380, 40], [450, 120], [-240, 30], [560, 80]].map(function (p, k) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (k % 3 ? 0.7 : 1) + '" fill="#fff" opacity="' + (k % 2 ? 0.9 : 0.6) + '"/>'; }).join('');
+    return '<svg viewBox="0 0 320 640" preserveAspectRatio="xMidYMid meet">' +
+      '<defs><linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="190"><stop offset="0" stop-color="#04060c"/><stop offset="1" stop-color="#172038"/></linearGradient>' +
+      '<radialGradient id="hz" cx="0.5" cy="0.5" r="0.5"><stop offset="0" style="stop-color:var(--glow);stop-opacity:0.8"/><stop offset="1" style="stop-color:var(--glow);stop-opacity:0"/></radialGradient>' +
+      '<linearGradient id="tar" gradientUnits="userSpaceOnUse" x1="0" y1="190" x2="0" y2="640"><stop offset="0" stop-color="#101115"/><stop offset="1" stop-color="#34363d"/></linearGradient></defs>' +
+      '<rect x="-2000" y="-2000" width="4320" height="2190" fill="url(#sky)"/>' + stars +
+      '<circle cx="50" cy="150" r="8" fill="#ece8d6"/><circle cx="54" cy="147.500" r="7.300" fill="#131b30"/>' +
+      '<ellipse cx="160" cy="190" rx="270" ry="50" fill="url(#hz)"/>' +
+      '<path d="M-2000 191V181H-70q34-20 76-9t58-12 52 14 44 3 40-9 54 2 56-14 70 16 60 9H2320v10z" fill="#070910"/>' +
+      '<rect x="-2000" y="190" width="4320" height="2600" fill="#0a0b0e"/>' +
+      '<polygon points="158.600,190 161.400,190 400,650 -80,650" fill="url(#tar)"/>' +
+      '<path d="M158.600 190L-80 650M161.400 190L400 650" stroke="#fff" stroke-opacity="0.5" stroke-width="1.300" fill="none"/>' +
       '<g class="flow">' + flow + '</g>' +
-      '<rect class="wash" width="320" height="98" fill="#D8281C"/></svg>';
+      '<rect class="wash" x="-2000" y="-2000" width="4320" height="4700" fill="#D8281C"/></svg>';
   })();
   function placeIndex(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES.length - 1 - i; return 0; }
   // m of max metres travelled. zone: name where you are. odo: show the rolling distance.
   function sceneHtml(m, max, zone, odo) {
-    return '<div class="scene" id="road" style="--p:' + Math.min(1, m / max) + ';--glow:' + GLOW[zone ? placeIndex(m) : 2] + '">' + VIEW +
+    bgEl.style.setProperty('--glow', GLOW[zone ? placeIndex(m) : 2]);
+    return '<div class="scene" id="road" style="--p:' + Math.min(1, m / max) + '">' +
       (zone ? '<span class="zone" id="zone">' + place(m) + '</span>' : '') +
       (odo ? odoHtml(m, 'dist') : '') +
       '<div class="route"><i></i></div>' + SNAIL + '</div>';
@@ -260,12 +262,12 @@
       road.style.setProperty('--p', Math.min(1, to / max));
       setOdo(document.getElementById('dist'), to);
       var z = document.getElementById('zone');
-      if (z && zone) { z.textContent = place(to); road.style.setProperty('--glow', GLOW[placeIndex(to)]); }
+      if (z && zone) { z.textContent = place(to); bgEl.style.setProperty('--glow', GLOW[placeIndex(to)]); }
     };
-    if (to <= from) { if (f === 'bait' && !calm) { road.classList.add('brake'); seq.push(setTimeout(function () { road.classList.remove('brake'); }, 950)); } return; }
+    if (to <= from) { if (f === 'bait' && !calm) { bgEl.classList.add('brake'); setTimeout(function () { bgEl.classList.remove('brake'); }, 950); } return; }
     if (calm) { arrive(); return; }
-    seq.push(setTimeout(function () { road.classList.add('fast'); arrive(); SFX.crawl(); }, 700));
-    seq.push(setTimeout(function () { road.classList.remove('fast'); }, 1750));
+    seq.push(setTimeout(function () { bgEl.classList.add('fast'); arrive(); SFX.crawl(); }, 700));
+    setTimeout(function () { bgEl.classList.remove('fast'); }, 1750);
   }
 
   /* ---------- How today's whole field is doing: anonymous counts of finishing distances ---------- */
@@ -373,7 +375,7 @@
   /* ---------- Home ---------- */
   function home() {
     stopTimers(); game = null; ask = null;
-    night(false);
+    night(false); bgEl.style.setProperty('--glow', GLOW[0]);
     if (store.rival && (typeof store.rival.m !== 'number' || (!store.rival.code && store.rival.key !== 'd' + today()))) { store.rival = null; save(); }   // yesterday's challenge has expired
     var state = dailyState(), streak = liveStreak();
     var label = state === 'done' ? 'See my score' : state === 'going' ? 'Carry on' : 'Play today’s three';
@@ -621,11 +623,11 @@
     if (daily) runCountdown();
     if (first && went > 0) {   // replay the whole journey: the snail crawls the distance while the number counts up
       var road = document.getElementById('road'), tot = document.getElementById('tot');
-      var arrive = function () { road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); road.style.setProperty('--glow', GLOW[placeIndex(went)]); setOdo(tot, went); document.getElementById('zone').textContent = place(went); };
+      var arrive = function () { road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); bgEl.style.setProperty('--glow', GLOW[placeIndex(went)]); setOdo(tot, went); document.getElementById('zone').textContent = place(went); };
       if (calm) arrive();
       else {
-        seq.push(setTimeout(function () { road.classList.add('fast'); arrive(); SFX.crawl(); }, 450));
-        seq.push(setTimeout(function () { road.classList.remove('fast'); }, 1900));
+        seq.push(setTimeout(function () { bgEl.classList.add('fast'); arrive(); SFX.crawl(); }, 450));
+        setTimeout(function () { bgEl.classList.remove('fast'); }, 1900);
       }
     }
     if (daily && first && STATS && window.fetch) {
@@ -688,8 +690,9 @@
     var road = document.getElementById('road'), tot = document.getElementById('tot'), went = game.m, top = Math.max(1000, old, went);
     if (!went) return;
     if (calm) { road.style.setProperty('--p', went / top); setOdo(tot, went); return; }
-    seq.push(setTimeout(function () { road.classList.add('fast'); road.style.setProperty('--p', went / top); setOdo(tot, went); SFX.crawl(); }, 400));
-    seq.push(setTimeout(function () { road.classList.remove('fast'); if (isBest) { SFX.sweep(); flash('#12924A'); } }, 1850));
+    seq.push(setTimeout(function () { bgEl.classList.add('fast'); road.style.setProperty('--p', went / top); setOdo(tot, went); SFX.crawl(); }, 400));
+    setTimeout(function () { bgEl.classList.remove('fast'); }, 1850);
+    seq.push(setTimeout(function () { if (isBest) { SFX.sweep(); flash('#12924A'); } }, 1850));
   }
 
   /* ---------- One phone, passed round ---------- */

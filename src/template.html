@@ -17,7 +17,7 @@
 <style>
 /*FONTS*/
 :root {
-  /* A night drive. Dark, but lit: a small windscreen view of the road ahead that speeds up when
+  /* A night drive. Dark, but lit: the whole screen is the road ahead, which speeds up when
      you are right and brakes red when you are trapped, an odometer that rolls, signs that
      catch the light the way real reflective signs do, keys with weight. No cartoon: no faces,
      no outlines, nothing tilted. Yellow, red and green are the only colours, and the last two
@@ -39,13 +39,22 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: #0e0f11 radial-gradient(120% 70% at 50% 0%, #20222e 0%, #15161a 48%, #0e0f11 100%) fixed; color: var(--fg); font-family: var(--body); font-weight: 500; font-size: 17px; line-height: 1.45; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body { margin: 0; background: #07090f; color: var(--fg); font-family: var(--body); font-weight: 500; font-size: 17px; line-height: 1.45; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
 button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; border: 0; background: none; padding: 0; -webkit-user-select: none; user-select: none; }
 :focus-visible { outline: 2px solid var(--sign); outline-offset: 3px; }
 [hidden] { display: none !important; }
 p { margin: 0; }
 
-.app { max-width: 460px; min-height: 100%; min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 0 18px calc(14px + env(safe-area-inset-bottom)); }
+/* The road fills the screen behind everything. Lane dashes and reflectors loop by scaling from the vanishing point. */
+#bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #07090f; --glow: #ffb347; }
+#bg svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#bg .flow { transform-origin: 160px 190px; animation: drive 2.4s linear infinite; }
+#bg.fast .flow { animation-duration: 0.28s; }
+#bg.brake .flow { animation-play-state: paused; }
+#bg .wash { opacity: 0; }
+#bg.brake .wash { animation: wash 0.9s ease-out; }
+#bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(7, 9, 15, 0) 0%, rgba(7, 9, 15, 0) 33%, rgba(7, 9, 15, 0.56) 52%, rgba(7, 9, 15, 0.82) 100%); }
+.app { position: relative; z-index: 1; max-width: 460px; min-height: 100%; min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 0 18px calc(14px + env(safe-area-inset-bottom)); }
 .app.quake { animation: quake 0.3s; }
 main { flex: 1; display: flex; flex-direction: column; }
 
@@ -87,19 +96,13 @@ main { flex: 1; display: flex; flex-direction: column; }
 .hudn { color: var(--mut); font-size: 0.92rem; font-weight: 700; }
 .clock { margin-left: auto; color: var(--sign); text-shadow: 0 0 14px rgba(255, 210, 31, 0.45); padding: 1px 7px; border-radius: 6px; font-family: var(--disp); font-weight: 800; font-size: 1.55rem; line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .clock.low { background: var(--stop); color: #fff; text-shadow: none; box-shadow: 0 0 18px rgba(216, 40, 28, 0.6); }
-.scene { position: relative; height: 98px; flex: none; margin: 8px 0 2px; border-radius: 14px; overflow: hidden; background: #090b12; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35); --glow: #ffb347; }
-.scene .view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.scene .flow { transform-origin: 160px 40px; animation: drive 2.4s linear infinite; }
-.scene.fast .flow { animation-duration: 0.28s; }
-.scene.brake .flow { animation-play-state: paused; }
-.scene .wash { opacity: 0; }
-.scene.brake .wash { animation: wash 0.9s ease-out; }
-.scene .zone { position: absolute; left: 11px; top: 8px; color: rgba(255, 255, 255, 0.86); font-weight: 700; font-size: 0.8rem; line-height: 1; text-shadow: 0 1px 3px #000; }
-.scene .odo { position: absolute; right: 9px; top: 8px; }
-.scene .route { position: absolute; left: 11px; right: 11px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
+.scene { position: relative; height: 46px; flex: none; margin: 8px 0 0; }
+.scene .zone { position: absolute; left: 0; top: 5px; color: rgba(255, 255, 255, 0.88); font-weight: 700; font-size: 0.82rem; line-height: 1; text-shadow: 0 1px 3px #000; }
+.scene .odo { position: absolute; right: 0; top: 0; }
+.scene .route { position: absolute; left: 0; right: 0; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); }
 .scene .route i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); border-radius: 2px; background: var(--sign); box-shadow: 0 0 10px rgba(255, 210, 31, 0.8); transition: width 0.95s cubic-bezier(0.25, 0.8, 0.3, 1); }
 .snail { color: var(--sign); }
-.scene .snail { position: absolute; bottom: 12px; left: calc(11px + var(--p, 0) * (100% - 46px)); width: 24px; height: 17px; filter: drop-shadow(0 0 5px rgba(255, 210, 31, 0.7)); transition: left 0.95s cubic-bezier(0.25, 0.8, 0.3, 1); }
+.scene .snail { position: absolute; bottom: 8px; left: calc(var(--p, 0) * (100% - 24px)); width: 24px; height: 17px; filter: drop-shadow(0 0 5px rgba(255, 210, 31, 0.7)); transition: left 0.95s cubic-bezier(0.25, 0.8, 0.3, 1); }
 .odo { display: inline-flex; align-items: center; gap: 2px; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.3rem; line-height: 1; }
 .odo i { display: block; width: 0.68em; height: 1.2em; overflow: hidden; border-radius: 3px; background: linear-gradient(#000, #1d1d21 50%, #000); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09); font-style: normal; text-align: center; }
 .odo b { display: block; line-height: 1.2; transform: translateY(calc(var(--d, 0) * -1.2em)); transition: transform 0.95s cubic-bezier(0.2, 0.8, 0.2, 1); text-shadow: 0 0 10px rgba(255, 210, 31, 0.55); }
@@ -109,9 +112,9 @@ main { flex: 1; display: flex; flex-direction: column; }
 .odo.big b { transition-duration: 1.4s; }
 
 /* The question is set straight on the road: no card */
-.plate-q { flex: none; padding: 18px 0 4px; }
+.plate-q { flex: none; margin-top: 12px; padding: 14px 16px 16px; border-radius: 14px; background: rgba(8, 9, 13, 0.68); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 10px 30px rgba(0, 0, 0, 0.4); }
 .plate-q.solo { margin: auto 0; }
-.lvl { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--sign); font-weight: 700; font-size: 0.92rem; line-height: 1; }
+.lvl { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--sign); font-weight: 700; font-size: 0.92rem; line-height: 1; }
 .lvl b { margin-left: auto; color: var(--mut); font-weight: 500; }
 .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
 .bars i { width: 4px; border-radius: 1px; background: var(--edge); }
@@ -146,7 +149,6 @@ body.desk .plate-q.solo { margin: 8vh 0 10px; }
 body.desk .q { font-size: 1.9rem; }
 body.desk .q.long { font-size: 1.5rem; }
 body.desk .read { height: 70px; }
-body.desk .scene { height: 130px; }
 
 /* Verdict */
 .result { display: flex; flex-direction: column; gap: 14px; padding: 18px 0 6px; }
@@ -163,7 +165,7 @@ body.desk .scene { height: 130px; }
 .vt .you { margin-top: 6px; font-size: 1rem; line-height: 1.3; }
 .crowd { padding: 10px 14px; border-radius: 10px; background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); font-size: 0.98rem; line-height: 1.36; }
 .crowd:empty { display: none; }
-.why { color: #d6d6d3; font-size: 1.04rem; line-height: 1.45; }
+.why { color: #e3e3e0; font-size: 1.04rem; line-height: 1.45; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 2px; padding-bottom: 4px; }
 
 /* Score */
@@ -174,7 +176,7 @@ body.desk .scene { height: 130px; }
 .endsigns.fresh .sg { animation: arrive 0.22s both; }
 .endsigns.fresh .sg:nth-child(2) { animation-delay: 0.1s; }
 .endsigns.fresh .sg:nth-child(3) { animation-delay: 0.2s; }
-.end .scene { height: 120px; margin: 4px 0 14px; }
+.end .scene { margin: 4px 0 14px; }
 .end .scene .snail, .end .scene .route i { transition-duration: 1.4s; }
 .standing { margin-top: 10px; padding: 10px 14px; border-radius: 10px; background: linear-gradient(rgba(255, 210, 31, 0.16), rgba(255, 210, 31, 0.06)); box-shadow: inset 0 0 0 1px rgba(255, 210, 31, 0.3); font-weight: 700; }
 .standing:empty { display: none; }
@@ -294,8 +296,7 @@ body.desk .scene { height: 130px; }
 @keyframes flash { 0% { opacity: 0.45; } 100% { opacity: 0; } }
 
 @media (max-height: 760px) {
-  .scene { height: 76px; }
-  .plate-q { padding-top: 12px; }
+  .plate-q { padding: 12px 14px 13px; }
   .lvl { margin-bottom: 9px; }
   .q { font-size: 1.36rem; }
   .q.long { font-size: 1.16rem; }
@@ -307,8 +308,8 @@ body.desk .scene { height: 130px; }
 }
 @media (max-height: 650px) {
   .top { height: 46px; }
-  .scene { height: 62px; margin-top: 4px; }
-  .plate-q { padding-top: 12px; }
+  .scene { height: 40px; margin-top: 2px; }
+  .plate-q { margin-top: 8px; padding: 10px 14px 12px; }
   .lvl { margin-bottom: 8px; }
   .q { font-size: 1.3rem; }
   .q.long { font-size: 1.12rem; }
@@ -324,17 +325,18 @@ body.desk .scene { height: 130px; }
   .q.long { font-size: 1.06rem; }
   .pad button { height: 37px; }
   .pad { gap: 7px 8px; }
-  .scene { height: 50px; }
   .scene .zone { display: none; }
+  .scene { height: 34px; }
   .read { height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, .scene .flow, .scene.brake .wash, .endsigns.fresh .sg, .hero .sg, #flash.go, #take.go, #take.go .sg { animation: none; }
+  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, #bg .flow, #bg.brake .wash, .endsigns.fresh .sg, .hero .sg, #flash.go, #take.go, #take.go .sg { animation: none; }
   .scene .snail, .scene .route i, .odo b { transition: none; }
 }
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true"></div>
 <div class="app" id="app">
   <header class="top">
     <button class="wordmark" data-act="home" aria-label="Not So Fast, home">
