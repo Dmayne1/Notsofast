@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+/* Always the secure address. A visitor who arrives by plain http is moved to https before anything else
+   happens, keeping the rest of the link, so nobody plays (or keeps a streak) on the insecure copy. */
+if (location.protocol === 'http:' && /(^|\.)playnotsofast\.com$/.test(location.hostname)) location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+</script>
+<link rel="canonical" href="https://playnotsofast.com/">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Not So Fast</title>
 <meta name="description" content="Three trick questions a day. One guess each. The obvious answer is the trap.">

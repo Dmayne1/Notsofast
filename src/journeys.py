@@ -643,7 +643,26 @@ async def leaving(b):
         check('the logo mid-question goes to the front page, which offers the way back', 'home' in a['cls'] and 'Back on the road' in a['text'], a['text'][:120])
         check('no errors leaving', not s.errors, s.errors)
 
-ALL = [leaving, first_visit, refresh_daily, out_of_fuel, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
+async def https(b):
+    print('plain http addresses')
+    import os
+    html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'), encoding='utf-8').read()
+    for host in ('playnotsofast.com', 'www.playnotsofast.com'):
+        seen = []
+        async with Site(b) as s:
+            async def serve(route):
+                seen.append(route.request.url)
+                await route.fulfill(status=200, content_type='text/html', body=html)
+            await s.ctx.route(re.compile(r'^https?://(www\.)?playnotsofast\.com/'), serve)
+            await s.page.goto('http://' + host + '/?utm_source=tiktok#tABC-1-2-300'); await s.page.wait_for_timeout(700)
+            a = await screen(s.page)
+            check('a plain http visit to ' + host + ' is moved to https', s.page.url.startswith('https://' + host + '/') and any(u.startswith('http://') for u in seen), (s.page.url, seen))
+            check('and keeps its tracking tag and the friend link on ' + host, 'utm_source=tiktok' in s.page.url and 'Play their three' in a['text'] and not s.errors, (s.page.url, a['text'][:120], s.errors))
+    async with Site(b) as s:
+        await s.open()
+        check('other addresses (tests, the preview copy) are left alone', s.page.url.startswith('http://localhost'), s.page.url)
+
+ALL = [https, leaving, first_visit, refresh_daily, out_of_fuel, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
 
 async def main():
     want = sys.argv[1:]
