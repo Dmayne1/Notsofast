@@ -18,9 +18,11 @@ Live at https://playnotsofast.com
 
 ## Scoring
 
-The score is a distance. A right answer moves your snail 100 m, plus a metre for every second
-left on the clock (two minutes on your own, one minute when a phone is passed round). The trap,
-a wrong answer or running out of time moves it nowhere. A perfect day is 660 m.
+The score is a distance. A right answer moves your snail on: 100 m for the warm-up, 150 m for
+the trickier one and 200 m for the hard one, plus a metre for every second left on the clock
+(two minutes on your own, one minute when a phone is passed round). The trap, a wrong answer or
+running out of time moves it nowhere. A perfect day is 810 m. Every question plate shows its
+level and what it is worth, so players can see the day goes from easiest to hardest.
 
 ## Questions
 

@@ -107,6 +107,36 @@
     return { q: 'A family has ' + s + ' sisters. Each sister has ' + b + ' ' + pl(b, 'brother', 'brothers') + '. How many children are in the family?', suf: 'children', a: s + b, baits: [s * (b + 1), s * b], why: 'The sisters all share the same ' + pl(b, 'brother', b + ' brothers') + '. ' + s + ' girls plus ' + b + ' ' + pl(b, 'boy', 'boys') + '.', v: { t: 'family', s: s, b: b } };
   });
 
+  // Number riddles: nothing to work out, just a question most people do not quite hear.
+  // The bar is "I should have caught that", never "how was I meant to know". So: no puns, no
+  // trivia, and nothing that hangs on an assumption the question does not state.
+  fam('listen', 1, function (r, turn) {
+    const pickOne = walk(r, turn, ['sheep', 'apples', 'hole', 'stamps']);
+    if (pickOne === 'sheep') {
+      const p = pick(r, [[17, 9], [20, 8], [15, 6], [23, 9]]);
+      return { q: 'A farmer has ' + p[0] + ' sheep. All but ' + p[1] + ' run away. How many does he have left?', suf: 'sheep', a: p[1], baits: [p[0] - p[1]], why: '“All but ' + p[1] + '” means ' + p[1] + ' stayed. Nothing to subtract.', v: { t: 'listen', id: 'sheep', n: p[0], k: p[1] } };
+    }
+    if (pickOne === 'apples') {
+      const p = pick(r, [[6, 4], [5, 3], [8, 5], [7, 4]]);
+      return { q: 'There are ' + p[0] + ' apples in a bowl. You take ' + p[1] + '. How many apples do you have?', suf: 'apples', a: p[1], baits: [p[0] - p[1]], why: 'You have the ' + p[1] + ' you took. The question never asked what was left in the bowl.', v: { t: 'listen', id: 'apples', n: p[0], k: p[1] } };
+    }
+    if (pickOne === 'hole') {
+      const p = pick(r, [[2, 3, 1], [2, 2, 2], [3, 3, 1], [5, 2, 1]]);
+      return { q: 'How many cubic metres of soil are in a hole ' + p[0] + ' m long, ' + p[1] + ' m wide and ' + p[2] + ' m deep?', suf: 'cubic metres', a: 0, baits: [p[0] * p[1] * p[2]], why: 'None. A hole is the part where the soil has been taken out.', v: { t: 'listen', id: 'hole' } };
+    }
+    const k = pick(r, [2, 3, 4, 6]);
+    return { q: 'How many ' + k + '-cent stamps are there in a dozen?', suf: 'stamps', a: 12, baits: [12 / k], why: 'A dozen of anything is 12. The price is only there to make you divide.', v: { t: 'listen', id: 'stamps' } };
+  });
+
+  fam('picture', 1, function (r, turn) {
+    const list = [
+      { q: 'A square room has a cat in every corner. Each cat can see 3 cats. How many cats are in the room?', suf: 'cats', a: 4, baits: [12, 16], why: 'Four corners, four cats. Each one sees the other three.', v: { t: 'listen', id: 'cats' } },
+      { q: 'Some months have 30 days and some have 31. How many months have 28 days?', suf: 'months', a: 12, baits: [1], why: 'All 12. Every month gets to its 28th day; February just stops there.', v: { t: 'listen', id: 'months' } },
+      { q: 'Two fathers and two sons go fishing. Each catches one fish, and they bring home just 3 fish. How many people went fishing?', suf: 'people', a: 3, baits: [4], why: 'A grandfather, his son and his grandson. The man in the middle is both a father and a son.', v: { t: 'listen', id: 'fathers' } }
+    ];
+    return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
+  });
+
   /* ---------- Level 2: the classic traps. ---------- */
 
   fam('rates', 2, function (r) {
@@ -330,7 +360,7 @@
     const fams = BY[level], days = fams.length;
     let prev = null, sh = null;
     for (let c = 0; c <= target; c++) {
-      sh = shuffle(rngFrom('v4-cycle-' + level + '-' + c), fams);
+      sh = shuffle(rngFrom('v5-cycle-' + level + '-' + c), fams);
       if (prev && sh[0] === prev) sh = sh.slice(1).concat(sh[0]);
       prev = sh[days - 1];
     }
@@ -349,17 +379,17 @@
     const i = Math.max(0, day - 1);
     return [1, 2, 3].map(function (level, n) {
       const days = BY[level].length, turn = Math.floor(i / days);
-      return make(cycleOrder(level, turn)[i % days], 'v4-daily-' + day + '-' + n, turn);
+      return make(cycleOrder(level, turn)[i % days], 'v5-daily-' + day + '-' + n, turn);
     });
   }
   function buildTable(code, round) {
-    const key = 'v4-table-' + code + '-' + round, r = rngFrom(key);
+    const key = 'v5-table-' + code + '-' + round, r = rngFrom(key);
     return [pick(r, BY[1]), pick(r, BY[2]), pick(r, BY[3])].map(function (f, n) { return make(f, key + '-' + n); });
   }
 
   // A longer set for one phone passed round a group: easy first, hardest last, no family twice.
   function buildParty(seed, n) {
-    const key = 'v4-party-' + seed, r = rngFrom(key);
+    const key = 'v5-party-' + seed, r = rngFrom(key);
     const plan = n <= 3 ? [1, 2, 3] : n <= 5 ? [1, 2, 2, 3, 3] : [1, 2, 2, 2, 3, 3, 3];
     const pool = { 1: shuffle(r, BY[1]), 2: shuffle(r, BY[2]), 3: shuffle(r, BY[3]) };
     return plan.map(function (level, i) { return make(pool[level].pop(), key + '-' + i); });

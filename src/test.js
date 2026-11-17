@@ -162,6 +162,17 @@ const verify = {
     if (v.id === 'chess') { let c = 0; for (let s = 1; s <= 8; s++) c += (9 - s) * (9 - s); return c; }
     if (v.id === 'monty100') { let wins = 0; for (let car = 0; car < 100; car++) { const pick = 0; if (pick !== car) wins++; } return wins; }
   },
+  listen(v) {
+    if (v.id === 'sheep') { const flock = []; for (let i = 0; i < v.n; i++) flock.push(i); let gone = 0; while (flock.length > v.k) { flock.pop(); gone++; } return flock.length; }
+    if (v.id === 'apples') { const bowl = v.n, mine = []; for (let i = 0; i < v.k; i++) mine.push(1); return mine.length; }
+    if (v.id === 'hole') return 0;   // the soil in a hole is whatever has not been dug out of it yet: none
+    if (v.id === 'stamps') { let c = 0; for (let i = 0; i < 12; i++) c++; return c; }
+    if (v.id === 'cats') { for (let n = 1; n < 20; n++) if (n - 1 === 3) return n; }
+    if (v.id === 'months') return [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].filter(d => d >= 28).length;
+    if (v.id === 'fathers') {   // fewest people in one family line holding two father roles and two son roles
+      for (let n = 1; n < 6; n++) { const fathers = n - 1, sons = n - 1; if (fathers >= 2 && sons >= 2) return n; }
+    }
+  },
   corners(v) { let pts = v.n; pts -= 1; pts += 2; return pts; },
   hands(v) { let c = 0; for (let h = 0; h < v.n; h++) for (let f = 0; f < 5; f++) c++; return c; },
   divhalf(v) { let fit = 0; for (let x = 0.5; x <= v.a + 1e-9; x += 0.5) fit++; return fit + v.b; },

@@ -8,7 +8,7 @@
   var LIMIT = 120;                     // seconds per question on your own
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
-  var SETV = 'v5';                     // bump when the question bank changes: today's set restarts and counts never mix
+  var SETV = 'v6';                     // bump when the question bank changes: today's set restarts and counts never mix
 
   // Live counters: anonymous tallies on a free public counting service.
   // Set STATS to '' to switch them off. Nothing about the player is sent.
@@ -19,10 +19,13 @@
 
   var EMOJI = { right: '🟢', bait: '🛑', wrong: '❌', time: '🐌' };
   var WORD = { right: 'Nailed it', bait: 'Not so fast', wrong: 'Nope', time: 'Too slow' };
-  // The score is a distance. A right answer moves your snail 100 m, plus a metre for every second
-  // left on the clock; anything else moves it nowhere. So speed pays, but only if you are right.
-  var DAY_MAX = 3 * (100 + LIMIT);
-  var PLACES = [[600, 'The open road'], [440, 'Edge of town'], [220, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
+  // The score is a distance. A right answer moves your snail on, further for a harder question,
+  // plus a metre for every second left on the clock; anything else moves it nowhere.
+  // So speed pays, but only if you are right, and the last question is worth the most.
+  var BASE = { 1: 100, 2: 150, 3: 200 };
+  var LEVEL = { 1: 'Warm-up', 2: 'Trickier', 3: 'The hard one' };
+  var DAY_MAX = BASE[1] + BASE[2] + BASE[3] + 3 * LIMIT;
+  var PLACES = [[700, 'The open road'], [500, 'Edge of town'], [250, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
   var view = document.getElementById('view');
@@ -323,7 +326,7 @@
     view.innerHTML =
       '<section class="home">' +
         '<div class="hero" aria-hidden="true"><i class="post"></i><div class="sg">' + sign('bait', true) + '</div>' + SNAIL + '</div>' +
-        '<p class="pitch">Three questions a day. One guess each. The obvious answer is the trap.</p>' +
+        '<p class="pitch">Three questions a day, each harder than the last. One guess each. The obvious answer is the trap.</p>' +
         rivalCard() +
         (streak > 1 ? '<p class="streak">' + streak + '-day streak</p>' : '') +
         '<button class="btn" data-act="daily" data-enter>' + label + '</button>' +
@@ -364,7 +367,13 @@
         '<button class="zero" data-act="key" data-k="0">0</button>' +
       '</div></div>';
   }
-  function plateHtml(q, solo) { return '<div class="plate-q' + (solo ? ' solo' : '') + '"><p class="q' + (q.q.length > 125 ? ' long' : '') + '">' + esc(q.q) + '</p></div>'; }
+  // Every plate says where the question sits on the day's climb, and what it is worth.
+  function plateHtml(q, solo) {
+    return '<div class="plate-q' + (solo ? ' solo' : '') + '">' +
+      '<p class="lvl"><span class="bars l' + q.level + '" aria-hidden="true"><i></i><i></i><i></i></span>' + LEVEL[q.level] + '<b>worth ' + BASE[q.level] + ' m</b></p>' +
+      '<p class="q' + (q.q.length > 125 ? ' long' : '') + '">' + esc(q.q) + '</p></div>';
+  }
+  function partyMax() { var t = 0; game.set.forEach(function (q) { t += BASE[q.level] + PARTY_LIMIT; }); return t; }
   function roadHtml(m, max, label) { return '<div class="road" id="road" style="--p:' + Math.min(1, m / max) + '">' + SNAIL + (label ? '<span class="dist" id="dist" aria-label="Distance so far">' + inM(m) + '</span>' : '') + '</div>'; }
   // a: { q, limit, start, beat, commit(r), reveal(r) }. commit stores the answer at once; reveal shows what happens next.
   function beginAsk(a) {
@@ -412,7 +421,7 @@
     if (f === 'low' || f === 'high') f = 'wrong';
     var used = Math.min(a.limit, Math.max(0, (Date.now() - a.start) / 1000));
     var r = { t: timeout ? '' : String(parseFloat(typed)), f: f, secs: Math.round(used) };
-    r.m = f === 'right' ? 100 + Math.max(0, a.limit - r.secs) : 0;
+    r.m = f === 'right' ? BASE[a.q.level] + Math.max(0, a.limit - r.secs) : 0;
     ask = null; typed = '';
     stopTimers();
     a.commit(r);             // stored at once, so a reload cannot buy a second guess
@@ -594,7 +603,7 @@
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span><span class="clock" id="clock" aria-label="Time left">' + mmss(PARTY_LIMIT) + '</span></div>' +
-        roadHtml(game.players[pi].m, game.set.length * (100 + PARTY_LIMIT), true) + plateHtml(q, true) + entryHtml() +
+        roadHtml(game.players[pi].m, partyMax(), true) + plateHtml(q, true) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false,
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; },
@@ -686,7 +695,7 @@
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>A right answer moves your snail 100 m, plus a metre for every second left on the clock. The trap moves it nowhere.</li><li>They get harder: the first is the warm-up, the third is the one to brag about.</li></ul>' +
+      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves your snail on: 100 m, 150 m, then 200 m, plus a metre for every second left on the clock. The trap moves it nowhere.</li></ul>' +
       '<div class="eg"><p class="egq">A bat and a ball cost €1.10. The bat costs €1.00 more than the ball. How much is the ball?</p>' +
         eg('right', '5 cents', 'Right. It takes a second look.') +
         eg('bait', '10 cents', 'The trap. It is the answer that jumps out first.') +
@@ -715,7 +724,7 @@
       stepper('Players', cfg.names.length, 'pn-', 'pn+') +
       '<div class="names">' + inputs + '</div>' +
       stepper('Questions', cfg.count, 'pq-', 'pq+') +
-      '<p class="small">A right answer moves your snail 100 m, plus a metre for every second you had left. Blurt out the trap and it goes nowhere.</p>' +
+      '<p class="small">The questions go from easiest to hardest. A right answer moves your snail 100 to 200 m, plus a metre for every second you had left. Blurt out the trap and it goes nowhere.</p>' +
       '<button class="btn" data-act="pstart">Start</button>');
   }
   function partyStart() {
