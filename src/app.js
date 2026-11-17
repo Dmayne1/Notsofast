@@ -18,7 +18,7 @@
   var MIN_CROWD = 10;                  // do not show a percentage until this many have answered
 
   var EMOJI = { right: '🟢', bait: '🛑', wrong: '❌', time: '🐌' };
-  var WORD = { right: 'Nailed it', bait: 'Not so fast', wrong: 'Nope', time: 'Too slow' };
+  var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of time' };
   // The score is a distance. A right answer moves your snail on, further for a harder question,
   // plus a metre for every second left on the clock; anything else moves it nowhere.
   // So speed pays, but only if you are right, and the last question is worth the most.
@@ -32,7 +32,6 @@
   var veil = document.getElementById('veil');
   var toastEl = document.getElementById('toast');
   var flashEl = document.getElementById('flash');
-  var fx = document.getElementById('fx');
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   document.getElementById('brand').textContent = NAME;
   document.title = NAME;
@@ -44,12 +43,16 @@
   var cfg = { names: (store.names || []).slice(0, 6), count: 5 };
   var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  var desk = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;   // a laptop: type the answer
+  if (desk) document.body.classList.add('desk');
+  var RUN_LIMIT = 60, RUN_LIVES = 3;   // the long road: a minute a question, three wrong turns and you are out
+  var kindTotal = 0;
 
-  function blank() { return { sound: true, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null }; }
+  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null }; }
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.stats && s.stats.dist) { hadLocal = true; if (typeof s.sound !== 'boolean') s.sound = true; return s; }
+      if (s && s.stats && s.stats.dist) { hadLocal = true; if (typeof s.sound !== 'boolean') s.sound = false; return s; }
       var old = JSON.parse(localStorage.getItem(OLD_KEY));  // keep the streak from the earlier version
       if (old && old.stats && old.stats.dist) { hadLocal = true; var b = blank(); b.stats = old.stats; return b; }
     } catch (e) { /* storage may be unavailable */ }
@@ -86,15 +89,16 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.hidden = true; }, 1600);
   }
-  // The front page is the yellow poster. Everything else is the dark road, so the colour arrives with the verdict.
-  function night(on) {
-    document.body.classList.toggle('night', on);
-    if (themeMeta) themeMeta.setAttribute('content', on ? '#1b1b1e' : '#FFD21F');
-  }
+  function night() { /* one dark theme: kept so screens can still say when play starts */ }
   function mOf(r) { return !r ? 0 : typeof r.m === 'number' ? r.m : r.f === 'right' ? 100 + Math.max(0, LIMIT - r.secs) : 0; }
   function totalM(st) { var t = 0; st.res.forEach(function (r) { t += mOf(r); }); return t; }
   function place(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES[i][1]; }
   function far(m) { return m < 1000 ? m + ' m' : (m / 1000).toFixed(1) + ' km'; }
+  function beat(q, r) { if (r.f !== 'right') return; store.seen = store.seen || {}; if (!store.seen[q.kind]) { store.seen[q.kind] = 1; save(); } }
+  function beatenLine() {
+    if (!kindTotal) kindTotal = E.kinds().length;
+    return 'Kinds of trap you have beaten: ' + Object.keys(store.seen || {}).length + ' of ' + kindTotal + '.';
+  }
   function rightCount(st) { return st.res.filter(function (r) { return r && r.f === 'right'; }).length; }
   function totalSecs(st) { var t = 0; st.res.forEach(function (r) { if (r) t += r.secs; }); return t; }
   function liveStreak() { var s = store.stats; return s.lastDay >= today() - 1 ? s.streak : 0; }
@@ -114,29 +118,27 @@
   function words(lines, size, fill, ys) {
     return lines.map(function (w, i) { return '<text x="60" y="' + ys[i] + '" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="' + size + '" fill="' + fill + '">' + w + '</text>'; }).join('');
   }
-  // kind: right | bait | wrong | time. With words it is the big verdict; without, a small marker.
+  // kind: right | bait | wrong | time. Flat and exact, like the real thing. Only the trap sign carries words.
   function sign(kind, big) {
     var s;
     if (kind === 'bait') {
-      s = '<polygon points="' + oct(1) + '"/><polygon points="' + oct(0.94) + '" fill="#fff"/><polygon points="' + oct(0.85) + '" fill="#E1251B"/>' +
-        (big ? words(['NOT', 'SO', 'FAST'], 28, '#fff', [45, 69.5, 94]) : '<rect x="53" y="28" width="14" height="42" rx="7" fill="#fff"/><circle cx="60" cy="86" r="8" fill="#fff"/>');
+      s = '<polygon points="' + oct(1) + '" fill="#fff"/><polygon points="' + oct(0.9) + '" fill="#D8281C"/>' +
+        (big ? words(['NOT', 'SO', 'FAST'], 29, '#fff', [45.5, 70, 94.5]) : '<rect x="53.5" y="28" width="13" height="42" rx="6.5" fill="#fff"/><circle cx="60" cy="86" r="7.5" fill="#fff"/>');
     } else if (kind === 'right') {
-      s = '<circle cx="60" cy="60" r="60"/><circle cx="60" cy="60" r="56.5" fill="#fff"/><circle cx="60" cy="60" r="51" fill="#0A8F43"/>' +
-        (big ? words(['NAILED', 'IT'], 28, '#fff', [57, 83]) : '<path d="M36 62l16 16 32-34" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>');
+      s = '<circle cx="60" cy="60" r="60" fill="#fff"/><circle cx="60" cy="60" r="54" fill="#12924A"/><path d="M36 62l16 16 32-34" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>';
     } else {
-      s = '<circle cx="60" cy="60" r="60"/><circle cx="60" cy="60" r="56.5" fill="#fff"/><circle cx="60" cy="60" r="52.5" fill="#E1251B"/><circle cx="60" cy="60" r="40" fill="#fff"/>' +
-        (kind === 'time'
-          ? (big ? words(['TOO', 'SLOW'], 23, '#000', [57, 79]) : '<path d="M60 40v22l13 9" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>')
-          : (big ? words(['NOPE'], 29, '#000', [70.5]) : '<path d="M45 45l30 30M75 45L45 75" fill="none" stroke="#000" stroke-width="11" stroke-linecap="round"/>'));
+      s = '<circle cx="60" cy="60" r="60" fill="#fff"/><circle cx="60" cy="60" r="55" fill="#D8281C"/><circle cx="60" cy="60" r="41" fill="#fff"/>' +
+        (kind === 'time' ? '<path d="M60 40v22l13 9" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
+          : '<path d="M46 46l28 28M74 46L46 74" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round"/>');
     }
     return '<svg viewBox="0 0 120 120" role="img" aria-label="' + WORD[kind] + '">' + s + '</svg>';
   }
-  var SNAIL = '<svg class="snail" viewBox="0 0 66 48" aria-hidden="true">' +
-    '<path d="M52 15l-3-9M58 15l4-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="49" cy="5" r="3.2" fill="currentColor"/><circle cx="62" cy="6" r="3.2" fill="currentColor"/>' +
-    '<path d="M3 44c-1-5 5-11 14-11h29V20c0-5 4-8 8.5-8S63 15 63 20v15c0 6-4 9-10 9z" fill="#fff" stroke="#000" stroke-width="3" stroke-linejoin="round"/>' +
-    '<circle cx="27" cy="24" r="17" fill="#E1251B" stroke="#000" stroke-width="3"/>' +
-    '<path d="M27 25a3.5 3.5 0 1 1 3.5-3.5A8 8 0 1 1 19 26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
-    '<path d="M51 27q3.5 3 7 0" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  // The marker on the road: a snail as a road-sign pictogram. One flat colour, no face.
+  var SNAIL = '<svg class="snail" viewBox="0 0 66 46" aria-hidden="true">' +
+    '<path d="M52 13l-3-9M58 13l4-8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>' +
+    '<path d="M2 44c-1-6 6-11 15-11h29V19c0-4.6 3.8-8 8.5-8S63 14.400 63 19v16c0 6-4 9-10 9z" fill="currentColor"/>' +
+    '<circle cx="27" cy="23" r="18" fill="currentColor"/>' +
+    '<path d="M27 24a3.500 3.500 0 1 1 3.500-3.500A8 8 0 1 1 19 25" fill="none" stroke="#17181a" stroke-width="3.200" stroke-linecap="round"/></svg>';
   var ICON = {
     on: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     off: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M16 9l5.5 6M21.5 9L16 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
@@ -176,7 +178,7 @@
     time: function () { tone(392, 0, 0.55, 'triangle', 0.2, 185); },
     sweep: function () { [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach(function (f, i) { tone(f, i * 0.085, 0.32, 'triangle', 0.2); }); }
   };
-  function buzz(p) { try { if (store.sound && navigator.vibrate) navigator.vibrate(p); } catch (e) { /* not every phone can */ } }
+  function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* not every phone can */ } }
   function paintSound() {
     var b = document.getElementById('snd');
     b.innerHTML = store.sound ? ICON.on : ICON.off;
@@ -184,37 +186,16 @@
   }
 
   /* ---------- Confetti, the flash and the shake ---------- */
-  function burst(x, y, n) {
-    if (calm || !fx || !fx.getContext) return;
-    var ctx = fx.getContext('2d'), dpr = window.devicePixelRatio || 1, w = window.innerWidth, h = window.innerHeight;
-    fx.width = w * dpr; fx.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var cols = ['#19C463', '#fff', '#FFD21F', '#E1251B'], ps = [];
-    for (var i = 0; i < n; i++) ps.push({ x: x, y: y, vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 13 - 3, s: 5 + Math.random() * 7, c: cols[i % 4], o: i % 3 === 0 });
-    var t0 = performance.now();
-    (function frame(t) {
-      var k = (t - t0) / 1300;
-      ctx.clearRect(0, 0, w, h);
-      if (k >= 1) return;
-      ctx.globalAlpha = 1 - k * k;
-      for (var j = 0; j < ps.length; j++) {
-        var p = ps[j]; p.vy += 0.45; p.x += p.vx; p.y += p.vy; ctx.fillStyle = p.c;
-        if (p.o) { ctx.beginPath(); ctx.arc(p.x, p.y, p.s / 2, 0, 6.3); ctx.fill(); } else ctx.fillRect(p.x, p.y, p.s, p.s);
-      }
-      requestAnimationFrame(frame);
-    })(t0);
-  }
   function replay(el, cls) { if (!el || calm) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
   function flash(colour) { flashEl.style.background = colour; replay(flashEl, 'go'); }
   function cheer(f) {
     SFX[f]();
     if (f === 'right') {
       buzz([15, 40, 25]);
-      var s = document.getElementById('sg');
-      setTimeout(function () { flash('#19C463'); }, 180);
-      if (s) { var b = s.getBoundingClientRect(); setTimeout(function () { burst(b.left + b.width / 2, b.top + b.height / 2, 54); }, 170); }
+      setTimeout(function () { flash('#12924A'); }, 120);
     } else if (f === 'bait') {
       buzz([90, 50, 90]);
-      setTimeout(function () { flash('#fff'); replay(app, 'quake'); }, 190);   // caught on camera
+      setTimeout(function () { flash('#fff'); replay(app, 'quake'); }, 120);   // caught on camera
     } else buzz(70);
   }
 
@@ -303,9 +284,9 @@
   function rivalCard() {
     var v = store.rival;
     if (!v) return '';
-    if (v.code) return '<div class="card">A friend sent you a private round. Their snail made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
+    if (v.code) return '<div class="card">A friend sent you a private round. They made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
     if (v.key !== 'd' + today()) return '';
-    return '<div class="card">A friend\u2019s snail made it ' + v.m + ' m today, with ' + v.n + ' of 3 right. Beat that.</div>';
+    return '<div class="card">A friend made it ' + v.m + ' m today, with ' + v.n + ' of 3 right. Beat that.</div>';
   }
   function duelCard() {
     var v = rivalHere();
@@ -325,11 +306,12 @@
     var label = state === 'done' ? 'See my score' : state === 'going' ? 'Carry on' : 'Play today’s three';
     view.innerHTML =
       '<section class="home">' +
-        '<div class="hero" aria-hidden="true"><i class="post"></i><div class="sg">' + sign('bait', true) + '</div>' + SNAIL + '</div>' +
+        '<div class="hero" aria-hidden="true"><div class="sg">' + sign('bait', true) + '</div></div>' +
         '<p class="pitch">Three questions a day, each harder than the last. One guess each. The obvious answer is the trap.</p>' +
         rivalCard() +
         (streak > 1 ? '<p class="streak">' + streak + '-day streak</p>' : '') +
         '<button class="btn" data-act="daily" data-enter>' + label + '</button>' +
+        (state === 'done' ? '<button class="btn plate" data-act="run">Take the long road</button>' : '') +
         '<button class="btn plate" data-act="friends">Play with friends</button>' +
         '<p class="meta"><span>No. ' + today() + '</span><span>' + esc(dateLine()) + '</span></p>' +
       '</section>';
@@ -359,6 +341,8 @@
   }
   function keyBtn(k) { return '<button data-act="key" data-k="' + k + '">' + k + '</button>'; }
   function entryHtml() {
+    if (desk) return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
+      '<div class="deskrow"><p class="hint">Type your answer, then press Enter.</p><button class="btn" data-act="enter">Lock it in</button></div></div>';
     return '<div class="entry"><div class="read" id="read"><span class="v" id="val"></span></div>' +
       '<div class="pad">' +
         keyBtn(1) + keyBtn(2) + keyBtn(3) + '<button data-act="key" data-k="del" aria-label="Delete">' + ICON.del + '</button>' +
@@ -433,18 +417,18 @@
   }
 
   /* ---------- Playing on your own ---------- */
-  function resultHtml(q, r, i) {
+  function resultHtml(q, r, i, nextLabel) {
     var ans = E.show(q, q.a), you;
-    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + '. Your snail moves ' + mOf(r) + ' m.';
-    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap, so your snail stays put.';
-    else if (r.f === 'time') you = 'The two minutes ran out.';
+    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + '. That is ' + mOf(r) + ' m further down the road.';
+    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.';
+    else if (r.f === 'time') you = 'The clock ran out.';
     else you = 'You said ' + E.show(q, parseFloat(r.t)) + '.';
     return '<div class="result">' +
       '<div class="verdict"><div class="sg' + (fresh ? ' slam' : '') + '" id="sg">' + sign(r.f, true) + '</div>' +
-        '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Your answer' : 'The answer') + '</p><p class="big' + (ans.length > 8 ? ' sm' : '') + '">' + esc(ans) + '</p><p class="you">' + esc(you) + '</p></div></div>' +
+        '<div class="vt"><p class="lab">' + (r.f === 'right' ? 'Correct' : r.f === 'bait' ? 'Not so fast. The answer is' : 'The answer is') + '</p><p class="big' + (ans.length > 8 ? ' sm' : '') + '">' + esc(ans) + '</p><p class="you">' + esc(you) + '</p></div></div>' +
       '<p class="crowd" id="crowd" role="status">' + esc(crowdLine(r)) + '</p>' +
       '<p class="why">' + esc(q.why) + '</p>' +
-      '<div class="btns"><button class="btn plate" data-act="friend" data-i="' + i + '">Ask a friend</button><button class="btn" data-act="next" data-enter>' + (i < 2 ? 'Next question' : 'See my score') + '</button></div>' +
+      '<div class="btns"><button class="btn plate" data-act="friend" data-i="' + i + '">Ask a friend</button><button class="btn" data-act="next" data-enter>' + (nextLabel || (i < 2 ? 'Next question' : 'See my score')) + '</button></div>' +
     '</div>';
   }
   function play() {
@@ -461,7 +445,7 @@
     if (r) return;
     var mode = game.mode, day = game.day;
     beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
-      commit: function (res) { st.res[i] = res; persist(); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
+      commit: function (res) { st.res[i] = res; persist(); beat(q, res); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
       reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f); crawl(totalM(st) - mOf(res), totalM(st), DAY_MAX, res.f); } });
   }
   function next() {
@@ -495,14 +479,14 @@
     st.done = true;
     persist();
     end(first);
-    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); burst(window.innerWidth / 2, 200, 90); }, 1900));
+    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); flash('#12924A'); }, 1900));
   }
 
   /* ---------- Score ---------- */
   function shareText() {
     var st = game.st, daily = game.mode === 'daily';
     return (daily ? NAME + ' #' + game.day : NAME + ', a private round') + '\n' +
-      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  my snail made it ' + totalM(st) + ' m\n' +
+      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  \uD83D\uDC0C ' + totalM(st) + ' m\n' +
       (daily ? 'Beat me: ' : 'Same three questions: ') + myLink();
   }
   function friendText(q, r) {
@@ -528,7 +512,8 @@
         '<div><b>' + far(s.far || 0) + '</b><span>Best day</span></div>' +
         '<div><b>' + far(s.metres || 0) + '</b><span>In all</span></div>' +
       '</div>' +
-      '<h2>Right answers per day</h2><div class="dist">' + bars + '</div>';
+      '<h2>Right answers per day</h2><div class="dist">' + bars + '</div>' +
+      '<p class="beaten">' + beatenLine() + (s.runBest ? ' Longest road: ' + far(s.runBest) + '.' : '') + '</p>';
   }
   function end(first) {
     stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
@@ -552,7 +537,7 @@
         '<p class="total">' + n + ' of 3 right in ' + mmss(totalSecs(st)) + '.' + (daily ? (game.newBest ? ' Your best day yet.' : store.stats.far > went ? ' Your best day is ' + store.stats.far + ' m.' : '') : '') + '</p>' +
         duelCard() +
         '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend to beat it') + '</button>' +
-          (daily ? '<button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
+          (daily ? '<button class="btn plate" data-act="run">Still bored? Take the long road</button><button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
         '</div>' +
         (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' + statsBlock() : '') +
         '<h2>' + (daily ? 'Today’s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
@@ -565,6 +550,62 @@
       seq.push(setTimeout(function () { road.classList.add('moving'); road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); SFX.crawl(); countUp(tot, 0, went, 1300, String); }, 500));
       seq.push(setTimeout(function () { road.classList.remove('moving'); replay(tot, 'pop'); }, 1850));
     }
+  }
+
+  /* ---------- The long road: keep answering until three wrong turns ---------- */
+  function startRun() {
+    game = { mode: 'run', n: 0, lives: RUN_LIVES, m: 0, right: 0, strikes: [], recent: [], cur: null, res: null, seed: Date.now() + '-' + Math.random() };
+    night(true);
+    runNext();
+  }
+  function runNext() {
+    var n = game.n++, level = n < 5 ? [1, 1, 2, 2, 3][n] : [2, 3, 2, 3, 1, 3][(n - 5) % 6];   // ease in, then mostly the harder two
+    var all = E.families.filter(function (f) { return f.level === level; });
+    var pool = all.filter(function (f) { return game.recent.indexOf(f.id) < 0; });
+    var f = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
+    game.recent.push(f.id); if (game.recent.length > 14) game.recent.shift();
+    game.cur = E.make(f, game.seed + '-' + n); game.res = null; game.start = Date.now();
+    runPlay();
+    window.scrollTo(0, 0);
+  }
+  function runGoal() { return Math.max(1000, store.stats.runBest || 0); }
+  function runPlay() {
+    stopTimers(); ask = null;
+    var q = game.cur, r = game.res, hud = '';
+    for (var k = 0; k < RUN_LIVES; k++) hud += k < game.strikes.length ? sign(game.strikes[k], false) : '<i class="dot life" aria-hidden="true"></i>';
+    var shown = game.m - (fresh && r ? r.m : 0);
+    view.innerHTML =
+      '<section class="play">' +
+        '<div class="hud"><span role="img" aria-label="' + game.strikes.length + ' of ' + RUN_LIVES + ' wrong turns used" style="display:contents">' + hud + '</span><span class="hudn">Question ' + game.n + '</span><span class="clock" id="clock" aria-label="Time left">' + mmss(r ? RUN_LIMIT - r.secs : RUN_LIMIT) + '</span></div>' +
+        roadHtml(shown, runGoal(), true) + plateHtml(q, !r) +
+        (r ? resultHtml(q, r, 'run', game.lives > 0 ? 'Next question' : 'See how far I got') : entryHtml()) +
+      '</section>';
+    if (r) return;
+    beginAsk({ q: q, limit: RUN_LIMIT, start: game.start, beat: true,
+      commit: function (res) { game.res = res; game.m += res.m; if (res.f === 'right') game.right++; else { game.lives--; game.strikes.push(res.f); } beat(q, res); },
+      reveal: function (res) { fresh = true; runPlay(); fresh = false; cheer(res.f); crawl(game.m - res.m, game.m, runGoal(), res.f); } });
+  }
+  function runEnd() {
+    stopTimers(); ask = null;
+    var s = store.stats, old = s.runBest || 0, isBest = game.m > old && game.m > 0;
+    if (isBest) { s.runBest = game.m; save(); }
+    game.over = true;
+    view.innerHTML =
+      '<section class="end">' +
+        '<p class="endno">The long road</p>' +
+        roadHtml(0, Math.max(1000, old, game.m), false) +
+        '<p class="far"><b id="tot">0</b> m</p>' +
+        '<p class="rank">' + (isBest && old ? 'Your longest road yet' : game.right === 0 ? 'Stalled at the start' : 'Three wrong turns') + '</p>' +
+        '<p class="total">' + game.right + ' right out of ' + game.n + '.' + (!isBest && old ? ' Your longest road is ' + far(old) + '.' : '') + '</p>' +
+        '<p class="total">' + beatenLine() + '</p>' +
+        '<div class="endbtns"><button class="btn" data-act="run" data-enter>Go again</button><button class="btn plate" data-act="runshare">Share it</button><button class="btn plate" data-act="home">Back to today</button></div>' +
+      '</section>';
+    window.scrollTo(0, 0);
+    var road = document.getElementById('road'), tot = document.getElementById('tot'), went = game.m, top = Math.max(1000, old, went);
+    if (!went) return;
+    if (calm) { road.style.setProperty('--p', went / top); tot.textContent = went; return; }
+    seq.push(setTimeout(function () { road.classList.add('moving'); road.style.setProperty('--p', went / top); SFX.crawl(); countUp(tot, 0, went, 1300, String); }, 400));
+    seq.push(setTimeout(function () { road.classList.remove('moving'); replay(tot, 'pop'); if (isBest) { SFX.sweep(); flash('#12924A'); } }, 1750));
   }
 
   /* ---------- One phone, passed round ---------- */
@@ -591,7 +632,7 @@
         '<p class="sm">Question ' + (game.k + 1) + ' of ' + game.set.length + '</p>' +
         '<p class="sm">' + (game.turn === 0 ? 'First up. Hand the phone to' : 'Locked in. Now hand the phone to') + '</p>' +
         '<p class="who">' + esc(p.name) + '</p>' +
-        '<p class="sm">Everyone else, eyes off. One guess, ' + PARTY_LIMIT + ' seconds. Quicker right answers go further.</p>' +
+        '<p class="sm">Everyone else, eyes off. One guess, ' + PARTY_LIMIT + ' seconds.</p>' +
         '<button class="btn" data-act="pgo" data-enter>Show ' + esc(p.name) + ' the question</button>' +
         (game.k > 0 && game.turn === 0 ? standings(false) : '') +
       '</section>';
@@ -616,7 +657,7 @@
         '<p class="sm">Question ' + (game.k + 1) + ' of ' + game.set.length + '</p>' +
         '<p class="who">Everyone is in</p>' +
         '<p class="sm">Gather round the phone.</p>' +
-        '<button class="btn" data-act="preveal" data-enter>Show the signs</button>' +
+        '<button class="btn" data-act="preveal" data-enter>Show the answers</button>' +
       '</section>';
   }
   function partyReveal() {
@@ -651,7 +692,6 @@
       el.classList.remove('hid'); el.classList.add('show');
       SFX[f](); buzz(f === 'bait' ? [70, 40, 70] : 25);
       if (f === 'bait') flash('#fff');
-      if (f === 'right') { var b = el.querySelector('.sg').getBoundingClientRect(); burst(b.left + b.width / 2, b.top + b.height / 2, 22); }
     };
     if (calm) { for (var i = 0; i < els.length; i++) els[i].classList.remove('hid'); after.classList.remove('hid'); return; }
     Array.prototype.forEach.call(els, function (el, i) { seq.push(setTimeout(function () { showRow(el); }, 600 + i * 850)); });
@@ -678,7 +718,7 @@
         '<button class="btn plate" data-act="home">Back to today</button>' +
       '</section>';
     window.scrollTo(0, 0);
-    seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); burst(window.innerWidth / 2, 180, 90); }, 250));
+    seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); }, 250));
   }
   function partyShare() {
     return NAME + ', ' + game.set.length + ' questions round the table\n' +
@@ -695,13 +735,15 @@
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves your snail on: 100 m, 150 m, then 200 m, plus a metre for every second left on the clock. The trap moves it nowhere.</li></ul>' +
+      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They go from easiest to hardest: a warm-up, a trickier one, then the hard one.</li><li>A right answer moves you down the road: 100 m, 150 m, then 200 m, plus a metre for every second left on the clock. The trap moves you nowhere.</li></ul>' +
       '<div class="eg"><p class="egq">A bat and a ball cost €1.10. The bat costs €1.00 more than the ball. How much is the ball?</p>' +
-        eg('right', '5 cents', 'Right. It takes a second look.') +
+        eg('right', '5 cents', 'Correct. It takes a second look.') +
         eg('bait', '10 cents', 'The trap. It is the answer that jumps out first.') +
         eg('wrong', 'Anything else', 'Wrong, but at least you dodged the trap.') +
       '</div>' +
       '<p>A new three arrive at midnight. Your score comes with a link, so a friend can play the same three and see who won.</p>' +
+      '<p>Done for the day and still bored? The long road keeps the questions coming until you take three wrong turns.</p>' +
+      '<p>Sound is off until you turn it on.</p>' +
       '<p class="small">To show how other players did, the game sends an anonymous count of right and wrong answers. Nothing about you is sent or stored.</p>');
   }
   function stats() { sheet('Your record', statsBlock()); }
@@ -711,7 +753,7 @@
   function friendsSheet() {
     sheet('Play with friends',
       '<h2 class="big">Play with friends</h2>' +
-      '<button class="choice" data-act="party"><b>One phone, passed round</b><span>For when you are in the same room. Everyone answers in secret, then the signs come out together. Two to six players.</span></button>' +
+      '<button class="choice" data-act="party"><b>One phone, passed round</b><span>For when you are in the same room. Everyone answers in secret, then the answers are shown together. Two to six players.</span></button>' +
       '<button class="choice" data-act="table"><b>Each on your own phone</b><span>A private three that only your group gets. Play it, then send the link and they see if they beat you.</span></button>');
   }
   function readNames() { var els = veil.querySelectorAll('.names input'); for (var i = 0; i < els.length; i++) cfg.names[i] = els[i].value.replace(/\s+/g, ' ').trim().slice(0, 10); }
@@ -720,11 +762,11 @@
     var inputs = cfg.names.map(function (nm, i) { return '<input maxlength="10" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Player ' + (i + 1) + '" value="' + esc(nm) + '" aria-label="Name of player ' + (i + 1) + '">'; }).join('');
     sheet('One phone, passed round',
       '<h2 class="big">One phone</h2>' +
-      '<p>Everyone answers the same question in secret, one after another. Then the signs come out for all to see.</p>' +
+      '<p>Everyone answers the same question in secret, one after another. Then the answers are shown for all to see.</p>' +
       stepper('Players', cfg.names.length, 'pn-', 'pn+') +
       '<div class="names">' + inputs + '</div>' +
       stepper('Questions', cfg.count, 'pq-', 'pq+') +
-      '<p class="small">The questions go from easiest to hardest. A right answer moves your snail 100 to 200 m, plus a metre for every second you had left. Blurt out the trap and it goes nowhere.</p>' +
+      '<p class="small">The questions go from easiest to hardest. A right answer is worth 100 to 200 m, plus a metre for every second you had left. Blurt out the trap and you get nothing.</p>' +
       '<button class="btn" data-act="pstart">Start</button>');
   }
   function partyStart() {
@@ -789,7 +831,9 @@
     var act = t.getAttribute('data-act');
     if (act === 'key') key(t.getAttribute('data-k'));
     else if (act === 'enter') lock(false);
-    else if (act === 'next') next();
+    else if (act === 'next') { if (game.mode === 'run') { if (game.lives > 0) runNext(); else runEnd(); } else next(); }
+    else if (act === 'run') { closeSheet(); startRun(); }
+    else if (act === 'runshare') send(NAME + ', the long road\n\uD83D\uDC0C ' + game.m + ' m before three wrong turns\n' + SITE, 'Copied. Paste it anywhere.');
     else if (act === 'daily') startDaily();
     else if (act === 'friends') friendsSheet();
     else if (act === 'party') partySheet();
@@ -798,7 +842,7 @@
     else if (act === 'stats') stats();
     else if (act === 'close') closeSheet();
     else if (act === 'copy') send(shareText(), 'Copied. Paste it to a friend.');
-    else if (act === 'friend') { var fi = Number(t.getAttribute('data-i')); send(friendText(game.set[fi], game.st.res[fi]), 'Question copied. Paste it to a friend.'); }
+    else if (act === 'friend') { var fi = t.getAttribute('data-i'); send(fi === 'run' ? friendText(game.cur, game.res) : friendText(game.set[+fi], game.st.res[+fi]), 'Question copied. Paste it to a friend.'); }
     else if (act === 'sound') { store.sound = !store.sound; save(); paintSound(); if (store.sound) SFX.key(); }
     else if (act === 'home') { closeSheet(); home(); }
     else if (act === 'deal') deal();
@@ -838,7 +882,7 @@
 
   /* ---------- Boot ---------- */
   function start(snap) {
-    if (!hadLocal && snap && snap.store && snap.store.stats && snap.store.stats.dist) { store = snap.store; if (typeof store.sound !== 'boolean') store.sound = true; }
+    if (!hadLocal && snap && snap.store && snap.store.stats && snap.store.stats.dist) { store = snap.store; if (typeof store.sound !== 'boolean') store.sound = false; }
     paintSound();
     if (readLink() === 'numbers') numbers(); else home();
   }

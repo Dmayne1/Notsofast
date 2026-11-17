@@ -15,6 +15,10 @@ Live at https://playnotsofast.com
 - The daily three, the same for everyone. A shared score carries a link, so a friend who plays the same three sees who won.
 - One phone passed round a group: everyone answers in secret, then the results are revealed together.
 - A private three on your own phones, by code or by link.
+- The long road: once today's three are done, questions keep coming until three wrong turns.
+
+Sound is off until the player turns it on, and on a laptop the answer is typed, because this is
+meant to be playable in a lecture.
 
 ## Scoring
 
