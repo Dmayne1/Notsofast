@@ -89,7 +89,13 @@ main { flex: 1; display: flex; flex-direction: column; }
 .road { position: relative; height: 36px; flex: none; margin-bottom: 14px; }
 .road::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: repeating-linear-gradient(90deg, var(--line) 0 14px, transparent 14px 26px); }
 .snail { color: var(--fg); }
-.road .snail { position: absolute; z-index: 1; bottom: 4px; left: calc(var(--p, 0) * (100% - 40px)); width: 40px; height: 29px; transition: left 0.3s linear; }
+.road .snail { position: absolute; z-index: 1; bottom: 4px; left: calc(var(--p, 0) * (100% - 112px)); width: 40px; height: 29px; transition: left 0.9s cubic-bezier(0.25, 0.8, 0.3, 1); }
+.road .snail.bump { animation: bump 0.42s; }
+.road .dist { position: absolute; right: 0; bottom: 9px; color: var(--line); font-family: var(--disp); font-weight: 800; font-size: 1.3rem; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.road .dist.pop { animation: swell 0.3s; }
+.road.moving::after { animation: dash 0.3s linear infinite; }
+.end .road { margin: 6px 0 2px; }
+.end .road .snail { left: calc(var(--p, 0) * (100% - 40px)); transition-duration: 1.35s; }
 
 .plate-q { position: relative; flex: none; padding: 24px 20px 22px; background: var(--plate); border: 3px solid var(--plate); border-radius: 20px; box-shadow: inset 0 0 0 3px #000, 0 4px 0 rgba(0, 0, 0, 0.3); }
 .plate-q::before, .plate-q::after { content: ""; position: absolute; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #cfcfcf; box-shadow: inset 0 0 0 1.5px #000; }
@@ -143,14 +149,17 @@ main { flex: 1; display: flex; flex-direction: column; }
 .endsigns.fresh .sg { animation: slamflat 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
 .endsigns.fresh .sg:nth-child(2) { animation-delay: 0.14s; }
 .endsigns.fresh .sg:nth-child(3) { animation-delay: 0.28s; }
-.rank { margin: 0; color: var(--line); font-family: var(--disp); font-weight: 800; font-size: 3.1rem; line-height: 0.95; text-transform: uppercase; }
+.far { font-family: var(--disp); font-weight: 800; font-size: 2.2rem; line-height: 0.9; }
+.far b { display: inline-block; font-size: 5.4rem; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.far b.pop { animation: swell 0.3s; }
+.rank { margin: 6px 0 0; color: var(--line); font-family: var(--disp); font-weight: 800; font-size: 2.5rem; line-height: 0.95; text-transform: uppercase; }
 .total { margin: 6px 0 16px; font-weight: 700; font-size: 1.1rem; }
 .endbtns { display: grid; gap: 12px; }
 .nextset { display: flex; align-items: baseline; justify-content: space-between; margin-top: 20px; padding: 12px 0; border-top: 3px solid var(--rule); border-bottom: 3px solid var(--rule); font-weight: 700; }
 .nextset b { font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .end h2, .sheet h2 { margin: 22px 0 10px; font-family: var(--disp); font-weight: 800; font-size: 1.5rem; line-height: 1; }
 .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.nums b { display: block; font-family: var(--disp); font-weight: 800; font-size: 2.3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.nums b { display: block; font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .nums span { font-size: 0.9rem; font-weight: 700; }
 .dist { display: grid; gap: 5px; }
 .dist div { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: center; font-family: var(--disp); font-weight: 800; font-size: 1.15rem; }
@@ -174,7 +183,7 @@ main { flex: 1; display: flex; flex-direction: column; }
 .table li { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; border-top: 2px solid var(--rule); font-family: var(--disp); font-weight: 800; font-size: 1.5rem; line-height: 1.1; text-transform: uppercase; }
 .table li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .table li small { font-family: var(--body); font-weight: 700; font-size: 0.9rem; color: var(--mut); text-transform: none; white-space: nowrap; }
-.table li b { margin-left: auto; color: var(--line); white-space: nowrap; }
+.table li b { margin-left: auto; color: var(--line); white-space: nowrap; text-transform: none; }
 .rev { padding: 14px 0 20px; }
 .rev .answer { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 6px; }
 .rev .answer span { font-weight: 700; color: var(--mut); }
@@ -246,6 +255,9 @@ main { flex: 1; display: flex; flex-direction: column; }
 @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-5px); } 40%, 60% { transform: translateX(5px); } }
 @keyframes pop { 0% { transform: scale(0.9); } 100% { transform: scale(1); } }
 @keyframes throb { 0% { transform: scale(1); } 35% { transform: scale(1.04); } 100% { transform: scale(0.97); } }
+@keyframes dash { to { background-position: -26px 0; } }
+@keyframes bump { 0% { transform: translateX(0); } 25% { transform: translateX(8px) rotate(-7deg); } 55% { transform: translateX(-5px); } 100% { transform: none; } }
+@keyframes swell { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes flash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
 
 @media (max-height: 650px) {
@@ -265,7 +277,7 @@ main { flex: 1; display: flex; flex-direction: column; }
   .hero .post { height: 100px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, .endsigns.fresh .sg, .hero .sg, .hero .snail, #flash.go { animation: none; }
+  .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, .road.moving::after, .road .snail.bump, .road .dist.pop, .far b.pop, .endsigns.fresh .sg, .hero .sg, .hero .snail, #flash.go { animation: none; }
   .road .snail { transition: none; }
 }
 </style>

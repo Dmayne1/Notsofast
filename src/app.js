@@ -19,7 +19,10 @@
 
   var EMOJI = { right: '🟢', bait: '🛑', wrong: '❌', time: '🐌' };
   var WORD = { right: 'Nailed it', bait: 'Not so fast', wrong: 'Nope', time: 'Too slow' };
-  var RANK = ['Slow down', 'Caught speeding', 'Sharp', 'Untrappable'];
+  // The score is a distance. A right answer moves your snail 100 m, plus a metre for every second
+  // left on the clock; anything else moves it nowhere. So speed pays, but only if you are right.
+  var DAY_MAX = 3 * (100 + LIMIT);
+  var PLACES = [[600, 'The open road'], [440, 'Edge of town'], [220, 'End of the street'], [1, 'The garden gate'], [0, 'Still on the doorstep']];
 
   var app = document.getElementById('app');
   var view = document.getElementById('view');
@@ -85,6 +88,10 @@
     document.body.classList.toggle('night', on);
     if (themeMeta) themeMeta.setAttribute('content', on ? '#1b1b1e' : '#FFD21F');
   }
+  function mOf(r) { return !r ? 0 : typeof r.m === 'number' ? r.m : r.f === 'right' ? 100 + Math.max(0, LIMIT - r.secs) : 0; }
+  function totalM(st) { var t = 0; st.res.forEach(function (r) { t += mOf(r); }); return t; }
+  function place(m) { for (var i = 0; i < PLACES.length; i++) if (m >= PLACES[i][0]) return PLACES[i][1]; }
+  function far(m) { return m < 1000 ? m + ' m' : (m / 1000).toFixed(1) + ' km'; }
   function rightCount(st) { return st.res.filter(function (r) { return r && r.f === 'right'; }).length; }
   function totalSecs(st) { var t = 0; st.res.forEach(function (r) { if (r) t += r.secs; }); return t; }
   function liveStreak() { var s = store.stats; return s.lastDay >= today() - 1 ? s.streak : 0; }
@@ -159,6 +166,7 @@
     del: function () { tone(360, 0, 0.05, 'triangle', 0.09); },
     lock: function () { tone(150, 0, 0.14, 'sine', 0.32, 70); },
     beep: function () { tone(1000, 0, 0.04, 'square', 0.035); },
+    crawl: function () { for (var i = 0; i < 7; i++) tone(420 + i * 70, i * 0.11, 0.07, 'triangle', 0.08); },
     right: function () { [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(f, i * 0.075, 0.24, 'triangle', 0.2); }); tone(1568, 0.3, 0.4, 'sine', 0.09); },
     bait: function () { [0, 0.21].forEach(function (s) { tone(311, s, 0.16, 'sawtooth', 0.11); tone(392, s, 0.16, 'sawtooth', 0.09); }); },  // a double honk
     wrong: function () { tone(330, 0, 0.16, 'triangle', 0.2); tone(247, 0.15, 0.3, 'triangle', 0.2); },
@@ -205,6 +213,27 @@
       buzz([90, 50, 90]);
       setTimeout(function () { flash('#fff'); replay(app, 'quake'); }, 190);   // caught on camera
     } else buzz(70);
+  }
+
+  function countUp(el, from, to, ms, fmt) {
+    if (!el) return;
+    if (calm) { el.textContent = fmt(to); return; }
+    var t0 = performance.now();
+    (function frame(t) {
+      var k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmt(Math.round(from + (to - from) * e));
+      if (k < 1 && el.isConnected) requestAnimationFrame(frame);
+    })(t0);
+  }
+  function inM(v) { return v + ' m'; }
+  // After the sign lands, the snail crawls on by whatever the answer earned. The trap makes it flinch instead.
+  function crawl(from, to, max, f) {
+    var road = document.getElementById('road'), dist = document.getElementById('dist');
+    if (!road) return;
+    if (to <= from) { if (f === 'bait') seq.push(setTimeout(function () { replay(road.querySelector('.snail'), 'bump'); }, 240)); return; }
+    if (calm) { road.style.setProperty('--p', Math.min(1, to / max)); if (dist) dist.textContent = inM(to); return; }
+    seq.push(setTimeout(function () { road.classList.add('moving'); road.style.setProperty('--p', Math.min(1, to / max)); SFX.crawl(); countUp(dist, from, to, 900, inM); }, 560));
+    seq.push(setTimeout(function () { road.classList.remove('moving'); replay(dist, 'pop'); }, 1500));
   }
 
   /* ---------- Live counters ---------- */
@@ -258,12 +287,12 @@
   function rivalHere() { var v = store.rival; return v && game && (game.mode === 'daily' || game.mode === 'table') && v.key === gameKey() ? v : null; }
   function myLink() {
     var st = game.st;
-    return LINK + '#' + gameKey() + '-' + rightCount(st) + '-' + totalSecs(st);
+    return LINK + '#' + gameKey() + '-' + rightCount(st) + '-' + totalM(st);
   }
   function readLink() {
     var h = (location.hash || '').slice(1), m, v = null;
-    if ((m = /^d(\d{1,5})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 'd' + m[1], n: +m[2], secs: +m[3] };
-    else if ((m = /^t([A-Z0-9]{1,8})-(\d{1,2})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 't' + m[1] + '-' + m[2], code: m[1], round: +m[2], n: +m[3], secs: +m[4] };
+    if ((m = /^d(\d{1,5})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 'd' + m[1], n: +m[2], m: +m[3] };
+    else if ((m = /^t([A-Z0-9]{1,8})-(\d{1,2})-([0-3])-(\d{1,3})$/.exec(h))) v = { key: 't' + m[1] + '-' + m[2], code: m[1], round: +m[2], n: +m[3], m: +m[4] };
     if (v) { store.rival = v; save(); }
     if (h && h !== 'numbers') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } }
     return h;
@@ -271,24 +300,24 @@
   function rivalCard() {
     var v = store.rival;
     if (!v) return '';
-    if (v.code) return '<div class="card">A friend sent you a private round. They got ' + v.n + ' of 3 in ' + mmss(v.secs) + '.<button class="btn" data-act="rivalround">Play their three</button></div>';
+    if (v.code) return '<div class="card">A friend sent you a private round. Their snail made it ' + v.m + ' m.<button class="btn" data-act="rivalround">Play their three</button></div>';
     if (v.key !== 'd' + today()) return '';
-    return '<div class="card">A friend got ' + v.n + ' of 3 in ' + mmss(v.secs) + ' today. Beat that.</div>';
+    return '<div class="card">A friend\u2019s snail made it ' + v.m + ' m today, with ' + v.n + ' of 3 right. Beat that.</div>';
   }
   function duelCard() {
     var v = rivalHere();
     if (!v) return '';
-    var st = game.st, n = rightCount(st), t = totalSecs(st);
-    var res = n !== v.n ? (n > v.n ? 1 : -1) : t !== v.secs ? (t < v.secs ? 1 : -1) : 0;
+    var st = game.st, n = rightCount(st), t = totalM(st);
+    var res = t !== v.m ? (t > v.m ? 1 : -1) : 0;
     return '<div class="card duel"><p class="dh">' + (res > 0 ? 'You beat your friend' : res < 0 ? 'Your friend wins' : 'Dead heat') + '</p>' +
-      '<p class="dr"><span>You</span><b>' + n + ' of 3 in ' + mmss(t) + '</b></p><p class="dr"><span>Your friend</span><b>' + v.n + ' of 3 in ' + mmss(v.secs) + '</b></p></div>';
+      '<p class="dr"><span>You, ' + n + ' of 3</span><b>' + t + ' m</b></p><p class="dr"><span>Your friend, ' + v.n + ' of 3</span><b>' + v.m + ' m</b></p></div>';
   }
 
   /* ---------- Home ---------- */
   function home() {
     stopTimers(); game = null; ask = null;
     night(false);
-    if (store.rival && !store.rival.code && store.rival.key !== 'd' + today()) { store.rival = null; save(); }   // yesterday's challenge has expired
+    if (store.rival && (typeof store.rival.m !== 'number' || (!store.rival.code && store.rival.key !== 'd' + today()))) { store.rival = null; save(); }   // yesterday's challenge has expired
     var state = dailyState(), streak = liveStreak();
     var label = state === 'done' ? 'See my score' : state === 'going' ? 'Carry on' : 'Play today’s three';
     view.innerHTML =
@@ -336,7 +365,7 @@
       '</div></div>';
   }
   function plateHtml(q, solo) { return '<div class="plate-q' + (solo ? ' solo' : '') + '"><p class="q' + (q.q.length > 125 ? ' long' : '') + '">' + esc(q.q) + '</p></div>'; }
-  function roadHtml(p) { return '<div class="road" id="road" style="--p:' + p + '">' + SNAIL + '</div>'; }
+  function roadHtml(m, max, label) { return '<div class="road" id="road" style="--p:' + Math.min(1, m / max) + '">' + SNAIL + (label ? '<span class="dist" id="dist" aria-label="Distance so far">' + inM(m) + '</span>' : '') + '</div>'; }
   // a: { q, limit, start, beat, commit(r), reveal(r) }. commit stores the answer at once; reveal shows what happens next.
   function beginAsk(a) {
     ask = a; typed = ''; lastBeep = -1;
@@ -348,12 +377,11 @@
     if (!ask) return;
     var left = ask.limit - (Date.now() - ask.start) / 1000;
     if (left <= 0) { lock(true); return; }
-    var c = document.getElementById('clock'), road = document.getElementById('road');
+    var c = document.getElementById('clock');
     if (!c) return;
     var whole = Math.ceil(left);
     c.textContent = mmss(whole);
     c.className = 'clock' + (left <= 15 ? ' low' : '');
-    road.style.setProperty('--p', Math.min(1, 1 - left / ask.limit));
     if (whole <= 10 && whole !== lastBeep) { lastBeep = whole; SFX.beep(); }
   }
   function paintTyped(pop) {
@@ -384,6 +412,7 @@
     if (f === 'low' || f === 'high') f = 'wrong';
     var used = Math.min(a.limit, Math.max(0, (Date.now() - a.start) / 1000));
     var r = { t: timeout ? '' : String(parseFloat(typed)), f: f, secs: Math.round(used) };
+    r.m = f === 'right' ? 100 + Math.max(0, a.limit - r.secs) : 0;
     ask = null; typed = '';
     stopTimers();
     a.commit(r);             // stored at once, so a reload cannot buy a second guess
@@ -397,8 +426,8 @@
   /* ---------- Playing on your own ---------- */
   function resultHtml(q, r, i) {
     var ans = E.show(q, q.a), you;
-    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + (r.secs < 15 ? '. Lightning.' : r.secs < 45 ? '. Sharp.' : '.');
-    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap.';
+    if (r.f === 'right') you = 'Solved in ' + mmss(r.secs) + '. Your snail moves ' + mOf(r) + ' m.';
+    else if (r.f === 'bait') you = 'You said ' + E.show(q, parseFloat(r.t)) + '. That is the trap, so your snail stays put.';
     else if (r.f === 'time') you = 'The two minutes ran out.';
     else you = 'You said ' + E.show(q, parseFloat(r.t)) + '.';
     return '<div class="result">' +
@@ -412,18 +441,19 @@
   function play() {
     stopTimers(); ask = null;
     var st = game.st, i = st.idx, q = game.set[i], r = st.res[i], hud = '';
+    var shown = totalM(st) - (fresh && r ? mOf(r) : 0);   // on a fresh verdict the snail starts where it was, then crawls
     for (var k = 0; k < 3; k++) { var p = st.res[k]; hud += p ? sign(p.f, false) : '<i class="dot' + (k === i ? ' now' : '') + '">' + (k + 1) + '</i>'; }
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud">' + hud + '<span class="clock" id="clock" aria-label="Time left">' + mmss(r ? LIMIT - r.secs : LIMIT) + '</span></div>' +
-        roadHtml(r ? Math.min(1, r.secs / LIMIT) : 0) + plateHtml(q, !r) +
+        roadHtml(shown, DAY_MAX, true) + plateHtml(q, !r) +
         (r ? resultHtml(q, r, i) : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
     beginAsk({ q: q, limit: LIMIT, start: st.qStart, beat: true,
       commit: function (res) { st.res[i] = res; persist(); countKind(q, res); if (mode === 'daily') askCrowd(day, i, res); },
-      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f); } });
+      reveal: function (res) { fresh = true; play(); fresh = false; cheer(res.f); crawl(totalM(st) - mOf(res), totalM(st), DAY_MAX, res.f); } });
   }
   function next() {
     var st = game.st;
@@ -446,20 +476,24 @@
         s.best = Math.max(s.best, s.streak);
         s.lastDay = game.day;
         s.dist[n]++;
+        var went = totalM(st);
+        game.newBest = went > (s.far || 0) && s.played > 1;
+        s.far = Math.max(s.far || 0, went);
+        s.metres = (s.metres || 0) + went;
       }
     }
     var first = !st.done;
     st.done = true;
     persist();
     end(first);
-    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); burst(window.innerWidth / 2, 200, 90); }, 520));
+    if (first && rightCount(st) === 3) seq.push(setTimeout(function () { SFX.sweep(); buzz([20, 40, 20, 40, 40]); burst(window.innerWidth / 2, 200, 90); }, 1900));
   }
 
   /* ---------- Score ---------- */
   function shareText() {
     var st = game.st, daily = game.mode === 'daily';
     return (daily ? NAME + ' #' + game.day : NAME + ', a private round') + '\n' +
-      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  ' + rightCount(st) + '/3 in ' + mmss(totalSecs(st)) + '\n' +
+      st.res.map(function (r) { return EMOJI[r.f]; }).join('') + '  my snail made it ' + totalM(st) + ' m\n' +
       (daily ? 'Beat me: ' : 'Same three questions: ') + myLink();
   }
   function friendText(q, r) {
@@ -481,30 +515,32 @@
     return '<h2>Your record</h2>' +
       '<div class="nums">' +
         '<div><b>' + s.played + '</b><span>Played</span></div>' +
-        '<div><b>' + (s.played ? Math.round(s.perfect / s.played * 100) : 0) + '%</b><span>Perfect</span></div>' +
         '<div><b>' + liveStreak() + '</b><span>Streak</span></div>' +
-        '<div><b>' + s.best + '</b><span>Best</span></div>' +
+        '<div><b>' + far(s.far || 0) + '</b><span>Best day</span></div>' +
+        '<div><b>' + far(s.metres || 0) + '</b><span>In all</span></div>' +
       '</div>' +
       '<h2>Right answers per day</h2><div class="dist">' + bars + '</div>';
   }
   function end(first) {
     stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
     night(true);
-    var st = game.st, signs = '', recap = '', n = rightCount(st), daily = game.mode === 'daily';
+    var st = game.st, signs = '', recap = '', n = rightCount(st), daily = game.mode === 'daily', went = totalM(st);
     for (var i = 0; i < 3; i++) {
       var r = st.res[i], q = game.set[i], pct = crowdPct(r);
       signs += '<div class="sg">' + sign(r.f, true) + '</div>';
       recap += '<li><p class="rq">' + esc(q.q) + '</p>' +
         '<p class="ra">' + sign(r.f, false) + '<b>' + esc(E.show(q, q.a)) + '</b><span class="rt">' +
-          esc(r.f === 'right' ? 'in ' + mmss(r.secs) : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
+          esc(r.f === 'right' ? 'in ' + mmss(r.secs) + ', ' + mOf(r) + ' m' : r.f === 'time' ? 'out of time' : 'you said ' + E.show(q, parseFloat(r.t))) + (pct >= 0 ? ', ' + pct + '% got it' : '') + '</span></p>' +
         '<button class="linkish" data-act="friend" data-i="' + i + '">Ask a friend this one</button></li>';
     }
     view.innerHTML =
       '<section class="end">' +
         '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
         '<div class="endsigns' + (first ? ' fresh' : '') + '">' + signs + '</div>' +
-        '<p class="rank">' + RANK[n] + '</p>' +
-        '<p class="total">' + n + ' of 3 right, ' + mmss(totalSecs(st)) + ' on the clock</p>' +
+        roadHtml(first ? 0 : went, DAY_MAX, false) +
+        '<p class="far"><b id="tot">' + (first ? 0 : went) + '</b> m</p>' +
+        '<p class="rank">' + place(went) + '</p>' +
+        '<p class="total">' + n + ' of 3 right in ' + mmss(totalSecs(st)) + '.' + (daily ? (game.newBest ? ' Your best day yet.' : store.stats.far > went ? ' Your best day is ' + store.stats.far + ' m.' : '') : '') + '</p>' +
         duelCard() +
         '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend to beat it') + '</button>' +
           (daily ? '<button class="btn plate" data-act="friends">Play with friends</button>' : '<button class="btn plate" data-act="nextround">Play another three</button><button class="btn plate" data-act="home">Back to today</button>') +
@@ -513,24 +549,29 @@
         '<h2>' + (daily ? 'Today’s three' : 'This round') + '</h2><ol class="recap">' + recap + '</ol>' +
       '</section>';
     window.scrollTo(0, 0);
-    if (first && n < 3) SFX.lock();
     if (daily) runCountdown();
+    if (first && went > 0) {   // replay the whole journey: the snail crawls the distance while the number counts up
+      var road = document.getElementById('road'), tot = document.getElementById('tot');
+      if (calm) { road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); tot.textContent = went; return; }
+      seq.push(setTimeout(function () { road.classList.add('moving'); road.style.setProperty('--p', Math.min(1, went / DAY_MAX)); SFX.crawl(); countUp(tot, 0, went, 1300, String); }, 500));
+      seq.push(setTimeout(function () { road.classList.remove('moving'); replay(tot, 'pop'); }, 1850));
+    }
   }
 
   /* ---------- One phone, passed round ---------- */
   function startParty(names, count) {
-    game = { mode: 'party', players: names.map(function (nm) { return { name: nm, pts: 0, right: 0, bait: 0, secs: 0 }; }),
+    game = { mode: 'party', players: names.map(function (nm) { return { name: nm, m: 0, right: 0, bait: 0 }; }),
       set: E.buildParty(Date.now() + '-' + Math.random(), count), k: 0, turn: 0, ans: [], scored: [] };
     night(true);
     partyPass();
   }
   function order() { var n = game.players.length, o = []; for (var i = 0; i < n; i++) o.push((game.k + i) % n); return o; }   // a different player goes first each time
   function ranked() {
-    return game.players.slice().sort(function (a, b) { return b.pts - a.pts || b.right - a.right || a.secs - b.secs; });
+    return game.players.slice().sort(function (a, b) { return b.m - a.m || b.right - a.right; });
   }
   function standings(detail) {
     return '<ol class="table">' + ranked().map(function (p) {
-      return '<li><span>' + esc(p.name) + '</span>' + (detail ? '<small>' + p.right + ' right' + (p.bait ? ', trapped ' + times(p.bait) : '') + '</small>' : '') + '<b>' + plural(p.pts, 'pt', 'pts') + '</b></li>';
+      return '<li><span>' + esc(p.name) + '</span>' + (detail ? '<small>' + p.right + ' right' + (p.bait ? ', trapped ' + times(p.bait) : '') + '</small>' : '') + '<b>' + p.m + ' m</b></li>';
     }).join('') + '</ol>';
   }
   function partyPass() {
@@ -541,7 +582,7 @@
         '<p class="sm">Question ' + (game.k + 1) + ' of ' + game.set.length + '</p>' +
         '<p class="sm">' + (game.turn === 0 ? 'First up. Hand the phone to' : 'Locked in. Now hand the phone to') + '</p>' +
         '<p class="who">' + esc(p.name) + '</p>' +
-        '<p class="sm">Everyone else, eyes off. One guess, ' + PARTY_LIMIT + ' seconds.</p>' +
+        '<p class="sm">Everyone else, eyes off. One guess, ' + PARTY_LIMIT + ' seconds. Quicker right answers go further.</p>' +
         '<button class="btn" data-act="pgo" data-enter>Show ' + esc(p.name) + ' the question</button>' +
         (game.k > 0 && game.turn === 0 ? standings(false) : '') +
       '</section>';
@@ -553,7 +594,7 @@
     view.innerHTML =
       '<section class="play">' +
         '<div class="hud"><span class="chip">' + esc(game.players[pi].name) + '</span><span class="hudn">' + (k + 1) + ' of ' + game.set.length + '</span><span class="clock" id="clock" aria-label="Time left">' + mmss(PARTY_LIMIT) + '</span></div>' +
-        roadHtml(0) + plateHtml(q, true) + entryHtml() +
+        roadHtml(game.players[pi].m, game.set.length * (100 + PARTY_LIMIT), true) + plateHtml(q, true) + entryHtml() +
       '</section>';
     beginAsk({ q: q, limit: PARTY_LIMIT, start: Date.now(), beat: false,
       commit: function (r) { (game.ans[k] = game.ans[k] || [])[pi] = r; },
@@ -571,22 +612,20 @@
   }
   function partyReveal() {
     stopTimers();
-    var k = game.k, q = game.set[k], a = game.ans[k], ord = order(), best = Infinity, last = k >= game.set.length - 1;
-    ord.forEach(function (pi) { if (a[pi].f === 'right') best = Math.min(best, a[pi].secs); });
+    var k = game.k, q = game.set[k], a = game.ans[k], ord = order(), last = k >= game.set.length - 1;
     if (!game.scored[k]) {
       game.scored[k] = true;
       ord.forEach(function (pi) {
         var r = a[pi], p = game.players[pi];
-        r.pts = r.f === 'right' ? (r.secs === best ? 2 : 1) : 0;    // 1 for right, 1 more for the fastest right answer
-        p.pts += r.pts; p.secs += r.secs;
+        p.m += r.m;
         if (r.f === 'right') p.right++;
         if (r.f === 'bait') p.bait++;
       });
     }
     var rows = ord.map(function (pi) {
       var r = a[pi];
-      var said = r.f === 'time' ? 'ran out of time' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) + (r.pts === 2 ? ', fastest' : '') : r.f === 'bait' ? ', the trap' : '');
-      return '<div class="prow hid" data-f="' + r.f + '"><div class="sg">' + sign(r.f, true) + '</div><p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p><span class="pt">' + (r.pts ? '+' + r.pts : '') + '</span></div>';
+      var said = r.f === 'time' ? 'ran out of time' : 'said ' + E.show(q, parseFloat(r.t)) + (r.f === 'right' ? ' in ' + mmss(r.secs) : r.f === 'bait' ? ', the trap' : '');
+      return '<div class="prow hid" data-f="' + r.f + '"><div class="sg">' + sign(r.f, true) + '</div><p class="nm">' + esc(game.players[pi].name) + '<span class="said">' + esc(said) + '</span></p><span class="pt">' + (r.m ? '+' + r.m + ' m' : '') + '</span></div>';
     }).join('');
     view.innerHTML =
       '<section class="rev">' +
@@ -616,13 +655,13 @@
   function listNames(ps) { var n = ps.map(function (p) { return p.name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; }
   function partyFinal() {
     stopTimers();
-    var r = ranked(), top = r.filter(function (p) { return p.pts === r[0].pts; });
+    var r = ranked(), top = r.filter(function (p) { return p.m === r[0].m; });
     var most = Math.max.apply(null, r.map(function (p) { return p.bait; })), trapped = r.filter(function (p) { return p.bait === most; });
     view.innerHTML =
       '<section class="pass" style="justify-content:flex-start">' +
         '<p class="sm">After ' + game.set.length + ' questions</p>' +
         '<p class="who">' + (top.length === 1 ? esc(top[0].name) + ' wins' : 'Dead heat') + '</p>' +
-        (top.length > 1 ? '<p class="sm">' + esc(listNames(top)) + ' share it on ' + plural(r[0].pts, 'point', 'points') + '.</p>' : '') +
+        (top.length > 1 ? '<p class="sm">' + esc(listNames(top)) + ' share it on ' + r[0].m + ' m.</p>' : '') +
         standings(true) +
         (most > 0 ? '<p class="sm">Most trapped: ' + esc(listNames(trapped)) + ', caught ' + times(most) + (trapped.length > 1 ? ' each' : '') + '.</p>' : '<p class="sm">Nobody fell for a single trap.</p>') +
         '<button class="btn" data-act="pagain" data-enter>Play again</button>' +
@@ -634,7 +673,7 @@
   }
   function partyShare() {
     return NAME + ', ' + game.set.length + ' questions round the table\n' +
-      ranked().map(function (p, i) { return (i + 1) + '. ' + p.name + ' ' + plural(p.pts, 'pt', 'pts') + (p.bait ? ' (trapped ' + times(p.bait) + ')' : ''); }).join('\n') + '\n' + SITE;
+      ranked().map(function (p, i) { return (i + 1) + '. ' + p.name + ' ' + p.m + ' m' + (p.bait ? ' (trapped ' + times(p.bait) + ')' : ''); }).join('\n') + '\n' + SITE;
   }
 
   /* ---------- Sheets ---------- */
@@ -647,7 +686,7 @@
   function help() {
     sheet('How to play',
       '<h2 class="big">How to play</h2>' +
-      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>They get harder: the first is the warm-up, the third is the one to brag about.</li></ul>' +
+      '<ul><li>Three questions a day, the same three for everyone.</li><li>One guess at each, with two minutes on the clock.</li><li>Every question has an obvious answer. It is usually the trap.</li><li>A right answer moves your snail 100 m, plus a metre for every second left on the clock. The trap moves it nowhere.</li><li>They get harder: the first is the warm-up, the third is the one to brag about.</li></ul>' +
       '<div class="eg"><p class="egq">A bat and a ball cost €1.10. The bat costs €1.00 more than the ball. How much is the ball?</p>' +
         eg('right', '5 cents', 'Right. It takes a second look.') +
         eg('bait', '10 cents', 'The trap. It is the answer that jumps out first.') +
@@ -676,7 +715,7 @@
       stepper('Players', cfg.names.length, 'pn-', 'pn+') +
       '<div class="names">' + inputs + '</div>' +
       stepper('Questions', cfg.count, 'pq-', 'pq+') +
-      '<p class="small">1 point for a right answer and 1 more for the fastest right answer. Blurt out the trap and you get nothing.</p>' +
+      '<p class="small">A right answer moves your snail 100 m, plus a metre for every second you had left. Blurt out the trap and it goes nowhere.</p>' +
       '<button class="btn" data-act="pstart">Start</button>');
   }
   function partyStart() {

@@ -16,6 +16,12 @@ Live at https://playnotsofast.com
 - One phone passed round a group: everyone answers in secret, then the results are revealed together.
 - A private three on your own phones, by code or by link.
 
+## Scoring
+
+The score is a distance. A right answer moves your snail 100 m, plus a metre for every second
+left on the clock (two minutes on your own, one minute when a phone is passed round). The trap,
+a wrong answer or running out of time moves it nowhere. A perfect day is 660 m.
+
 ## Questions
 
 Every question in `src/engine.js` has to pass three tests: short enough to say to a friend,
