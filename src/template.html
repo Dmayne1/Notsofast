@@ -283,6 +283,13 @@ main { flex: 1; display: flex; flex-direction: column; }
   .hero .sg { width: 150px; height: 150px; margin-left: -75px; }
   .hero .post { height: 100px; }
 }
+@media (max-height: 580px) {
+  .plate-q { padding: 17px 16px 14px; }
+  .lvl { margin-bottom: 4px; }
+  .read { height: 46px; }
+  .pad { gap: 7px 8px; margin-top: 8px; }
+  .pad button { height: 39px; font-size: 1.5rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .app.quake, .read.shake, .read.pop .v, .read.locking, .verdict .sg.slam, .prow.show .sg, .road.moving::after, .road .snail.bump, .road .dist.pop, .far b.pop, .endsigns.fresh .sg, .hero .sg, .hero .snail, #flash.go { animation: none; }
   .road .snail { transition: none; }
