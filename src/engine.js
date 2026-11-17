@@ -2,7 +2,13 @@
    Every question must pass three tests:
    1. Sayable: short enough to ask a friend from memory.
    2. No real calculation: once you see it, the sum is one easy step.
-   3. One illusion: a single obvious answer that is wrong, and a click when you see why. */
+   3. One illusion: a single obvious answer that is wrong, and a click when you see why.
+   And one rule of fairness: a minute of thinking must be able to reach the answer. No trivia.
+
+   The three levels are the three slots in a day, aimed at these shares of players getting it right:
+   1. the opener, about 7 in 10   2. the coin flip, about 5 in 10   3. the closer, about 3 in 10.
+   Those shares are estimates until the live counters say otherwise; each question carries a
+   `kind` so real results can be read back per kind and the levels re-sorted. */
 (function (root) {
   'use strict';
 
@@ -29,7 +35,7 @@
 
   /* ---------- Level 1: the opener. Instant to read, instant to get wrong. ---------- */
 
-  fam('sumdiff', 1, function (r) {
+  fam('sumdiff', 2, function (r) {
     if (r() < 0.6) {
       const p = pick(r, [['bat', 'ball'], ['burger', 'drink'], ['coffee', 'biscuit'], ['pen', 'pencil'], ['kite', 'string']]);
       const c = pick(r, [5, 10, 15, 20, 25]), total = 100 + 2 * c;
@@ -209,10 +215,6 @@
   });
 
   fam('coins', 2, function (r) {
-    if (r() < 0.45) {
-      const n = pick(r, [4, 5, 6, 10]);
-      return { q: 'A fair coin lands heads ' + n + ' times in a row. What is the % chance the next flip is heads?', suf: '%', a: 50, baits: [], baitBelow: 50, why: 'The coin has no memory. Every flip is 50%, whatever came before.', v: { t: 'coins', mode: 'gambler' } };
-    }
     const s = pick(r, [['You roll two dice', 'they show the same number', 6], ['Two friends each pick a day of the week at random', 'they pick the same day', 7], ['Two people each pick a number from 1 to 10', 'they pick the same number', 10], ['Two people play rock, paper, scissors', 'they throw the same thing', 3]]);
     return { q: s[0] + '. The chance ' + s[1] + ' is 1 in what?', pre: '1 in ', a: s[2], baits: [s[2] * s[2]], why: 'Whatever the first one is, the second has a 1 in ' + s[2] + ' chance of matching it.', v: { t: 'coins', mode: 'match', n: s[2] } };
   });
@@ -228,7 +230,7 @@
     return { q: 'A coat is ' + p[0] + '% off. At the till you get a further ' + p[1] + '% off the sale price. What is the total % discount?', suf: '%', a: 100 - left, baits: [p[0] + p[1]], why: '€100 drops to €' + (100 - p[0]) + ', and ' + p[1] + '% off that leaves €' + num(left) + '. The second discount is taken off a smaller price.', v: { t: 'compound', mode: 'discount', p: p[0], q: p[1] } };
   });
 
-  fam('digits', 2, function (r) {
+  fam('digits', 3, function (r) {
     const d = 2 + Math.floor(r() * 8);
     return { q: 'How many times does the digit ' + d + ' appear in the numbers from 1 to 100?', suf: 'times', a: 20, baits: [10, 11, 19], why: 'Ten times at the end (' + d + ', 1' + d + ', 2' + d + '…) and ten times at the front (' + d + '0 to ' + d + '9). ' + d + d + ' has it twice.', v: { t: 'digits', mode: 'appear', N: 100, d: d } };
   });
@@ -306,23 +308,14 @@
     return { q: 'You ' + s[0] + ' at ' + a + ' km/h and ' + s[1] + ' the same way at ' + b + ' km/h. What is your average speed for the whole trip?', suf: 'km/h', a: 2 * L / hrs, baits: [(a + b) / 2], why: 'You spend longer on the slow leg, so it counts for more. Say it is ' + L + ' km each way: ' + (L / a) + ' ' + pl(L / a, 'hour', 'hours') + ' out, ' + (L / b) + ' back, ' + (2 * L) + ' km in ' + hrs + ' hours.', v: { t: 'speed', mode: 'avg', a: a, b: b } };
   });
 
-  // One-off classics. Each appears once per pass through its list, in order.
+  // One-off classics. Each appears once per pass through the list, in order.
   fam('classic', 3, function (r, turn) {
     const list = [
-      { q: 'How many people do you need in a room for a better-than-even chance that two share a birthday?', suf: 'people', a: 23, baits: [183, 182, 365, 366], why: 'You are not matching one birthday. With 23 people there are 253 different pairs, and any pair can match.', v: { t: 'classic', id: 'birthday' } },
-      { q: 'Two 50 m poles hold up an 80 m cable. At its lowest point the cable is 10 m above the ground. How far apart are the poles?', suf: 'm', a: 0, baits: [], why: 'The cable drops 40 m and climbs 40 m, which uses all 80 m. It hangs straight down, so the poles are touching.', v: { t: 'classic', id: 'cable' } },
-      { q: 'A rope fits snugly around the Earth. How many extra metres of rope do you need to lift it 1 metre off the ground all the way round? (nearest metre)', suf: 'metres', a: 6, tol: 0.3, baits: [], baitAbove: 100, why: 'The extra is 2 × π × 1 metre, about 6.3 metres. The size of the Earth makes no difference at all.', v: { t: 'classic', id: 'rope' } },
-      { q: 'A million seconds is about 11.6 days. How many years is a billion seconds? (nearest year)', suf: 'years', a: 32, tol: 1, baits: [], baitBelow: 12, why: 'A billion is a thousand millions: 11,600 days, which is nearly 32 years.', v: { t: 'classic', id: 'billion' } }
-    ];
-    return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
-  });
-
-  fam('paradox', 3, function (r, turn) {
-    const list = [
       { q: 'You roll a coin all the way round the edge of another coin of the same size. How many full turns does it make?', suf: 'turns', a: 2, baits: [1], why: 'It turns once from rolling along the edge, and once more from being carried round the circle.', v: { t: 'classic', id: 'coinroll' } },
-      { q: 'A family has two children and at least one is a boy. The chance that both are boys is 1 in what?', pre: '1 in ', a: 3, baits: [2, 4], why: 'Boy-boy, boy-girl and girl-boy are all equally likely. Only one of those three is two boys.', v: { t: 'classic', id: 'twokids' } },
+      { q: 'Two 50 m poles hold up an 80 m cable. At its lowest point the cable is 10 m above the ground. How far apart are the poles?', suf: 'm', a: 0, baits: [], why: 'The cable drops 40 m and climbs 40 m, which uses all 80 m. It hangs straight down, so the poles are touching.', v: { t: 'classic', id: 'cable' } },
       { q: 'One of 3 doors hides a car. You pick one. The host, who knows where the car is, opens an empty door from the other two. What is your % chance if you switch?', suf: '%', a: 66.67, tol: 0.7, baits: [50, 33], why: 'Your first pick is right 1 time in 3. The other 2 times, the host has just shown you where the car is.', v: { t: 'classic', id: 'monty' } },
-      { q: 'A string fits snugly around a football. How many extra metres of string do you need to lift it 1 metre off the ball all the way round? (nearest metre)', suf: 'metres', a: 6, tol: 0.3, baits: [], why: 'About 6.3 metres: 2 × π × 1 metre. It is the same answer for a football, the Moon or the Earth.', v: { t: 'classic', id: 'rope' } }
+      { q: 'A family has two children and at least one is a boy. The chance that both are boys is 1 in what?', pre: '1 in ', a: 3, baits: [2, 4], why: 'Boy-boy, boy-girl and girl-boy are all equally likely. Only one of those three is two boys.', v: { t: 'classic', id: 'twokids' } },
+      { q: 'A rope fits snugly around the Earth. How many extra metres of rope do you need to lift it 1 metre off the ground all the way round? (nearest metre)', suf: 'metres', a: 6, tol: 0.3, baits: [], baitAbove: 100, why: 'The extra is 2 × π × 1 metre, about 6.3 metres. The size of the Earth makes no difference at all.', v: { t: 'classic', id: 'rope' } }
     ];
     return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
   });
@@ -337,7 +330,7 @@
     const fams = BY[level], days = fams.length;
     let prev = null, sh = null;
     for (let c = 0; c <= target; c++) {
-      sh = shuffle(rngFrom('v3-cycle-' + level + '-' + c), fams);
+      sh = shuffle(rngFrom('v4-cycle-' + level + '-' + c), fams);
       if (prev && sh[0] === prev) sh = sh.slice(1).concat(sh[0]);
       prev = sh[days - 1];
     }
@@ -346,6 +339,7 @@
   function make(f, seed, turn) {
     const q = f.gen(rngFrom(seed + '-' + f.id), turn);
     q.fam = f.id; q.level = f.level;
+    q.kind = f.id + ((q.v && (q.v.mode || q.v.id)) || '');   // letters only: used as a counter name
     q.pre = q.pre || ''; q.suf = q.suf || '';
     q.a = Math.round(q.a * 1e6) / 1e6;
     q.baits = (q.baits || []).filter(function (b, i, arr) { return isFinite(b) && b >= 0 && Math.abs(b - q.a) > (q.tol || 0) + 0.006 && arr.indexOf(b) === i; });
@@ -355,12 +349,26 @@
     const i = Math.max(0, day - 1);
     return [1, 2, 3].map(function (level, n) {
       const days = BY[level].length, turn = Math.floor(i / days);
-      return make(cycleOrder(level, turn)[i % days], 'v3-daily-' + day + '-' + n, turn);
+      return make(cycleOrder(level, turn)[i % days], 'v4-daily-' + day + '-' + n, turn);
     });
   }
   function buildTable(code, round) {
-    const key = 'v3-table-' + code + '-' + round, r = rngFrom(key);
+    const key = 'v4-table-' + code + '-' + round, r = rngFrom(key);
     return [pick(r, BY[1]), pick(r, BY[2]), pick(r, BY[3])].map(function (f, n) { return make(f, key + '-' + n); });
+  }
+
+  // A longer set for one phone passed round a group: easy first, hardest last, no family twice.
+  function buildParty(seed, n) {
+    const key = 'v4-party-' + seed, r = rngFrom(key);
+    const plan = n <= 3 ? [1, 2, 3] : n <= 5 ? [1, 2, 2, 3, 3] : [1, 2, 2, 2, 3, 3, 3];
+    const pool = { 1: shuffle(r, BY[1]), 2: shuffle(r, BY[2]), 3: shuffle(r, BY[3]) };
+    return plan.map(function (level, i) { return make(pool[level].pop(), key + '-' + i); });
+  }
+  // Every kind of question the bank can produce, for reading the live counters back.
+  function kinds() {
+    const seen = {}, out = [];
+    F.forEach(function (f) { for (let i = 0; i < 400; i++) { const q = make(f, 'kinds-' + i, i); if (!seen[q.kind]) { seen[q.kind] = 1; out.push({ kind: q.kind, level: q.level, eg: q.q }); } } });
+    return out;
   }
 
   const EPOCH = Date.UTC(2026, 10, 16); // No. 1 was 16 November 2026, by the player's local date
@@ -386,7 +394,7 @@
     return q.pre + num(v) + (suf ? (tight ? '' : ' ') + suf : '');
   }
 
-  const api = { families: F, buildDaily: buildDaily, buildTable: buildTable, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
+  const api = { families: F, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.BaitEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

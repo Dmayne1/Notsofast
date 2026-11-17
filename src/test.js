@@ -183,7 +183,8 @@ for (const f of E.families) {
     if (!near(q.a * 100, Math.round(q.a * 100))) fail('answer has more than 2 decimals', q);
     if (!q.why || q.why.length < 20) fail('no explanation', q);
     if (E.judge(q, String(q.a)) !== 'right') fail('judge rejects the answer', q);
-    if (!E.hasBait(q) && q.fam !== 'classic' && q.fam !== 'paradox') fail('no trap answer', q);
+    if (!E.hasBait(q) && q.fam !== 'classic') fail('no trap answer', q);
+    if (!/^[a-z0-9]{3,40}$/.test(q.kind)) fail('kind is not a safe counter name: ' + q.kind, q);
     if (q.q.length > 190) fail('too long to say out loud (' + q.q.length + ' characters)', q);
     longest = Math.max(longest, q.q.length); lenSum += q.q.length;
     const far = E.judge(q, String(q.a + (q.tol || 0) + 0.5)); if (far !== 'high' && far !== 'bait') fail('a guess above the answer should read as too high', q);
@@ -216,6 +217,16 @@ for (let day = 1; day <= 1095; day++) {
 const t1 = E.buildTable('LADS', 1), t2 = E.buildTable('LADS', 1), t3 = E.buildTable('LADS', 2);
 if (JSON.stringify(t1.map(q => q.q)) !== JSON.stringify(t2.map(q => q.q))) fail('table not deterministic');
 if (JSON.stringify(t1.map(q => q.q)) === JSON.stringify(t3.map(q => q.q))) fail('table rounds identical');
+// Party sets: right length, easy first, no family twice, same seed gives the same set.
+for (const n of [3, 5, 7]) for (let i = 0; i < 300; i++) {
+  const set = E.buildParty('p' + i, n);
+  if (set.length !== n) fail('party set has ' + set.length + ' questions, wanted ' + n);
+  if (new Set(set.map(q => q.fam)).size !== n) fail('party set repeats a family');
+  if (set.map(q => q.level).join('') !== set.map(q => q.level).sort().join('')) fail('party set is not easy-first');
+  if (JSON.stringify(E.buildParty('p' + i, n).map(q => q.q)) !== JSON.stringify(set.map(q => q.q))) fail('party set not deterministic');
+}
+const kinds = E.kinds();
+if (new Set(kinds.map(k => k.kind)).size !== kinds.length) fail('duplicate kinds');
 // Day numbering.
 if (E.dayNumber(new Date(2026, 10, 16)) !== 1) fail('epoch day');
 if (E.dayNumber(new Date(2026, 10, 17)) !== 2) fail('day 2');
@@ -229,6 +240,7 @@ console.log('questions checked:', checked);
 console.log('longest question:', longest, 'characters; average', Math.round(lenSum / checked));
 console.log('distinct question texts found:', totalVariants);
 console.log('fewest variants in a family:', Object.entries(variants).sort((a, b) => a[1] - b[1]).slice(0, 5).map(e => e.join('=')).join(', '));
+console.log('kinds of question:', kinds.length, '(level 1:', kinds.filter(k => k.level === 1).length + ', 2:', kinds.filter(k => k.level === 2).length + ', 3:', kinds.filter(k => k.level === 3).length + ')');
 console.log('days with a family repeated from the day before (of 1095):', back);
 console.log('family appearances min/max over 3 years:', Math.min(...Object.values(famCount)), Math.max(...Object.values(famCount)));
 console.log(fails ? 'FAILURES: ' + fails : 'ALL CHECKS PASSED');

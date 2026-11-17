@@ -10,11 +10,22 @@ Live at https://playnotsofast.com
 - `CNAME` tells GitHub Pages which domain to serve.
 - `og.png` is the picture shown when the link is shared. `icon.png` is the home-screen icon.
 
+## Ways to play
+
+- The daily three, the same for everyone. A shared score carries a link, so a friend who plays the same three sees who won.
+- One phone passed round a group: everyone answers in secret, then the results are revealed together.
+- A private three on your own phones, by code or by link.
+
 ## Questions
 
 Every question in `src/engine.js` has to pass three tests: short enough to say to a friend,
 no real calculation, and one illusion that clicks. The test file rejects any question over
-190 characters.
+190 characters. A day runs opener, coin flip, closer, aimed at roughly 70%, 50% and 30% of
+players getting each one right.
+
+Those targets are estimates. The game keeps an anonymous lifetime tally for each kind of
+question; open the site with `#numbers` on the end of the address to read real difficulty
+back, then move kinds between levels in `src/engine.js`.
 
 ## Typeface
 
