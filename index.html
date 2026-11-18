@@ -586,10 +586,10 @@ body.desk .foot { margin-top: 26px; }
   fam('selfref', 2, function (r) {
     if (r() < 0.5) {
       const A = pick(r, [1, 2, 3, 5]);
-      return { q: 'A brick weighs ' + A + ' kg plus half a brick. How much does the brick weigh?', suf: 'kg', a: 2 * A, baits: [1.5 * A], why: 'If half a brick is part of the weight, the ' + A + ' kg must be the other half. Two halves: ' + (2 * A) + ' kg.', v: { t: 'selfref', A: A, n: 1, d: 2 } };
+      return { q: 'On a set of scales, one brick balances a ' + A + ' kg weight plus half a brick. How much does a whole brick weigh?', suf: 'kg', a: 2 * A, baits: [1.5 * A], why: 'Take half a brick off each side. Half a brick now balances the ' + A + ' kg weight, so a whole brick is ' + (2 * A) + ' kg.', v: { t: 'selfref', A: A, n: 1, d: 2 } };
     }
     const A = pick(r, [4, 6, 10, 20]);
-    return { q: 'A book costs ' + eur(A) + ' plus half its price. How much does the book cost?', pre: '€', a: 2 * A, baits: [1.5 * A], why: 'If half the price is part of the price, the ' + eur(A) + ' must be the other half. Two halves: ' + eur(2 * A) + '.', v: { t: 'selfref', A: A, n: 1, d: 2 } };
+    return { q: 'The price of a book is ' + eur(A) + ' more than half its price. How much does the book cost?', pre: '€', a: 2 * A, baits: [1.5 * A], why: 'The price is half of itself plus ' + eur(A) + ', so the ' + eur(A) + ' must be the other half. Two halves: ' + eur(2 * A) + '.', v: { t: 'selfref', A: A, n: 1, d: 2 } };
   });
 
   fam('snail', 2, function (r) {
