@@ -107,8 +107,9 @@ back, then change the kind's number in `GRADE`.
 ## Analytics
 
 The game reports to PostHog (EU cloud) so the owner can see visits, where they
-came from and how players do. It is switched off until `PH_KEY` in `src/app.js`
-holds a project key, and it only ever runs on playnotsofast.com.
+came from and how players do. The project key and host live in
+`src/analytics.json` and `build.js` bakes them in (the key is public by design;
+an empty key switches analytics off). It only ever runs on playnotsofast.com.
 
 It runs in PostHog's cookieless mode: no cookie, nothing in storage, no person
 profiles, no session recording, no autocapture. Visitors are counted by a hash

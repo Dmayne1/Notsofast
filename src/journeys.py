@@ -45,6 +45,7 @@ class Site:
         self.ctx = await self.browser.new_context(**kw)
         for s in self.init: await self.ctx.add_init_script(s)
         await self.ctx.route('**/abacus.jasoncameron.dev/**', self.counter)
+        await self.ctx.route(re.compile(r'posthog\.com/'), lambda r: r.abort())   # tests never reach the real analytics service
         self.page = await self.tab()
         return self
 
@@ -750,8 +751,17 @@ async def analytics(b):
             await route.fulfill(status=200, content_type='application/javascript', headers={'access-control-allow-origin': '*'}, body=STUB)
         await s.ctx.route(re.compile(r'^https://playnotsofast\.com/'), page)
         await s.ctx.route(re.compile(r'posthog\.com/'), lib)
+    cfg_file = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'analytics.json')))
     asked = []
-    async with Site(b) as s:                              # no key set: nothing is loaded and nothing is sent
+    async with Site(b) as s:                              # the page exactly as shipped, on the live address
+        await live(s, asked)
+        await s.page.goto('https://playnotsofast.com/'); await s.page.wait_for_timeout(600)
+        cfg = await s.page.evaluate("() => window.__phInit")
+        check('the shipped page starts with the project key and host from analytics.json',
+              bool(cfg) and cfg[0] == cfg_file['key'] and cfg[0].startswith('phc_') and cfg[1].get('api_host') == cfg_file['host'] == 'https://eu.i.posthog.com'
+              and cfg[1].get('cookieless_mode') == 'always', cfg)
+    asked = []
+    async with Site(b, init=("window.__NSF_PH_KEY = '';",)) as s:   # no key set: nothing is loaded and nothing is sent
         await live(s, asked)
         await s.page.goto('https://playnotsofast.com/'); await s.page.wait_for_timeout(500)
         await play_day(s)

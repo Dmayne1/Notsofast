@@ -460,8 +460,8 @@
      identifier is kept, so a visitor is counted by a hash that changes every day. Every event carries
      only what just happened in the game. PH_KEY is the project key from PostHog (public by design);
      while it is empty nothing is loaded and nothing is sent. It only ever runs on the live site. */
-  var PH_KEY = window.__NSF_PH_KEY || '';
-  var PH_HOST = 'https://eu.i.posthog.com';
+  var PH_KEY = window.__NSF_PH_KEY != null ? String(window.__NSF_PH_KEY) : '/*PH_KEY*/';   // filled in by build.js from analytics.json
+  var PH_HOST = '/*PH_HOST*/' || 'https://eu.i.posthog.com';
   var LIVE = /(^|\.)playnotsofast\.com$/.test(location.hostname);
   var ph = null, phq = [];
   // Where this visit came from: a tagged link (?utm_source=tiktok, or ?c=name for one creator's link), the app it was opened in, or the referring site.
