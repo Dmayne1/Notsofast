@@ -8,7 +8,7 @@
   var LIMIT = 180;                     // seconds for all three questions on your own: one clock, not three
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
-  var SETV = 'v9';                     // bump when the question bank changes: today's set restarts and counts never mix
+  var SETV = 'v10';                     // bump when the question bank changes: today's set restarts and counts never mix
 
   // Live counters: anonymous tallies on a free public counting service.
   // Set STATS to '' to switch them off. Nothing about the player is sent.
@@ -52,7 +52,7 @@
   var INAPP = /musical_ly|Bytedance|TikTok|Trill_/i.test(UA) ? 'TikTok' : /Instagram/i.test(UA) ? 'Instagram' : /Snapchat/i.test(UA) ? 'Snapchat' : /FBAN|FBAV|FBIOS|FB_IAB/.test(UA) ? 'Facebook' : '';
   var BROWSER = /Android/i.test(UA) ? 'Chrome' : /iPhone|iPad|iPod/i.test(UA) ? 'Safari' : 'your usual browser';
 
-  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null, live: null, seen: {} }; }
+  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null, live: null, seen: {}, recent: [] }; }
 
   /* Nothing read back from storage is trusted. A half-written save, an older version or a curious
      player with the developer tools open must never be able to break the page, so every value is
@@ -99,6 +99,7 @@
     b.stats.runTop = int(st.runTop, 0, 1e5, 0);
     if (Array.isArray(s.names)) b.names = s.names.slice(0, 6).map(function (n) { return String(n == null ? '' : n).slice(0, 10); });
     if (s.seen && typeof s.seen === 'object') Object.keys(s.seen).slice(0, 500).forEach(function (k) { if (/^[a-z0-9]{3,40}$/.test(k)) b.seen[k] = 1; });
+    if (Array.isArray(s.recent)) b.recent = s.recent.filter(function (k) { return typeof k === 'string' && /^[a-z0-9]{3,40}$/.test(k); }).slice(-90);   // the kinds endless mode has shown, oldest first
     b.daily = okDaily(s.daily); b.rival = okRival(s.rival);
     if (age > -60000 && age < 6 * 3600 * 1000 && s.live.v === SETV && s.live.game && typeof s.live.game === 'object') b.live = { v: SETV, at: Number(s.live.at), game: s.live.game };   // checked again when it is resumed
     return b;
@@ -167,7 +168,7 @@
   function beat(q, r) { if (r.f !== 'right') return; store.seen = store.seen || {}; if (!store.seen[q.kind]) { store.seen[q.kind] = 1; save(); } }
   function beatenLine() {
     if (!kindTotal) kindTotal = E.kinds().length;
-    return 'Kinds of trap you have beaten: ' + Object.keys(store.seen || {}).length + ' of ' + kindTotal + '.';
+    return 'Kinds of trap you have beaten: ' + Object.keys(store.seen || {}).filter(function (k) { return E.GRADE.hasOwnProperty(k); }).length + ' of ' + kindTotal + '.';
   }
   function rightCount(st) { return st.res.filter(function (r) { return r && r.f === 'right'; }).length; }
   function totalSecs(st) { var t = 0; st.res.forEach(function (r) { if (r) t += r.secs; }); return t; }
@@ -971,8 +972,12 @@
   }
   function runNext() {
     var n = game.n++, grade = n < 6 ? [1, 2, 2, 3, 3, 4][n] : [3, 4, 2, 5, 3, 4, 1, 5][(n - 6) % 8];   // ease in, then everything, the brutal ones included
-    var all = E.kindsAt(grade), pool = all.filter(function (k) { return game.recent.indexOf(k) < 0; });
-    var kind = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
+    // The kind whose idea this player met longest ago, across every run on this device and today's three,
+    // so a new run never opens with the questions the last one did.
+    var met = (store.recent || []).slice(), kind;
+    try { E.buildDaily(today()).forEach(function (q) { met.push(q.kind); }); } catch (e) { /* the daily set is only a hint here */ }
+    kind = E.nextKind(grade, met, Math.random);
+    store.recent = (store.recent || []).concat([kind]).slice(-90); save();
     game.recent.push(kind); if (game.recent.length > 24) game.recent.shift();
     game.kind = kind; game.cur = E.makeKind(kind, game.seed + '-' + n, n); game.res = null; game.start = Date.now();
     keep();

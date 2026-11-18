@@ -96,13 +96,27 @@ Each kind of question has a grade from 1 to 5, set in the `GRADE` table in `src/
 
 A day climbs 2, 3, 4, aimed at roughly 60%, 45% and 30% of players getting each one right. So the
 day starts with something that can catch you and ends with something reachable. Grades 1 and 5
-never appear in the daily three, a private round or a party; endless mode uses all five. No two
-questions in a day come from the same family, and a kind does not return to the same slot for at
-least three days.
+never appear in the daily three, a private round or a party; endless mode uses all five.
 
-Those grades are estimates. The game keeps an anonymous lifetime tally for each kind of
-question; open the site with `#numbers` on the end of the address to read real difficulty
-back, then change the kind's number in `GRADE`.
+**Ideas, not kinds, are what must not repeat.** Two kinds that turn on the same trick (the gaps
+between fence posts, floors or clock strikes) are one idea in different clothes. `IDEA` in
+`src/engine.js` maps each kind to its idea, and `CORNER` groups ideas by the corner of maths they
+live in (percent, chance, rates and so on). The calendar is built day by day:
+
+- each slot takes the kind whose idea has been away longest, then the kind that has itself been
+  away longest;
+- a day never uses one idea twice, or two ideas from the same corner;
+- a kind that returns is worded differently from its last outings.
+
+With 53 ideas in the daily bank an idea returns about every 18 days (never sooner than 13), and
+the very same wording not for a month. `node src/test.js` prints these numbers and fails if they
+drop. The only way to push them out is to add new ideas, so a new question should be a new trick,
+not a new costume. Endless mode remembers the kinds a device has been shown and always serves the
+one whose idea was met longest ago.
+
+Those grades are estimates. The PostHog dashboard's "Share right by question type" tile shows
+how each kind really plays; change the kind's number in `GRADE` to match, and cut any kind that
+nearly everyone gets right.
 
 ## Analytics
 

@@ -487,27 +487,14 @@ body.desk .foot { margin-top: 26px; }
     return { q: p[0], suf: p[1], a: p[2], baits: p[3], why: p[4], v: { t: 'dry', each: p[2] } };
   });
 
-  fam('family', 1, function (r) {
-    const s = pick(r, [3, 4, 5, 6, 7]), b = pick(r, [1, 1, 2]);
-    return { q: 'A family has ' + s + ' sisters. Each sister has ' + b + ' ' + pl(b, 'brother', 'brothers') + '. How many children are in the family?', suf: 'children', a: s + b, baits: [s * (b + 1), s * b], why: 'The sisters all share the same ' + pl(b, 'brother', b + ' brothers') + '. ' + s + ' girls plus ' + b + ' ' + pl(b, 'boy', 'boys') + '.', v: { t: 'family', s: s, b: b } };
-  });
-
   // Number riddles: nothing to work out, just a question most people do not quite hear.
   // The bar is "I should have caught that", never "how was I meant to know". So: no puns, no
   // trivia, and nothing that hangs on an assumption the question does not state.
   fam('listen', 1, function (r, turn) {
-    const pickOne = walk(r, turn, ['sheep', 'apples', 'hole', 'stamps']);
+    const pickOne = walk(r, turn, ['sheep', 'stamps']);
     if (pickOne === 'sheep') {
       const p = pick(r, [[17, 9], [20, 8], [15, 6], [23, 9]]);
       return { q: 'A farmer has ' + p[0] + ' sheep. All but ' + p[1] + ' run away. How many does he have left?', suf: 'sheep', a: p[1], baits: [p[0] - p[1]], why: '“All but ' + p[1] + '” means ' + p[1] + ' stayed. Nothing to subtract.', v: { t: 'listen', id: 'sheep', n: p[0], k: p[1] } };
-    }
-    if (pickOne === 'apples') {
-      const p = pick(r, [[6, 4], [5, 3], [8, 5], [7, 4]]);
-      return { q: 'There are ' + p[0] + ' apples in a bowl. You take ' + p[1] + '. How many apples do you have?', suf: 'apples', a: p[1], baits: [p[0] - p[1]], why: 'You have the ' + p[1] + ' you took. The question never asked what was left in the bowl.', v: { t: 'listen', id: 'apples', n: p[0], k: p[1] } };
-    }
-    if (pickOne === 'hole') {
-      const p = pick(r, [[2, 3, 1], [2, 2, 2], [3, 3, 1], [5, 2, 1]]);
-      return { q: 'How many cubic metres of soil are in a hole ' + p[0] + ' m long, ' + p[1] + ' m wide and ' + p[2] + ' m deep?', suf: 'cubic metres', a: 0, baits: [p[0] * p[1] * p[2]], why: 'None. A hole is the part where the soil has been taken out.', v: { t: 'listen', id: 'hole' } };
     }
     const k = pick(r, [2, 3, 4, 6]);
     return { q: 'How many ' + k + '-cent stamps are there in a dozen?', suf: 'stamps', a: 12, baits: [12 / k], why: 'A dozen of anything is 12. The price is only there to make you divide.', v: { t: 'listen', id: 'stamps' } };
@@ -549,7 +536,7 @@ body.desk .foot { margin-top: 26px; }
   });
 
   fam('intervals', 2, function (r) {
-    const mode = pick(r, ['log', 'clock', 'floors', 'pills', 'posts', 'circle', 'length']);
+    const mode = pick(r, ['log', 'clock', 'floors', 'pills', 'posts', 'circle', 'monday']);
     if (mode === 'log') {
       const c = pick(r, [2, 3, 5]), p = pick(r, [[2, 4], [2, 6], [3, 6], [2, 8], [2, 10]]);
       const t = c * (p[0] - 1), ans = c * (p[1] - 1);
@@ -577,8 +564,8 @@ body.desk .foot { margin-top: 26px; }
       const n = pick(r, [8, 10, 12, 20]);
       return { q: 'You plant ' + n + ' trees evenly around a circular pond. How many gaps are there between the trees?', suf: 'gaps', a: n, baits: [n - 1], why: 'In a circle the last tree is next to the first, so there are as many gaps as trees.', v: { t: 'intervals', mode: 'circle', n: n } };
     }
-    const n = pick(r, [10, 11, 20, 21]), g = pick(r, [2, 3, 5]);
-    return { q: n + ' fence posts stand in a straight line, ' + g + ' m apart. How long is the fence?', suf: 'm', a: (n - 1) * g, baits: [n * g], why: n + ' posts have only ' + (n - 1) + ' gaps between them.', v: { t: 'intervals', mode: 'length', n: n, g: g } };
+    const p = pick(r, [['Monday', 3], ['Friday', 4], ['Sunday', 3], ['Tuesday', 4], ['Saturday', 3]]), date = 1 + 7 * (p[1] - 1);
+    return { q: 'The 1st of the month is a ' + p[0] + '. What date is the ' + ord(p[1]) + ' ' + p[0] + ' of that month?', ordinal: true, a: date, baits: [7 * p[1]], why: 'The 1st is already the first ' + p[0] + ', so the ' + ord(p[1]) + ' is only ' + (p[1] - 1) + ' weeks later: 1 + ' + (7 * (p[1] - 1)) + ' = ' + date + '.', v: { t: 'intervals', mode: 'monday', k: p[1] } };
   });
 
   fam('downup', 2, function (r) {
@@ -618,14 +605,27 @@ body.desk .foot { margin-top: 26px; }
       const n = pick(r, [8, 16, 32, 64, 100, 128]);
       return { q: n + ' players enter a knockout tournament. How many matches are played to find the winner?', suf: 'matches', a: n - 1, baits: [n / 2, n], why: 'Every match knocks out one player, and ' + (n - 1) + ' players have to be knocked out.', v: { t: 'matches', mode: 'knockout', n: n } };
     }
+    if (r() < 0.45) {
+      const b = pick(r, [[4, 6], [3, 5], [4, 5], [5, 6]]), sq = b[0] * b[1];
+      return { q: 'A chocolate bar is ' + b[0] + ' squares by ' + b[1] + '. You snap it along the lines, one piece at a time. How many snaps does it take to break it into all ' + sq + ' squares?', suf: 'snaps', a: sq - 1, baits: [b[0] + b[1] - 2, sq], why: 'Every snap turns one piece into two, so each snap adds exactly one piece. ' + sq + ' pieces need ' + (sq - 1) + ' snaps, whatever order you do them in.', v: { t: 'matches', mode: 'snap', a: b[0], b: b[1] } };
+    }
     const n = pick(r, [4, 5, 6]);
     return { q: n + ' friends meet and everyone shakes hands with everyone else once. How many handshakes?', suf: 'handshakes', a: n * (n - 1) / 2, baits: [n * (n - 1), n * n], why: 'Each of the ' + n + ' shakes ' + (n - 1) + ' hands, but that counts every handshake twice. Halve it.', v: { t: 'matches', mode: 'shake', n: n } };
   });
 
   fam('scaling', 2, function (r) {
-    if (r() < 0.55) {
+    const m = pick(r, ['pizza', 'square', 'units', 'cube']);
+    if (m === 'pizza') {
       const p = pick(r, [[6, 2], [8, 2], [5, 3], [4, 3], [7, 2]]);
       return { q: 'How many ' + p[0] + '-inch pizzas make the same amount of pizza as one ' + (p[0] * p[1]) + '-inch pizza?', suf: 'pizzas', a: p[1] * p[1], baits: [p[1]], why: p[1] === 2 ? 'Twice as wide is also twice as long. That is 2 × 2 = 4 times the pizza.' : 'Three times as wide is also three times as long. That is 3 × 3 = 9 times the pizza.', v: { t: 'scaling', mode: 'pizza', k: p[1], s: p[0] } };
+    }
+    if (m === 'units') {
+      const u = pick(r, [['How many square centimetres are there in one square metre?', 100, 'A metre is 100 cm, so a square metre is 100 cm long and 100 cm wide'], ['How many 10 cm tiles does it take to cover a floor 1 m by 1 m?', 10, 'Ten tiles fit along each side, so it takes 10 rows of 10'], ['How many square millimetres are there in one square centimetre?', 10, 'A centimetre is 10 mm, so the square is 10 mm long and 10 mm wide']]);
+      return { q: u[0], a: u[1] * u[1], baits: [u[1]], why: u[2] + ': ' + u[1] + ' × ' + u[1] + ' = ' + num(u[1] * u[1]) + '.', v: { t: 'scaling', mode: 'units', k: u[1] } };
+    }
+    if (m === 'cube') {
+      const k = pick(r, [2, 2, 3]);
+      return { q: 'A cube-shaped tank 1 m wide holds 1,000 litres. How many litres does a cube-shaped tank ' + k + ' m wide hold?', suf: 'litres', a: 1000 * k * k * k, baits: [1000 * k, 1000 * k * k], why: 'It is ' + k + ' times as long, ' + k + ' times as wide and ' + k + ' times as deep: ' + k + ' × ' + k + ' × ' + k + ' = ' + (k * k * k) + ' times the water.', v: { t: 'scaling', mode: 'cube', k: k, V: 1000 } };
     }
     const k = pick(r, [2, 3, 10]);
     return { q: 'You make every side of a square field ' + (k === 2 ? 'twice' : k === 3 ? 'three times' : '10 times') + ' as long. How many of the old fields fit inside the new one?', suf: 'fields', a: k * k, baits: [k], why: 'It gets ' + k + ' times longer and ' + k + ' times wider: ' + k + ' × ' + k + ' = ' + (k * k) + '.', v: { t: 'scaling', mode: 'square', k: k } };
@@ -643,6 +643,10 @@ body.desk .foot { margin-top: 26px; }
   });
 
   fam('compound', 2, function (r) {
+    if (r() < 0.4) {
+      const g = pick(r, [10, 20, 50]), s = pick(r, ['A town grows by ' + g + '% one year and by ' + g + '% again the next. By what % has it grown over the two years?', 'A rent goes up ' + g + '% this year and another ' + g + '% next year. By what % has it gone up in total?']);
+      return { q: s, suf: '%', a: (100 + g) * (100 + g) / 100 - 100, baits: [2 * g], why: '100 becomes ' + (100 + g) + ', and the second ' + g + '% is taken on that bigger number: ' + num((100 + g) * (100 + g) / 100) + '.', v: { t: 'compound', mode: 'growth', p: g } };
+    }
     const p = pick(r, [[50, 50], [20, 20], [10, 10], [50, 20]]);
     const left = (100 - p[0]) * (100 - p[1]) / 100;
     return { q: 'A coat is ' + p[0] + '% off. At the till you get a further ' + p[1] + '% off the sale price. What is the total % discount?', suf: '%', a: 100 - left, baits: [p[0] + p[1]], why: '€100 drops to €' + (100 - p[0]) + ', and ' + p[1] + '% off that leaves €' + num(left) + '. The second discount is taken off a smaller price.', v: { t: 'compound', mode: 'discount', p: p[0], q: p[1] } };
@@ -719,12 +723,6 @@ body.desk .foot { margin-top: 26px; }
     return { q: 'A thief steals a ' + eur(S) + ' note from a shop till. He then buys ' + eur(G) + ' of goods there with it and gets ' + eur(S - G) + ' change. How much is the shop down?', pre: '€', a: S, baits: [S + (S - G), S + G, 2 * S, G], why: 'The purchase is a fair swap, so ignore it. The shop is down the ' + eur(S) + ' he stole: ' + eur(G) + ' in goods and ' + eur(S - G) + ' in change.', v: { t: 'till', S: S, G: G } };
   });
 
-  fam('buysell', 3, function (r) {
-    const b = pick(r, [40, 50, 60, 100]), d = pick(r, [5, 10, 20]);
-    const s = pick(r, ['a bike', 'a watch', 'a jersey']);
-    return { q: 'You buy ' + s + ' for ' + eur(b) + ', sell it for ' + eur(b + d) + ', buy it back for ' + eur(b + 2 * d) + ' and sell it again for ' + eur(b + 3 * d) + '. How much profit did you make?', pre: '€', a: 2 * d, baits: [d, 3 * d, 0], why: 'It is two separate deals, and each one makes ' + eur(d) + '. Paying more to buy it back is not a loss.', v: { t: 'buysell', flows: [-b, b + d, -(b + 2 * d), b + 3 * d] } };
-  });
-
   fam('speed', 3, function (r) {
     const p = pick(r, [[30, 60, 60], [10, 30, 30], [20, 30, 60], [40, 60, 120], [60, 120, 120], [20, 60, 60]]);
     const a = p[0], b = p[1], L = p[2], hrs = L / a + L / b, s = pick(r, [['drive to work', 'drive home'], ['cycle to the beach', 'cycle home']]);
@@ -760,23 +758,182 @@ body.desk .foot { margin-top: 26px; }
     return list[typeof turn === 'number' ? turn % list.length : Math.floor(r() * list.length)];
   });
 
+  /* ---------- The second bank: each one its own kind of trap ---------- */
+
+  fam('addup', 1, function (r, turn) {
+    const p = walk(r, turn, [[1000, 40, 1000, 30, 1000, 20, 1000, 10], [1000, 20, 1000, 30, 1000, 40, 1000, 10], [1000, 50, 1000, 30, 1000, 20], [2000, 40, 1000, 30, 1000, 20, 1000, 10]]);
+    let sum = 0; p.forEach(function (x) { sum += x; });
+    const last = p[p.length - 1], bait = Math.ceil(sum / 1000) * 1000;
+    return { q: 'Add these up in your head, in order: ' + p.map(num).join(' + ') + '.', a: sum, baits: [bait], why: 'Before the last step you are on ' + num(sum - last) + '. Adding ' + last + ' tips the tens over into a new hundred, not a new thousand: ' + num(sum) + '.', v: { t: 'addup', parts: p } };
+  });
+
+  fam('bidmas', 1, function (r, turn) {
+    const p = walk(r, turn, [[2, 2, 2], [3, 3, 3], [5, 5, 5], [1, 2, 3], [4, 4, 4], [2, 3, 4]]);
+    const a = p[0] + p[1] * p[2];
+    return { q: 'What is ' + p[0] + ' + ' + p[1] + ' × ' + p[2] + '?', a: a, baits: [(p[0] + p[1]) * p[2]], why: 'Multiplying comes before adding. ' + p[1] + ' × ' + p[2] + ' = ' + (p[1] * p[2]) + ', then ' + p[0] + ' + ' + (p[1] * p[2]) + ' = ' + a + '.', v: { t: 'bidmas', a: p[0], b: p[1], c: p[2] } };
+  });
+
+  fam('count', 1, function (r, turn) {
+    const m = walk(r, turn, ['two', 'odd', 'three']);
+    if (m === 'two') return { q: 'How many two-digit numbers are there?', a: 90, baits: [99, 100, 89, 91], why: 'They run from 10 to 99. That is all 99 numbers up to 99, less the 9 with one digit.', v: { t: 'count', mode: 'two', lo: 10, hi: 99 } };
+    if (m === 'three') return { q: 'How many three-digit numbers are there?', a: 900, baits: [999, 1000, 899, 901], why: 'They run from 100 to 999. That is all 999 numbers up to 999, less the 99 that are shorter.', v: { t: 'count', mode: 'three', lo: 100, hi: 999 } };
+    const N = pick(r, [99, 49, 19]);
+    return { q: 'How many odd numbers are there from 1 to ' + N + '?', a: (N + 1) / 2, baits: [(N - 1) / 2], why: 'The list starts and ends on an odd number, so the odds win by one: ' + ((N + 1) / 2) + ' odd and ' + ((N - 1) / 2) + ' even.', v: { t: 'count', mode: 'odd', lo: 1, hi: N, odd: 1 } };
+  });
+
+  fam('tunnel', 1, function (r, turn) {
+    const p = walk(r, turn, [[1, 1], [1, 2], [2, 2], [1, 3]]), L = p[0], T = p[1];
+    return { q: 'A train ' + L + ' km long drives into a tunnel ' + T + ' km long at 1 km a minute. How many minutes until the whole train is out the other side?', suf: 'minutes', a: L + T, baits: [T], why: 'After ' + T + ' ' + pl(T, 'minute', 'minutes') + ' only the front is out. The back still has the train’s own ' + L + ' km to go.', v: { t: 'tunnel', L: L, T: T } };
+  });
+
+  fam('bogof', 1, function (r, turn) {
+    const p = walk(r, turn, [50, 20, 40, 60]);
+    return { q: 'A shop offers “buy one, get the second ' + (p === 50 ? 'half price' : p + '% off') + '”. What % do you save on the pair?', suf: '%', a: p / 2, baits: [p], why: 'Only one of the two is cheaper. Two €10 items cost ' + eur(20 - p / 10) + ' instead of €20, and ' + eur(p / 10) + ' off €20 is ' + (p / 2) + '%.', v: { t: 'offers', got: 2, paid: 2 - p / 100 } };
+  });
+
+  fam('eleven', 1, function (r, turn) {
+    const p = walk(r, turn, [['eleven', 11], ['twelve', 12], ['thirteen', 13]]), n = p[1];
+    return { q: 'Write this as a number: ' + p[0] + ' thousand, ' + p[0] + ' hundred and ' + p[0] + '.', a: n * 1000 + n * 100 + n, baits: [n * 1000 + (n % 10) * 100 + n, n * 10000 + n * 100 + n], why: p[0].charAt(0).toUpperCase() + p[0].slice(1) + ' hundred is ' + num(n * 100) + ', which spills into the thousands: ' + num(n * 1000) + ' + ' + num(n * 100) + ' + ' + n + ' = ' + num(n * 1000 + n * 100 + n) + '.', v: { t: 'eleven', n: n } };
+  });
+
+  fam('agesum', 1, function (r, turn) {
+    const p = walk(r, turn, [['Two brothers’ ages', 2, 11, 5], ['Three sisters’ ages', 3, 20, 4], ['A mother’s and her son’s ages', 2, 40, 10], ['Two twins’ ages', 2, 12, 6]]);
+    return { q: p[0] + ' add up to ' + p[2] + '. What will they add up to in ' + p[3] + ' years?', a: p[2] + p[1] * p[3], baits: [p[2] + p[3]], why: 'Each of the ' + p[1] + ' gets ' + p[3] + ' years older, so the total grows by ' + (p[1] * p[3]) + ', not ' + p[3] + '.', v: { t: 'agesum', n: p[1], sum: p[2], y: p[3] } };
+  });
+
+  fam('glue', 1, function (r, turn) {
+    const n = walk(r, turn, [2, 3, 2, 4]);
+    return { q: n === 2 ? 'You glue two dice together, face to face. How many faces are left showing?' : 'You glue ' + n + ' dice together in a row, face to face. How many faces are left showing?', suf: 'faces', a: 6 * n - 2 * (n - 1), baits: [6 * n, 6 * n - (n - 1)], why: 'Every join hides two faces, one on each dice. ' + (6 * n) + ' − ' + (2 * (n - 1)) + ' = ' + (6 * n - 2 * (n - 1)) + '.', v: { t: 'glue', n: n } };
+  });
+
+  fam('string', 1, function (r, turn) {
+    const n = walk(r, turn, [1, 2, 1, 3]), strands = Math.pow(2, n);
+    return { q: 'You fold a piece of string in half' + (n === 1 ? '' : n === 2 ? ', then in half again,' : ' three times over') + ' and cut straight through all the strands. How many pieces of string do you have?', suf: 'pieces', a: strands + 1, baits: n === 1 ? [2] : [strands, 2 * strands], why: 'The cut goes through ' + strands + ' strands, so the string is cut in ' + strands + ' places. ' + strands + ' cuts make ' + (strands + 1) + ' pieces.', v: { t: 'string', n: n } };
+  });
+
+  fam('jar', 2, function (r, turn) {
+    const p = walk(r, turn, [[1000, 600], [900, 500], [800, 500], [1200, 700]]), half = p[0] - p[1], jar = p[0] - 2 * half;
+    return { q: 'A jar full of honey weighs ' + num(p[0]) + ' g. Half full, it weighs ' + p[1] + ' g. How much does the empty jar weigh?', suf: 'g', a: jar, baits: [half], why: 'The ' + half + ' g that went missing is half the honey. All the honey is ' + (2 * half) + ' g, which leaves ' + jar + ' g for the jar.', v: { t: 'jar', full: p[0], half: p[1] } };
+  });
+
+  fam('grid', 2, function (r, turn) {
+    const n = walk(r, turn, [3, 4]);
+    const w = pick(r, ['A ' + n + ' by ' + n + ' grid is made of ' + (n * n) + ' small squares. Counting squares of every size, how many squares are in it?', 'A window has ' + (n * n) + ' small square panes, ' + n + ' across and ' + n + ' down. Counting squares of every size, how many squares can you find in it?', 'A chocolate bar is ' + n + ' squares by ' + n + '. Counting squares of every size, big ones included, how many squares are on it?']);
+    return { q: w, suf: 'squares', a: n === 3 ? 14 : 30, baits: n === 3 ? [9, 10] : [16, 17], why: n === 3 ? '9 small ones, 4 that are 2 by 2, and the whole thing: 9 + 4 + 1 = 14.' : '16 small ones, 9 that are 2 by 2, 4 that are 3 by 3, and the whole thing: 16 + 9 + 4 + 1 = 30.', v: { t: 'squares', mode: n === 3 ? 'three' : 'four', n: n } };
+  });
+
+  fam('workrate', 2, function (r, turn) {
+    const p = walk(r, turn, [[6, 3], [12, 4], [12, 6], [20, 5], [30, 6]]), a = p[0], b = p[1], t = a * b / (a + b);
+    const s = pick(r, [['One hose fills a pool in ' + a + ' hours. A bigger hose fills it in ' + b + '. How many hours do they take together?', 'pool', 'pools'], ['Ann paints a fence in ' + a + ' hours. Ben paints it in ' + b + '. How many hours do they take working together?', 'fence', 'fences']]);
+    return { q: s[0], suf: 'hours', a: t, baits: [(a + b) / 2, a + b], why: 'In ' + a + ' hours the slow one does 1 ' + s[1] + ' and the fast one ' + (a / b) + '. That is ' + (a / b + 1) + ' ' + s[2] + ' in ' + a + ' hours, so ' + t + ' hours for one.', v: { t: 'workrate', x: a, y: b } };
+  });
+
+  fam('wavg', 2, function (r, turn) {
+    const p = walk(r, turn, [[10, 60, 30, 80], [20, 50, 60, 70], [10, 40, 40, 90], [25, 60, 75, 80]]), tot = p[0] * p[1] + p[2] * p[3], N = p[0] + p[2];
+    return { q: 'A class of ' + p[0] + ' averages ' + p[1] + ' in a test. A class of ' + p[2] + ' averages ' + p[3] + '. What is the average across all ' + N + ' pupils?', a: tot / N, baits: [(p[1] + p[3]) / 2], why: 'The bigger class counts for more. All the marks together: ' + p[0] + ' × ' + p[1] + ' + ' + p[2] + ' × ' + p[3] + ' = ' + num(tot) + ', and ' + num(tot) + ' ÷ ' + N + ' = ' + (tot / N) + '.', v: { t: 'weighted', n1: p[0], a1: p[1], n2: p[2], a2: p[3] } };
+  });
+
+  fam('liftavg', 2, function (r, turn) {
+    const p = walk(r, turn, [[4, 80, 90], [3, 70, 80], [4, 60, 70], [9, 50, 55]]), n = p[0], need = p[2] * (n + 1) - p[1] * n;
+    return { q: 'After ' + n + ' rounds of darts you average ' + p[1] + ' a round. What must you score in the next round to lift your average to ' + p[2] + '?', a: need, baits: [2 * p[2] - p[1], p[2]], why: (n + 1) + ' rounds averaging ' + p[2] + ' is ' + (p[2] * (n + 1)) + ' in all. You have ' + (p[1] * n) + ', so you need ' + need + '. One round has to lift all ' + n + ' old ones.', v: { t: 'liftavg', n: n, avg: p[1], target: p[2] } };
+  });
+
+  fam('around', 2, function (r, turn) {
+    if (typeof turn === 'number' ? turn % 2 === 0 : r() < 0.5) {
+      const s = pick(r, [10, 20, 8, 12]);
+      return { q: 'A square lawn ' + s + ' m by ' + s + ' m has a path 1 m wide all the way round the outside. What is the area of the path?', suf: 'm²', a: 4 * s + 4, baits: [4 * s], why: 'Four strips of ' + s + ' m² make ' + (4 * s) + ', and each of the 4 corners adds 1 m² more. Check: ' + (s + 2) + ' × ' + (s + 2) + ' − ' + s + ' × ' + s + ' = ' + (4 * s + 4) + '.', v: { t: 'around', mode: 'path', s: s } };
+    }
+    const n = pick(r, [10, 5, 8, 12, 20]);
+    return { q: 'A square pen has ' + n + ' fence posts along each side, counting the post at each corner. How many posts does it have in all?', suf: 'posts', a: 4 * n - 4, baits: [4 * n], why: '4 × ' + n + ' = ' + (4 * n) + ' counts each corner post twice, once for each side it is on. Take 4 off: ' + (4 * n - 4) + '.', v: { t: 'around', mode: 'posts', n: n } };
+  });
+
+  fam('presale', 2, function (r, turn) {
+    const p = walk(r, turn, [[80, 20], [60, 25], [90, 10], [30, 50], [120, 20]]), was = p[0] * 100 / (100 - p[1]);
+    return { q: 'A jacket costs ' + eur(p[0]) + ' in a ' + p[1] + '% off sale. What was the price before the sale?', pre: '€', a: was, baits: [p[0] * (100 + p[1]) / 100], why: eur(p[0]) + ' is ' + (100 - p[1]) + '% of the old price, so the old price was ' + eur(was) + '. Adding ' + p[1] + '% back onto ' + eur(p[0]) + ' falls short, because ' + p[1] + '% of the sale price is smaller.', v: { t: 'presale', after: p[0], p: p[1] } };
+  });
+
+  fam('pctpoints', 2, function (r, turn) {
+    const p = walk(r, turn, [['A bank lifts its interest rate from 2% to 3%. By what % has the rate gone up?', 2, 3], ['A party’s support climbs from 10% to 15% in the polls. By what % has its support grown?', 10, 15], ['A tax goes from 4% to 5%. By what % has the tax gone up?', 4, 5], ['A team’s win rate rises from 20% to 30%. By what % has it improved?', 20, 30]]);
+    const d = p[2] - p[1], up = d / p[1] * 100;
+    return { q: p[0], suf: '%', a: up, baits: [d], why: 'It rose by ' + d + ' percentage ' + pl(d, 'point', 'points') + ', but ' + d + ' is ' + up + '% of ' + p[1] + '. Points and percent are different things.', v: { t: 'pctpoints', f: p[1], to: p[2] } };
+  });
+
+  fam('ladder', 2, function (r, turn) {
+    const p = walk(r, turn, [[4, 30, 3], [3, 25, 4], [5, 20, 2]]);
+    return { q: 'A ladder hangs from a ship with its bottom ' + p[0] + ' rungs under water. The rungs are ' + p[1] + ' cm apart and the tide rises ' + p[1] + ' cm an hour. How many rungs are under water after ' + p[2] + ' hours?', suf: 'rungs', a: p[0], baits: [p[0] + p[2]], why: 'Still ' + p[0] + '. The ship floats, so the ladder rises with the tide.', v: { t: 'ladder', k: p[0], g: p[1], h: p[2] } };
+  });
+
+  fam('weekend', 2, function (r, turn) {
+    const s = walk(r, turn, [['There is a 50% chance of rain on Saturday and a 50% chance on Sunday. What is the % chance it rains at some point over the weekend?', 'It stays dry only if both days are dry: half of a half, 25%. So rain at some point is 75%.'], ['You flip two coins. What is the % chance that at least one lands heads?', 'Only one of the four outcomes has no head: tails and tails. The other three do, and 3 in 4 is 75%.'], ['A striker scores in half of his games. He plays twice this week. What is the % chance he scores in at least one of them?', 'He draws a blank in both only a quarter of the time: half of a half. So he scores in at least one 75% of the time.']]);
+    return { q: s[0], suf: '%', a: 75, baits: [100, 50], why: s[1], v: { t: 'weekend' } };
+  });
+
+  fam('chain', 3, function (r, turn) {
+    const p = walk(r, turn, [[5, 3], [4, 2], [6, 4]]), n = p[0], m = p[1];
+    return { q: 'A jeweller has ' + n + ' pieces of chain, each ' + m + ' links long. What is the fewest links she must cut open to join them into one long chain?', suf: 'links', a: n - 2, baits: [n - 1, n], why: 'Open ' + (m === 2 ? 'both' : 'all ' + m) + ' links of one piece and use them to join the other ' + (n - 1) + ' pieces. Joining the pieces end to end the obvious way takes ' + (n - 1) + ' cuts.', v: { t: 'chain', n: n, m: m } };
+  });
+
+  fam('triangle', 3, function (r, turn) {
+    const p = walk(r, turn, [[3, 4, 7, 6], [5, 12, 17, 30], [6, 8, 14, 24], [2, 3, 5, 3]]);
+    return { q: 'A triangle has sides of ' + p[0] + ' cm, ' + p[1] + ' cm and ' + p[2] + ' cm. What is its area?', suf: 'cm²', a: 0, baits: [p[3]], baitAbove: 0, why: p[0] + ' + ' + p[1] + ' = ' + p[2] + ', so the two short sides only just reach along the long one. It is a flat line, with no area at all.', v: { t: 'triangle', a: p[0], b: p[1], c: p[2] } };
+  });
+
+  fam('slowclock', 3, function (r, turn) {
+    const L = walk(r, turn, [10, 12, 20, 15]), real = 3600 / (60 - L);
+    return { q: 'A clock loses ' + L + ' minutes every hour. You set it right at noon. When it shows 1:00, how many minutes past 1 is it really?', suf: 'minutes', a: real - 60, baits: [L], why: 'It only moves ' + (60 - L) + ' minutes in a real hour, so showing 60 takes ' + real + ' real minutes. It keeps losing time during the extra minutes too.', v: { t: 'slowclock', L: L } };
+  });
+
+  fam('zeros', 3, function (r, turn) {
+    const p = walk(r, turn, [[10, 2, [1], 'two 5s, in 5 and 10'], [20, 4, [2], 'four 5s, in 5, 10, 15 and 20'], [25, 6, [5, 2], 'six 5s, because 25 is 5 × 5 and counts twice'], [15, 3, [1], 'three 5s, in 5, 10 and 15']]);
+    return { q: 'How many zeros are at the end of 1 × 2 × 3 × … × ' + p[0] + '?', suf: 'zeros', a: p[1], baits: p[2], why: 'Every zero at the end needs a 2 and a 5. There are plenty of 2s but only ' + p[3] + '.', v: { t: 'zeros', n: p[0] } };
+  });
+
+  fam('boxes', 3, function (r, turn) {
+    const s = walk(r, turn, [['Apples, Oranges and Mixed', 'fruits', 'fruit'], ['Black socks, White socks and Mixed', 'socks', 'sock'], ['Gold coins, Silver coins and Mixed', 'coins', 'coin']]);
+    return { q: 'Three boxes are labelled ' + s[0] + ', and every label is wrong. What is the fewest ' + s[1] + ' you must take out to know what is in all three?', suf: s[1], a: 1, baits: [2, 3], why: 'Take one ' + s[2] + ' from the box labelled Mixed. That box cannot be mixed, so the ' + s[2] + ' names it, and the other two labels can then only go one way.', v: { t: 'boxes' } };
+  });
+
+  fam('brothers', 3, function (r, turn) {
+    const k = walk(r, turn, [2, 3]), g = k === 2 ? 4 : 3, b = g - 1;
+    return { q: 'A girl has as many brothers as sisters. Each of her brothers has ' + (k === 2 ? 'twice' : 'three times') + ' as many sisters as brothers. How many children are in the family?', suf: 'children', a: g + b, baits: [g + b - 1], why: g + ' girls and ' + b + ' boys. A girl has ' + (g - 1) + ' sisters and ' + b + ' brothers. A boy has ' + g + ' sisters and ' + (b - 1) + ' ' + pl(b - 1, 'brother', 'brothers') + '.', v: { t: 'brothers', k: k } };
+  });
+
+  fam('tyres', 3, function (r, turn) {
+    const D = walk(r, turn, [20000, 10000, 50000, 30000]);
+    return { q: 'A car has 5 tyres: 4 on the road and 1 spare. They are swapped round so each is used equally. After ' + num(D) + ' km, how far has each tyre travelled?', suf: 'km', a: D * 4 / 5, baits: [D / 5, D, D / 4], why: 'Four tyres are on the road at any time, so they share 4 × ' + num(D) + ' = ' + num(4 * D) + ' km between the five of them: ' + num(D * 4 / 5) + ' km each.', v: { t: 'tyres', D: D } };
+  });
+
+  fam('piles', 3, function (r, turn) {
+    const k = walk(r, turn, [10, 9, 15, 11, 8]);
+    return { q: 'You split a shuffled pack of 52 cards into two piles of 26. Your pile has ' + k + ' red cards. How many black cards are in the other pile?', suf: 'cards', a: k, baits: [26 - k], why: 'The pack has 26 reds, so the other pile holds ' + (26 - k) + ' of them. The rest of its 26 cards are black: ' + k + ', always the same as your reds.', v: { t: 'piles', k: k } };
+  });
+
+  fam('bridge', 3, function (r) {
+    const t = pick(r, [[1, 2, 5, 10, 17, 19], [1, 2, 7, 10, 17, 21], [1, 3, 6, 8, 18, 19]]);
+    return { q: 'Four friends cross a bridge at night sharing one torch, two at a time at the slower one’s pace. They take ' + t[0] + ', ' + t[1] + ', ' + t[2] + ' and ' + t[3] + ' minutes. What is the fastest all four can cross?', suf: 'minutes', a: t[4], baits: [t[5]], why: 'Send the two slowest over together, so the slow walk happens once, and let the two fastest ferry the torch back.', v: { t: 'bridge', times: t.slice(0, 4) } };
+  });
+
   /* ---------- Grades and sets ---------- */
 
-  // How hard each kind is, 1 (a giveaway) to 5 (most people miss it). To move a kind, change its number here.
+
+  // How hard each kind is, 1 (an opener) to 5 (most people miss it). To move a kind, change its number here.
   const GRADE = {
-    // 1: giveaways. Endless mode only.
-    family: 1, hands: 1, race: 1, listenapples: 1, listenhole: 1, listensheep: 1, listenstamps: 1, picturecats: 1, picturefathers: 1, picturemonths: 1,
-    // 2: the first question of the day. Easy to read, easy to get wrong.
-    corners: 2, dry: 2, divhalf: 2, queuequeue: 2, siblinghalf: 2, siblingtwice: 2, socksany: 2, doublinghalf: 2, ratestime: 2, scalingsquare: 2, sumdiff: 2,
-    intervalscircle: 2, intervalsfloors: 2, intervalslength: 2, intervalspills: 2, intervalsposts: 2,
+    // 1: openers. Endless mode only.
+    hands: 1, race: 1, dry: 1, listensheep: 1, listenstamps: 1, picturecats: 1, picturefathers: 1, picturemonths: 1, intervalsposts: 1, intervalscircle: 1,
+    // 2: the first question of the day. One line, and the obvious answer is wrong.
+    sumdiff: 2, siblinghalf: 2, siblingtwice: 2, corners: 2, divhalf: 2, doublinghalf: 2, queuequeue: 2, ratestime: 2, socksany: 2, till: 2,
+    intervalsfloors: 2, intervalspills: 2, intervalsmonday: 2, scalingsquare: 2, scalingunits: 2,
+    addup: 2, bidmas: 2, counttwo: 2, countthree: 2, countodd: 2, tunnel: 2, bogof: 2, eleven: 2, agesum: 2, glue: 2, string: 2,
     // 3: the second. Needs a second look.
-    coinsmatch: 3, cube: 3, doublingquarter: 3, doublingtwo: 3, downup: 3, intervalslog: 3, matchesknockout: 3, matchesshake: 3, pigeon: 3, pigeoncoins: 3,
-    punch: 3, scalingpizza: 3, selfref: 3, buysell: 3, till: 3, compounddiscount: 3,
+    coinsmatch: 3, compounddiscount: 3, compoundgrowth: 3, cube: 3, doublingquarter: 3, doublingtwo: 3, downup: 3, intervalslog: 3,
+    matchesknockout: 3, matchessnap: 3, matchesshake: 3, pigeon: 3, pigeoncoins: 3, punch: 3, scalingpizza: 3, scalingcube: 3, selfref: 3,
+    jar: 3, gridthree: 3, workrate: 3, wavg: 3, liftavg: 3, aroundpath: 3, aroundposts: 3, presale: 3, ladder: 3, weekend: 3, pctpoints: 3,
     // 4: the third. Hard, but a minute of thought gets there.
-    ratescount: 4, ratesworkers: 4, refill: 4, balance: 4, clock: 4, digitsappear: 4, fly: 4, reverse: 4, intervalsclock: 4, snail: 4,
+    balance: 4, clock: 4, digitsappear: 4, fly: 4, intervalsclock: 4, ratescount: 4, ratesworkers: 4, refill: 4, reverse: 4, snail: 4, speedavg: 4, cuts: 4,
+    chain: 4, triangle: 4, slowclock: 4, zeros: 4, gridfour: 4, boxes: 4, brothers: 4, tyres: 4, piles: 4,
     // 5: most people miss these, or they need real working out. Endless mode only.
     baserate: 5, classiccable: 5, classiccards: 5, classiccoinroll: 5, classicmonty: 5, classicrope: 5, classictwokids: 5, clockopposite: 5, clockoverlap: 5,
-    cuts: 5, dilutionleave: 5, dilutionweigh: 5, lockers: 5, speedavg: 5
+    dilutionleave: 5, dilutionweigh: 5, lockers: 5, bridge: 5
   };
   // The family that makes a kind: the longest family id the kind's name starts with.
   function famOf(kind) {
@@ -785,29 +942,80 @@ body.desk .foot { margin-top: 26px; }
     return best;
   }
   function kindsAt(grade) { return Object.keys(GRADE).filter(function (k) { return GRADE[k] === grade; }); }
-  // Within a grade, the kinds one family makes share a turn, so a day's slot rotates through
-  // families and the same illusion does not come round five times in a fortnight.
-  const UNITS = {};
-  [2, 3, 4].forEach(function (g) {
-    const by = {};
-    kindsAt(g).forEach(function (k) { const id = famOf(k).id; (by[id] = by[id] || { fam: id, kinds: [] }).kinds.push(k); });
-    UNITS[g] = Object.keys(by).map(function (id) { return by[id]; });
-  });
 
-  // Each grade runs in cycles: every unit appears once per cycle, and whatever closed one
-  // cycle stays out of the first three days of the next, so nothing comes round again too soon.
-  function cycleOrder(grade, target) {
-    const units = UNITS[grade], days = units.length;
-    let tail = [], sh = null;
-    for (let c = 0; c <= target; c++) {
-      sh = shuffle(rngFrom('v7-cycle-' + grade + '-' + c), units);
-      for (let a = 0; a < 3; a++) if (tail.indexOf(sh[a]) >= 0) {
-        for (let b = 3; b < days; b++) if (tail.indexOf(sh[b]) < 0) { const t = sh[a]; sh[a] = sh[b]; sh[b] = t; break; }
+  // The idea behind a kind: the one trick it turns on. Two kinds with the same idea are the same
+  // question in different clothes, so the calendar treats them as one and keeps them far apart.
+  const IDEA = {
+    pigeon: 'pigeonhole', pigeoncoins: 'pigeonhole', socksany: 'pigeonhole', reverse: 'pctbase', presale: 'pctbase',
+    matchesknockout: 'minusone', matchessnap: 'minusone', matchesshake: 'handshake', punch: 'fold', string: 'fold',
+    picturecats: 'cats', picturefathers: 'fathers', picturemonths: 'months',
+    classiccable: 'cable', classiccoinroll: 'coinroll', classicrope: 'rope', classiccards: 'conditional', classicmonty: 'conditional', classictwokids: 'conditional',
+    clock: 'clockangle', clockopposite: 'clockhands', clockoverlap: 'clockhands'
+  };
+  function ideaOf(kind) { return IDEA[kind] || (IDEA[kind] = famOf(kind).id); }
+  // The corner of maths an idea lives in. A day never takes two from the same corner.
+  const CORNER = {
+    percent: ['downup', 'pctbase', 'compound', 'bogof', 'pctpoints', 'dilution', 'baserate'],
+    chance: ['coins', 'weekend', 'conditional', 'pigeonhole'],
+    average: ['wavg', 'liftavg', 'speed'],
+    rate: ['rates', 'workrate', 'dry', 'tunnel', 'fly', 'slowclock', 'doubling', 'snail', 'tyres'],
+    gaps: ['intervals', 'count', 'around', 'minusone', 'queue', 'handshake'],
+    shape: ['scaling', 'cube', 'grid', 'corners', 'triangle', 'cuts', 'fold', 'glue', 'coinroll', 'rope', 'cable'],
+    halves: ['sumdiff', 'selfref', 'jar', 'divhalf', 'sibling', 'agesum', 'brothers']
+  };
+  const DOMAIN = {};
+  Object.keys(CORNER).forEach(function (c) { CORNER[c].forEach(function (id) { DOMAIN[id] = c; }); });
+  function domainOf(kind) { return DOMAIN[ideaOf(kind)] || ''; }
+
+  // The calendar. Each day takes one kind from grades 2, 3 and 4. For each slot it takes the kind
+  // whose idea has been away longest, then the kind that has itself been away longest, so an idea
+  // comes round as rarely as the bank allows and in different clothes each time.
+  const TIERS = [2, 3, 4];
+  // The first calendar ran for two days before this one took over, and had started a third.
+  const SERVED = { 1: ['socksany', 'downup', 'clock'], 2: ['sumdiff', 'pigeon', 'digitsappear'] };
+  const SEEN = { 3: ['pctbase'] };
+  const plan = { days: [], lastIdea: {}, lastKind: {}, uses: {}, said: {} };
+  function planDay(day) {
+    while (plan.days.length < day) {
+      const d = plan.days.length + 1, r = rngFrom('v8-day-' + d), ideas = {}, corners = {}, set = [];
+      if (SERVED[d]) {   // days the first calendar already gave out: keep them as they were, and remember them
+        plan.days.push(SERVED[d].map(function (k, n) {
+          plan.lastIdea[ideaOf(k)] = d; plan.lastKind[k] = d; plan.uses[k] = (plan.uses[k] || 0) + 1;
+          (plan.said[k] = plan.said[k] || []).push(makeKind(k, 'v7-daily-' + d + '-' + n, 0).q);
+          return [k, 'v7-daily-' + d + '-' + n, 0];
+        }));
+        continue;
       }
-      tail = sh.slice(days - 3);
+      (SEEN[d] || []).forEach(function (id) { ideas[id] = 1; plan.lastIdea[id] = d; });
+      TIERS.forEach(function (grade) {
+        let best = null, top = -1, spare = null, spareTop = -1;
+        kindsAt(grade).forEach(function (k) {
+          const idea = ideaOf(k), c = DOMAIN[idea];
+          const score = Math.min(d - (plan.lastIdea[idea] || -999), 400) * 1000 + Math.min(d - (plan.lastKind[k] || -999), 900) + r();
+          if (ideas[idea]) return;
+          if (score > spareTop) { spareTop = score; spare = k; }
+          if (c && corners[c]) return;
+          if (score > top) { top = score; best = k; }
+        });
+        const k = best || spare, idea = ideaOf(k);
+        ideas[idea] = 1; if (DOMAIN[idea]) corners[DOMAIN[idea]] = 1;
+        plan.lastIdea[idea] = d; plan.lastKind[k] = d;
+        // Word it differently from this kind's last outings: take the first wording not used lately, or else the stalest one.
+        const turn = plan.uses[k] = (plan.uses[k] || 0) + 1, said = plan.said[k] || (plan.said[k] = []);
+        let pickSalt = 0, stalest = Infinity;
+        for (let salt = 0; salt < 12; salt++) {
+          const at = said.lastIndexOf(makeKind(k, 'v8-daily-' + d + '-' + set.length + '-' + salt, turn - 1 + salt).q);
+          if (at < stalest) { stalest = at; pickSalt = salt; }
+          if (at < 0) break;
+        }
+        said.push(makeKind(k, 'v8-daily-' + d + '-' + set.length + '-' + pickSalt, turn - 1 + pickSalt).q); if (said.length > 10) said.shift();
+        set.push([k, 'v8-daily-' + d + '-' + set.length + '-' + pickSalt, turn - 1 + pickSalt]);
+      });
+      plan.days.push(set);
     }
-    return sh;
+    return plan.days[day - 1];
   }
+
   function make(f, seed, turn) {
     const q = f.gen(rngFrom(seed + '-' + f.id), turn);
     q.fam = f.id;
@@ -825,42 +1033,38 @@ body.desk .foot { margin-top: 26px; }
     for (let k = 0; k < 400; k++) { q = make(f, seed + '~' + k, (base || 0) + k); if (q.kind === kind) return q; }
     return q;
   }
-  // A day is one question from each of grades 2, 3 and 4, in that order, never two from one family.
+  // A day is one question from each of grades 2, 3 and 4, in that order. The count of earlier
+  // outings picks the variant, so a kind that returns brings its next story, not the last one.
   function buildDaily(day) {
-    const i = Math.max(0, day - 1), used = {};
-    return [2, 3, 4].map(function (grade, n) {
-      const days = UNITS[grade].length, turn = Math.floor(i / days), order = cycleOrder(grade, turn);
-      let u = order[i % days];
-      if (used[u.fam]) {   // same family as an earlier question today: borrow a unit that is not due within two days either side
-        const near = [];
-        for (let d = -2; d <= 2; d++) { const j = i + d; if (j >= 0) near.push(cycleOrder(grade, Math.floor(j / days))[j % days]); }
-        const ok = order.filter(function (c) { return !used[c.fam] && near.indexOf(c) < 0; });
-        u = ok.length ? ok[(i * 7 + n) % ok.length] : order.filter(function (c) { return !used[c.fam]; })[0];
-      }
-      used[u.fam] = 1;
-      return makeKind(u.kinds[turn % u.kinds.length], 'v7-daily-' + day + '-' + n, turn);
+    return planDay(Math.max(1, day)).map(function (s) { return makeKind(s[0], s[1], s[2]); });
+  }
+  // A drawn set, for private rounds and party games: one kind per grade asked for, no idea twice,
+  // no two from one corner of maths while there is a choice. An idea with many skins gets no extra chances.
+  function drawSet(key, grades) {
+    const r = rngFrom(key), ideas = {}, corners = {};
+    return grades.map(function (grade, n) {
+      const free = kindsAt(grade).filter(function (k) { return !ideas[ideaOf(k)]; });
+      const apart = free.filter(function (k) { const c = domainOf(k); return !c || !corners[c]; }), pool = apart.length ? apart : free;
+      const names = pool.map(ideaOf).filter(function (id, i, arr) { return arr.indexOf(id) === i; }), idea = pick(r, names);
+      const k = pick(r, pool.filter(function (x) { return ideaOf(x) === idea; }));
+      ideas[idea] = 1; if (DOMAIN[idea]) corners[DOMAIN[idea]] = 1;
+      return makeKind(k, key + '-' + n, Math.floor(r() * 1000));
     });
   }
-  function buildTable(code, round) {
-    const key = 'v7-table-' + code + '-' + round, r = rngFrom(key), used = {};
-    return [2, 3, 4].map(function (grade, n) {
-      const pool = UNITS[grade].filter(function (u) { return !used[u.fam]; }), u = pick(r, pool);
-      used[u.fam] = 1;
-      return makeKind(pick(r, u.kinds), key + '-' + n, 0);
+  function buildTable(code, round) { return drawSet('v8-table-' + code + '-' + round, [2, 3, 4]); }
+  // A longer set for one phone passed round a group: easy first, hardest last.
+  function buildParty(seed, n) { return drawSet('v8-party-' + seed, n <= 3 ? [2, 3, 4] : n <= 5 ? [2, 3, 3, 4, 4] : [2, 2, 3, 3, 3, 4, 4]); }
+  // Endless mode: of the kinds at this grade, the one whose idea this player met longest ago.
+  // `recent` is the kinds they have been shown, oldest first.
+  function nextKind(grade, recent, rnd) {
+    const ideaAt = {}, kindAt = {};
+    (recent || []).forEach(function (k, i) { if (GRADE[k]) { ideaAt[ideaOf(k)] = i + 1; kindAt[k] = i + 1; } });
+    let best = null, low = Infinity;
+    kindsAt(grade).forEach(function (k) {
+      const s = (ideaAt[ideaOf(k)] || 0) * 1000 + (kindAt[k] || 0) + (rnd ? rnd() : 0) * 0.9;
+      if (s < low) { low = s; best = k; }
     });
-  }
-
-  // A longer set for one phone passed round a group: easy first, hardest last, no family twice.
-  function buildParty(seed, n) {
-    const key = 'v7-party-' + seed, r = rngFrom(key), used = {};
-    const plan = n <= 3 ? [2, 3, 4] : n <= 5 ? [2, 3, 3, 4, 4] : [2, 2, 3, 3, 3, 4, 4];
-    const pool = { 2: shuffle(r, UNITS[2]), 3: shuffle(r, UNITS[3]), 4: shuffle(r, UNITS[4]) };
-    return plan.map(function (grade, i) {
-      let u = pool[grade].pop();
-      while (u && used[u.fam] && pool[grade].length) u = pool[grade].pop();
-      used[u.fam] = 1;
-      return makeKind(pick(r, u.kinds), key + '-' + i, 0);
-    });
+    return best;
   }
   // Every kind of question the bank can produce, for reading the live counters back.
   function kinds() {
@@ -890,7 +1094,7 @@ body.desk .foot { margin-top: 26px; }
     return q.pre + num(v) + (suf ? (tight ? '' : ' ') + suf : '');
   }
 
-  const api = { families: F, GRADE: GRADE, kindsAt: kindsAt, makeKind: makeKind, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
+  const api = { families: F, GRADE: GRADE, kindsAt: kindsAt, makeKind: makeKind, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, ideaOf: ideaOf, domainOf: domainOf, nextKind: nextKind, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.BaitEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -907,7 +1111,7 @@ body.desk .foot { margin-top: 26px; }
   var LIMIT = 180;                     // seconds for all three questions on your own: one clock, not three
   var PARTY_LIMIT = 60;                // seconds per player when one phone is passed round
   var KEY = 'nsf.v4', OLD_KEY = 'daily.v3';
-  var SETV = 'v9';                     // bump when the question bank changes: today's set restarts and counts never mix
+  var SETV = 'v10';                     // bump when the question bank changes: today's set restarts and counts never mix
 
   // Live counters: anonymous tallies on a free public counting service.
   // Set STATS to '' to switch them off. Nothing about the player is sent.
@@ -951,7 +1155,7 @@ body.desk .foot { margin-top: 26px; }
   var INAPP = /musical_ly|Bytedance|TikTok|Trill_/i.test(UA) ? 'TikTok' : /Instagram/i.test(UA) ? 'Instagram' : /Snapchat/i.test(UA) ? 'Snapchat' : /FBAN|FBAV|FBIOS|FB_IAB/.test(UA) ? 'Facebook' : '';
   var BROWSER = /Android/i.test(UA) ? 'Chrome' : /iPhone|iPad|iPod/i.test(UA) ? 'Safari' : 'your usual browser';
 
-  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null, live: null, seen: {} }; }
+  function blank() { return { sound: false, stats: { played: 0, perfect: 0, streak: 0, best: 0, lastDay: 0, dist: [0, 0, 0, 0] }, daily: null, names: [], rival: null, live: null, seen: {}, recent: [] }; }
 
   /* Nothing read back from storage is trusted. A half-written save, an older version or a curious
      player with the developer tools open must never be able to break the page, so every value is
@@ -998,6 +1202,7 @@ body.desk .foot { margin-top: 26px; }
     b.stats.runTop = int(st.runTop, 0, 1e5, 0);
     if (Array.isArray(s.names)) b.names = s.names.slice(0, 6).map(function (n) { return String(n == null ? '' : n).slice(0, 10); });
     if (s.seen && typeof s.seen === 'object') Object.keys(s.seen).slice(0, 500).forEach(function (k) { if (/^[a-z0-9]{3,40}$/.test(k)) b.seen[k] = 1; });
+    if (Array.isArray(s.recent)) b.recent = s.recent.filter(function (k) { return typeof k === 'string' && /^[a-z0-9]{3,40}$/.test(k); }).slice(-90);   // the kinds endless mode has shown, oldest first
     b.daily = okDaily(s.daily); b.rival = okRival(s.rival);
     if (age > -60000 && age < 6 * 3600 * 1000 && s.live.v === SETV && s.live.game && typeof s.live.game === 'object') b.live = { v: SETV, at: Number(s.live.at), game: s.live.game };   // checked again when it is resumed
     return b;
@@ -1066,7 +1271,7 @@ body.desk .foot { margin-top: 26px; }
   function beat(q, r) { if (r.f !== 'right') return; store.seen = store.seen || {}; if (!store.seen[q.kind]) { store.seen[q.kind] = 1; save(); } }
   function beatenLine() {
     if (!kindTotal) kindTotal = E.kinds().length;
-    return 'Kinds of trap you have beaten: ' + Object.keys(store.seen || {}).length + ' of ' + kindTotal + '.';
+    return 'Kinds of trap you have beaten: ' + Object.keys(store.seen || {}).filter(function (k) { return E.GRADE.hasOwnProperty(k); }).length + ' of ' + kindTotal + '.';
   }
   function rightCount(st) { return st.res.filter(function (r) { return r && r.f === 'right'; }).length; }
   function totalSecs(st) { var t = 0; st.res.forEach(function (r) { if (r) t += r.secs; }); return t; }
@@ -1870,8 +2075,12 @@ body.desk .foot { margin-top: 26px; }
   }
   function runNext() {
     var n = game.n++, grade = n < 6 ? [1, 2, 2, 3, 3, 4][n] : [3, 4, 2, 5, 3, 4, 1, 5][(n - 6) % 8];   // ease in, then everything, the brutal ones included
-    var all = E.kindsAt(grade), pool = all.filter(function (k) { return game.recent.indexOf(k) < 0; });
-    var kind = (pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)];
+    // The kind whose idea this player met longest ago, across every run on this device and today's three,
+    // so a new run never opens with the questions the last one did.
+    var met = (store.recent || []).slice(), kind;
+    try { E.buildDaily(today()).forEach(function (q) { met.push(q.kind); }); } catch (e) { /* the daily set is only a hint here */ }
+    kind = E.nextKind(grade, met, Math.random);
+    store.recent = (store.recent || []).concat([kind]).slice(-90); save();
     game.recent.push(kind); if (game.recent.length > 24) game.recent.shift();
     game.kind = kind; game.cur = E.makeKind(kind, game.seed + '-' + n, n); game.res = null; game.start = Date.now();
     keep();

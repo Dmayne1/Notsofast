@@ -356,12 +356,12 @@ async def no_storage(b):
         'null': 'null',
         'array': '[1,2,3]',
         'stats wrong shape': {'stats': {'dist': 'x'}, 'demo': 1},
-        'finished day with no answers': lambda d: {'demo': 1, 'stats': {'played': 1, 'perfect': 0, 'streak': 1, 'best': 1, 'lastDay': d, 'dist': [0, 1, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 2, 'res': [], 'done': True}},
-        'answers are junk': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 9, 'res': 'x', 'qStart': 'y', 'done': False}},
-        'answer with unknown verdict': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v9', 'day': d, 'idx': 0, 'res': [{'f': 'zzz', 't': '<b>', 'secs': 'a', 'm': 'q'}], 'qStart': 0, 'done': False}},
+        'finished day with no answers': lambda d: {'demo': 1, 'stats': {'played': 1, 'perfect': 0, 'streak': 1, 'best': 1, 'lastDay': d, 'dist': [0, 1, 0, 0]}, 'daily': {'v': 'v10', 'day': d, 'idx': 2, 'res': [], 'done': True}},
+        'answers are junk': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v10', 'day': d, 'idx': 9, 'res': 'x', 'qStart': 'y', 'done': False}},
+        'answer with unknown verdict': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'daily': {'v': 'v10', 'day': d, 'idx': 0, 'res': [{'f': 'zzz', 't': '<b>', 'secs': 'a', 'm': 'q'}], 'qStart': 0, 'done': False}},
         'hostile friend and names': {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'rival': {'key': 'tAB-1', 'code': '<img src=x onerror=alert(1)>', 'round': 'x', 'n': 9, 's': '<i>'}, 'names': 'bob', 'seen': 7, 'live': 'x'},
         'stats are strings': {'demo': 1, 'stats': {'played': 'lots', 'perfect': None, 'streak': -4, 'best': {}, 'lastDay': 'x', 'dist': [0, 'a', None], 'far': 99999, 'metres': 'm'}},
-        'broken live game': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'live': {'v': 'v9', 'at': 9e15, 'game': {'mode': 'party', 'players': 'x', 'set': [], 'k': 4}}},
+        'broken live game': lambda d: {'demo': 1, 'stats': {'played': 0, 'perfect': 0, 'streak': 0, 'best': 0, 'lastDay': 0, 'dist': [0, 0, 0, 0]}, 'live': {'v': 'v10', 'at': 9e15, 'game': {'mode': 'party', 'players': 'x', 'set': [], 'k': 4}}},
     }
     for name, data in bad.items():
         async with Site(b) as s:
@@ -495,7 +495,7 @@ async def taps(b):
         await s.page.click('[data-act="key"][data-k="4"]')
         await s.page.keyboard.type('2')
         t = await screen(s.page)
-        check('on a computer you can click the keys or type, and both land in the same field', (t['typed'] or '').startswith('42'), t['typed'])
+        check('on a computer you can click the keys or type, and both land in the same field', re.sub(r'^[^0-9]+', '', t['typed'] or '').startswith('42'), t['typed'])   # the field may open with a € or 'Day '
         await s.page.keyboard.press('Backspace'); await s.page.keyboard.press('Backspace')
         await s.page.keyboard.type(str(await wrong_for(s.page, qs[0])))
         await s.page.keyboard.down('Enter')

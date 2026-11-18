@@ -6,6 +6,34 @@ const near = (a, b) => Math.abs(a - b) < 1e-6;
 function fail(msg, q) { fails++; if (fails < 40) console.log('FAIL', msg, q ? '\n   ' + q.q + ' => ' + q.a : ''); }
 
 const verify = {
+  addup(v) { let t = 0; for (const x of v.parts) t += x; return t; },
+  bidmas(v) { return Function('return ' + v.a + ' + ' + v.b + ' * ' + v.c)(); },
+  count(v) { let c = 0; for (let i = v.lo; i <= v.hi; i++) if (!v.odd || i % 2 === 1) c++; return c; },
+  tunnel(v) { let t = 0; for (let front = 0; front - v.L < v.T; front++) t++; return t; },   // one km a minute: the back is out when the front is L past the end
+  eleven(v) { let x = 0; for (let i = 0; i < v.n; i++) x += 1000; for (let i = 0; i < v.n; i++) x += 100; return x + v.n; },
+  agesum(v) { let s = v.sum; for (let y = 0; y < v.y; y++) for (let k = 0; k < v.n; k++) s++; return s; },
+  glue(v) { const cubes = new Set(); for (let i = 0; i < v.n; i++) cubes.add(i); let showing = 0; for (const c of cubes) for (const d of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) if (!(d[1] === 0 && d[2] === 0 && cubes.has(c + d[0]))) showing++; return showing; },
+  string(v) { let strands = 1; for (let i = 0; i < v.n; i++) strands *= 2; return strands + 1; },   // one cut per strand, and k cuts in one string make k + 1 pieces
+  jar(v) { for (let j = 0; j <= v.full; j++) if (near(j + (v.full - j) / 2, v.half)) return j; },
+  workrate(v) { for (let t = 1; t < 200; t++) if (near(t / v.x + t / v.y, 1)) return t; },
+  liftavg(v) { for (let x = 0; x < 2000; x++) if (near((v.n * v.avg + x) / (v.n + 1), v.target)) return x; },
+  around(v) {
+    if (v.mode === 'path') { let c = 0; for (let x = -1; x <= v.s; x++) for (let y = -1; y <= v.s; y++) if (x < 0 || y < 0 || x >= v.s || y >= v.s) c++; return c; }
+    const posts = new Set(); for (let i = 0; i < v.n; i++) { posts.add('0,' + i); posts.add((v.n - 1) + ',' + i); posts.add(i + ',0'); posts.add(i + ',' + (v.n - 1)); } return posts.size; },
+  presale(v) { for (let x = 1; x < 5000; x++) if (near(x * (100 - v.p) / 100, v.after)) return x; },
+  ladder(v) { let rungBelow = v.k; for (let h = 0; h < v.h; h++) { const water = v.g, ship = v.g; rungBelow += (water - ship) / v.g; } return rungBelow; },
+  weekend() { let hit = 0; for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) if (a || b) hit++; return hit / 4 * 100; },
+  chain(v) {   // open `whole` pieces completely and a few end links besides: the cut links must join what is left
+    for (let cuts = 0; cuts < 50; cuts++) for (let whole = 0; whole * v.m <= cuts && whole < v.n; whole++) { const ends = cuts - whole * v.m; if (ends <= (v.n - whole) * (v.m > 1 ? 1 : 0) && cuts >= v.n - whole - 1) return cuts; } },
+  triangle(v) { const s = (v.a + v.b + v.c) / 2; return Math.sqrt(Math.max(0, s * (s - v.a) * (s - v.b) * (s - v.c))); },
+  slowclock(v) { let secs = 0; while (secs * (60 - v.L) < 60 * 3600) secs++; return secs / 60 - 60; },
+  zeros(v) { let f = 1n; for (let i = 2n; i <= BigInt(v.n); i++) f *= i; let z = 0; while (f % 10n === 0n) { f /= 10n; z++; } return z; },
+  boxes() {   // labels [A, O, M], all wrong: two ways to fill them. One fruit settles it if some box shows a different fruit in each.
+    const ways = [['O', 'M', 'A'], ['M', 'A', 'O']], shows = c => c === 'M' ? 'ao' : c === 'A' ? 'a' : 'o';
+    for (let box = 0; box < 3; box++) { const x = shows(ways[0][box]), y = shows(ways[1][box]); if (![...x].some(ch => y.includes(ch))) return 1; } return 2; },
+  brothers(v) { for (let g = 1; g < 30; g++) for (let b = 2; b < 30; b++) if (b === g - 1 && g === v.k * (b - 1)) return g + b; },
+  tyres(v) { const km = [0, 0, 0, 0, 0]; for (let leg = 0; leg < v.D / 100; leg++) for (let t = 0; t < 5; t++) if (t !== leg % 5) km[t] += 100; return km[0]; },
+  piles(v) { const mine = { red: v.k, black: 26 - v.k }; return 26 - mine.black; },
   sumdiff(v) { for (let x = 0; x <= v.total; x++) if (x + (x + v.diff) === v.total) return x; },
   rates(v) {
     const rate = v.n / (v.n * v.n); // things per maker per time unit
@@ -56,6 +84,7 @@ const verify = {
   buysell(v) { return v.flows.reduce((a, b) => a + b, 0); },
   intervals(v) {
     if (v.mode === 'posts') { let n = 0; for (let x = 0; x <= v.L; x += v.g) n++; return n; }
+    if (v.mode === 'monday') { let date = 1; for (let n = 1; n < v.k; n++) date += 7; return date; }
     if (v.mode === 'pills') { let t = 0; for (let i = 1; i < v.n; i++) t += v.m; return t; }
     if (v.mode === 'circle') { const ring = []; for (let i = 0; i < v.n; i++) ring.push(i); let gaps = 0; for (let i = 0; i < v.n; i++) if (ring[(i + 1) % v.n] !== undefined) gaps++; return gaps; }
     if (v.mode === 'length') { let x = 0; for (let i = 1; i < v.n; i++) x += v.g; return x; }
@@ -73,6 +102,7 @@ const verify = {
     let n = 0;
     if (v.mode === 'reverse') { for (let p = 2; p < 60; p++) { let c = 0; for (let i = 0; i < p; i++) for (let j = i + 1; j < p; j++) c++; if (c === v.H) return p; } }
     if (v.mode === 'shake') { for (let i = 0; i < v.n; i++) for (let j = i + 1; j < v.n; j++) n++; return n; }
+    if (v.mode === 'snap') { let pieces = 1; while (pieces < v.a * v.b) { pieces++; n++; } return n; }
     if (v.mode === 'league') { for (let i = 0; i < v.n; i++) for (let j = 0; j < v.n; j++) if (i !== j) n++; return n; }
     let p = v.n; while (p > 1) { const m = Math.floor(p / 2); n += m; p -= m; } return n;
   },
@@ -86,6 +116,7 @@ const verify = {
   scaling(v) {
     if (v.mode === 'pizza') return (Math.PI * (v.k * v.s / 2) ** 2) / (Math.PI * (v.s / 2) ** 2);
     if (v.mode === 'square') return (v.k * 7) ** 2 / 7 ** 2;
+    if (v.mode === 'units') { let c = 0; for (let x = 0; x < v.k; x++) for (let y = 0; y < v.k; y++) c++; return c; }
     const edge = Math.cbrt(v.V); return (edge * v.k) ** 3;
   },
   markup(v) { const profit = v.price - v.cost; return profit / (v.ofCost ? v.cost : v.price) * 100; },
@@ -216,22 +247,41 @@ for (const f of E.families) {
   variants[f.id] = seen.size;
 }
 
-// Schedule checks over three years.
-let back = 0; let prevFams = []; const lastSeen = {}, kindDays = {}; let minGap = 9999;
-const famCount = {};
+// Calendar checks over three years.
+const lastIdea = {}, lastKind = {}, lastText = {}, kindDays = {}, ideaGaps = [];
+let minIdea = 9999, minKind = 9999, minText = 9999, sameCorner = 0;
 for (let day = 1; day <= 1095; day++) {
   const set = E.buildDaily(day);
   if (set.length !== 3) fail('day ' + day + ' has ' + set.length + ' questions');
-  const ids = set.map(q => q.fam);
-  if (new Set(ids).size !== 3) fail('day ' + day + ' repeats a family');
+  const ideas = set.map(q => E.ideaOf(q.kind)), corners = set.map(q => E.domainOf(q.kind)).filter(Boolean);
+  if (new Set(ideas).size !== 3) fail('day ' + day + ' uses one idea twice: ' + ideas.join(', '));
+  if (new Set(corners).size !== corners.length) sameCorner++;
   if (set.map(q => q.level).join('') !== '123') fail('day ' + day + ' levels ' + set.map(q => q.level).join(''));
   if (set.map(q => q.grade).join('') !== '234') fail('day ' + day + ' grades ' + set.map(q => q.grade).join('') + ': a day must climb 2, 3, 4');
-  set.forEach((q, n) => { const k = n + ':' + q.kind; if (lastSeen[k]) minGap = Math.min(minGap, day - lastSeen[k]); lastSeen[k] = day; kindDays[q.kind] = (kindDays[q.kind] || 0) + 1; });
-  if (ids.some(id => prevFams.includes(id))) back++;
-  ids.forEach(id => famCount[id] = (famCount[id] || 0) + 1);
-  prevFams = ids;
+  set.forEach(q => {
+    const idea = E.ideaOf(q.kind);
+    if (lastIdea[idea] && day > 2) { minIdea = Math.min(minIdea, day - lastIdea[idea]); ideaGaps.push(day - lastIdea[idea]); }   // days 1 and 2 are the old calendar's, kept as history
+    if (lastKind[q.kind]) minKind = Math.min(minKind, day - lastKind[q.kind]);
+    if (lastText[q.q]) minText = Math.min(minText, day - lastText[q.q]);
+    lastIdea[idea] = day; lastKind[q.kind] = day; lastText[q.q] = day; kindDays[q.kind] = (kindDays[q.kind] || 0) + 1;
+  });
   const again = E.buildDaily(day);
   if (JSON.stringify(again.map(q => q.q)) !== JSON.stringify(set.map(q => q.q))) fail('day ' + day + ' not deterministic');
+}
+if (sameCorner) fail(sameCorner + ' days took two questions from the same corner of maths');
+if (minIdea < 12) fail('an idea came back after only ' + minIdea + ' days');
+if (minKind < 12) fail('a kind came back after only ' + minKind + ' days');
+if (minText < 24) fail('the very same question came back after only ' + minText + ' days');
+// Endless mode: the next kind is always one whose idea the player has not met for as long as possible.
+{
+  const recent = []; let rs = 1; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let n = 0; n < 600; n++) {
+    const grade = n < 6 ? [1, 2, 2, 3, 3, 4][n] : [3, 4, 2, 5, 3, 4, 1, 5][(n - 6) % 8], k = E.nextKind(grade, recent, rnd);
+    if (E.GRADE[k] !== grade) fail('endless asked for grade ' + grade + ' and got ' + k);
+    const pool = new Set(E.kindsAt(grade).map(E.ideaOf)), since = recent.slice(-(pool.size - 1)).filter(x => E.GRADE[x] === grade).map(E.ideaOf);
+    if (since.slice(-(Math.min(since.length, pool.size - 1))).includes(E.ideaOf(k)) && new Set(since).size < pool.size) fail('endless repeated the idea ' + E.ideaOf(k) + ' while others at grade ' + grade + ' were waiting');
+    recent.push(k); if (recent.length > 90) recent.shift();
+  }
 }
 // Table sets: same code gives same set; different codes differ.
 const t1 = E.buildTable('LADS', 1), t2 = E.buildTable('LADS', 1), t3 = E.buildTable('LADS', 2);
@@ -241,7 +291,7 @@ if (JSON.stringify(t1.map(q => q.q)) === JSON.stringify(t3.map(q => q.q))) fail(
 for (const n of [3, 5, 7]) for (let i = 0; i < 300; i++) {
   const set = E.buildParty('p' + i, n);
   if (set.length !== n) fail('party set has ' + set.length + ' questions, wanted ' + n);
-  if (new Set(set.map(q => q.fam)).size !== n) fail('party set repeats a family');
+  if (new Set(set.map(q => E.ideaOf(q.kind))).size !== n) fail('party set repeats an idea');
   if (set.map(q => q.grade).join('') !== set.map(q => q.grade).sort().join('')) fail('party set is not easy-first');
   if (set.some(q => q.grade < 2 || q.grade > 4)) fail('party set uses a giveaway or a brutal one');
   if (JSON.stringify(E.buildParty('p' + i, n).map(q => q.q)) !== JSON.stringify(set.map(q => q.q))) fail('party set not deterministic');
@@ -255,7 +305,6 @@ for (const k of graded) if (!madeKinds.has(k)) fail('graded kind is never made: 
 for (const k of graded) for (let i = 0; i < 40; i++) { const q = E.makeKind(k, 'mk-' + i, i); if (q.kind !== k) fail('asked for ' + k + ', got ' + q.kind); }
 for (const k of graded) if (E.GRADE[k] >= 2 && E.GRADE[k] <= 4 && !kindDays[k]) fail('a daily kind never comes up in three years: ' + k);
 for (const k of Object.keys(kindDays)) if (E.GRADE[k] < 2 || E.GRADE[k] > 4) fail('a giveaway or a brutal kind appeared in a daily set: ' + k);
-if (minGap < 3) fail('the same kind came round again in the same slot after only ' + minGap + ' day(s)');
 if (JSON.stringify(E.buildTable('LADS', 1).map(q => q.grade)) !== '[2,3,4]') fail('private round does not climb 2, 3, 4');
 // Day numbering.
 if (E.dayNumber(new Date(2026, 10, 16)) !== 1) fail('epoch day');
@@ -271,8 +320,10 @@ console.log('longest question:', longest, 'characters; average', Math.round(lenS
 console.log('distinct question texts found:', totalVariants);
 console.log('fewest variants in a family:', Object.entries(variants).sort((a, b) => a[1] - b[1]).slice(0, 5).map(e => e.join('=')).join(', '));
 console.log('kinds of question:', kinds.length, '(grade ' + [1, 2, 3, 4, 5].map(g => g + ': ' + kinds.filter(k => k.grade === g).length).join(', ') + ')');
-console.log('shortest gap before a kind returns to the same slot:', minGap, 'days');
-console.log('days with a family repeated from the day before (of 1095):', back);
-console.log('family appearances min/max over 3 years:', Math.min(...Object.values(famCount)), Math.max(...Object.values(famCount)));
+console.log('ideas in the daily bank:', new Set(Object.keys(E.GRADE).filter(k => E.GRADE[k] >= 2 && E.GRADE[k] <= 4).map(E.ideaOf)).size);
+ideaGaps.sort((a, b) => a - b);
+console.log('days before an idea returns: shortest', minIdea + ', typical', ideaGaps[Math.floor(ideaGaps.length / 2)] + ', longest', ideaGaps[ideaGaps.length - 1]);
+console.log('days before the same kind returns: shortest', minKind);
+console.log('days before the very same wording returns: shortest', minText);
 console.log(fails ? 'FAILURES: ' + fails : 'ALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);
