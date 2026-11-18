@@ -394,7 +394,7 @@
     const m = walk(r, turn, ['two', 'odd', 'three']);
     if (m === 'two') return { q: 'How many two-digit numbers are there?', a: 90, baits: [99, 100, 89, 91], why: 'They run from 10 to 99. That is all 99 numbers up to 99, less the 9 with one digit.', v: { t: 'count', mode: 'two', lo: 10, hi: 99 } };
     if (m === 'three') return { q: 'How many three-digit numbers are there?', a: 900, baits: [999, 1000, 899, 901], why: 'They run from 100 to 999. That is all 999 numbers up to 999, less the 99 that are shorter.', v: { t: 'count', mode: 'three', lo: 100, hi: 999 } };
-    const N = pick(r, [99, 49, 19]);
+    const N = pick(r, [99, 199, 999]);
     return { q: 'How many odd numbers are there from 1 to ' + N + '?', a: (N + 1) / 2, baits: [(N - 1) / 2], why: 'The list starts and ends on an odd number, so the odds win by one: ' + ((N + 1) / 2) + ' odd and ' + ((N - 1) / 2) + ' even.', v: { t: 'count', mode: 'odd', lo: 1, hi: N, odd: 1 } };
   });
 
