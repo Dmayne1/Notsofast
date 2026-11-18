@@ -197,6 +197,45 @@ body.desk .result .btn { margin-top: 6px; position: static; }
 .standing { margin-top: 12px; color: #c3c5cc; text-align: center; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
 .standing b { color: var(--fg); font-weight: 700; }
 .standing:empty { display: none; }
+.total .streak { color: var(--fg); font-weight: 700; }
+.btn.two { flex-direction: column; gap: 4px; height: 60px; }
+.btn.two small { font-weight: 600; font-size: 0.84rem; opacity: 0.72; }
+.last { margin: 2px 0 4px; padding: 11px 14px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(8, 9, 13, 0.74); }
+.last .say { font-size: 1.5rem; animation: none; }
+.lastans { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.lastans span { color: var(--mut); font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
+.lastans b { font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1.05; }
+.last .why { margin-top: 5px; font-size: 0.94rem; line-height: 1.38; }
+.end.haslast .score { grid-template-columns: auto auto; grid-template-rows: auto auto auto; justify-content: center; align-items: center; column-gap: 18px; padding: 12px 0 0; text-align: left; justify-items: start; }
+.end.haslast .endno { grid-column: 2; grid-row: 1; margin: 0; font-size: 0.86rem; }
+.end.haslast .lights.big { grid-column: 1; grid-row: 1 / span 3; gap: 10px; }
+.end.haslast .lights.big .lt { width: 34px; height: 34px; }
+.end.haslast .tally { grid-column: 2; grid-row: 2; margin: 0; font-size: 2.5rem; line-height: 1; }
+.end.haslast .total { grid-column: 2; grid-row: 3; margin: 0; font-size: 1rem; }
+.end.haslast .standing { margin-top: 6px; }
+.end.haslast .endbtns { margin-top: 12px; gap: 10px; }
+.end.haslast .foot { padding-top: 10px; }
+.end.haslast .keep { padding-top: 9px; }
+@media (max-height: 640px) {   /* a short phone, with the last answer on the result screen: keep it to one screen */
+  .end.haslast .last { padding: 9px 12px 10px; }
+  .end.haslast .last .say { font-size: 1.3rem; }
+  .end.haslast .lastans b { font-size: 1.6rem; }
+  .end.haslast .last .why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .end.haslast .score { padding-top: 8px; }
+  .end.haslast .lights.big .lt { width: 28px; height: 28px; }
+  .end.haslast .tally { font-size: 2.1rem; }
+  .end.haslast .endbtns { margin-top: 9px; gap: 8px; }
+  .end.haslast .btn.two { height: 54px; }
+  .end.haslast .pair .btn { height: 46px; }
+  .end.haslast .foot { padding-top: 8px; }
+  .end.haslast .keep { padding-top: 7px; font-size: 0.95rem; }
+  .end.haslast .nextset b { font-size: 1.45rem; }
+  .end.haslast .standing { margin-top: 2px; font-size: 0.95rem; }
+  .end.haslast .keep + .nextset { padding-top: 1px; }
+  .end.haslast .foot .quiet { padding: 4px 0 3px; }
+}
+.keep { width: 100%; padding-top: 12px; border-top: 1px solid var(--rule); color: #e6e7ea; font-weight: 600; text-align: center; }
+.keep + .nextset { padding-top: 4px; border-top: 0; }
 .rank { margin-top: 12px; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; }
 .endbtns { display: grid; gap: 13px; margin-top: 18px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

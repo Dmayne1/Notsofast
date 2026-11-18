@@ -48,8 +48,11 @@ Every screen is built around that:
   blinking caret, so it is plain where the number goes.
 - The stop screen ends on its one button, pinned to the bottom of the screen where the Lock in
   key was, so it is in view on any phone.
-- The score is one complete screen that never needs scrolling: the three lights, one number, one
-  button, and when the next three arrive. Once today is done it is also the home screen, so
+- The last question never ends on a button. Right or wrong, the score comes up by itself; if the
+  last answer was missed, its answer and the reason sit at the top of the score screen.
+- The score is one complete screen that never needs scrolling: the three lights, one number, the
+  streak, how the player did against everyone else today, one button that shares the result and
+  challenges a friend, and a reason to come back tomorrow with the time until the next three. Once today is done it is also the home screen, so
   there is nowhere to go back to. The answers are one tap away.
 
 Yellow always means the thing to act on: the live light, the answer field, the one primary button.
@@ -135,7 +138,7 @@ settings or the events are dropped.
 | --- | --- | --- |
 | `$pageview`, `$pageleave` | a visit starts and ends | PostHog's own page fields |
 | `game_start` | a game begins | `mode`, `game_day`, party `players`/`questions` |
-| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `verdict` (right, trap, wrong, time), `secs`, `clock_left` |
+| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `level` (Easy, Tricky, Hard), `verdict` (right, trap, wrong, time), `secs`, `clock_left` |
 | `game_finish` | a game ends | `mode`, `greens`, `secs`, `timed_out`, `vs_friend` |
 | `share` | a result or challenge is copied or sent | `what` |
 | `challenge_arrived` | someone opens a friend's link | `mode` |

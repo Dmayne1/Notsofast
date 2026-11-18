@@ -104,7 +104,7 @@ async def screen(p):
                sheetText: document.getElementById('veil').innerText, btns: [...v.querySelectorAll('button')].map(b => b.textContent) }; }""")
 
 async def today_set(p):
-    return await p.evaluate("() => { const E = window.BaitEngine; return E.buildDaily(E.dayNumber(new Date())).map(q => ({ a: q.a, baits: q.baits, q: q.q })); }")
+    return await p.evaluate("() => { const E = window.BaitEngine; return E.buildDaily(E.dayNumber(new Date())).map(q => ({ a: q.a, baits: q.baits, q: q.q, why: q.why, shown: E.show(q, q.a) })); }")
 
 async def wrong_for(p, q):
     """A number that is neither the answer nor a trap."""
@@ -134,6 +134,12 @@ async def press(p, act, wait=420):
     await p.click('[data-act="%s"]' % act)
     await p.wait_for_timeout(wait)
 
+async def onward(p):
+    """After a red light: press Next question if there is one. After the last question there is not: the result is already up."""
+    if await p.query_selector('[data-act=next]'): await press(p, 'next')
+    else: await p.wait_for_timeout(250)
+
+
 async def play_day(s, how=('right', 'bait', 'wrong'), p=None):
     """From home (or the cold open's result), play today's three."""
     p = p or s.page
@@ -144,7 +150,8 @@ async def play_day(s, how=('right', 'bait', 'wrong'), p=None):
         v = q['a'] if h == 'right' else (q['baits'][0] if h == 'bait' and q['baits'] else await wrong_for(p, q))
         await answer(p, v)
         if h == 'right': await p.wait_for_timeout(GO)     # green means go: nothing to press
-        else: await press(p, 'next')                      # red means stop: read why, then move on
+        elif i < len(qs) - 1: await press(p, 'next')      # red means stop: read why, then move on
+        else: await p.wait_for_timeout(250)               # the last one goes straight to the result, which shows its answer
     return qs
 
 
@@ -214,9 +221,16 @@ async def refresh_daily(b):
         q3 = await screen(s.page)
         check('the clock did not run while the answer was on screen', q3['entry'] and q3['q'] == qs[2]['q'] and q3['clock'] >= '2:51', (q2['clock'], q3['clock']))
         await answer(s.page, await wrong_for(s.page, qs[2]))
-        await press(s.page, 'next')
+        await s.page.wait_for_timeout(300)
         e = await screen(s.page)
-        check('the third answer leads to the score', 'end' in e['cls'] and '1 of 3' in e['text'], e['text'][:160])
+        check('a wrong third answer goes straight to the score, with nothing to press', 'end' in e['cls'] and '1 of 3' in e['text'] and not await s.page.query_selector('[data-act=next]'), e['text'][:160])
+        check('and the score screen shows that last answer and why', 'The answer' in e['text'] and qs[2]['shown'] in e['text'] and qs[2]['why'][:40] in e['text'], e['text'][:200])
+        await s.page.wait_for_timeout(700); e = await screen(s.page)
+        check('the score shows the streak and a reason to come back, with nothing to press', '1-day streak' in e['text'] and 'Come back tomorrow to keep your streak' in e['text'] and 'Next three in' in e['text'], e['text'][:400])
+        check('and how you did against everyone else today', 'You beat 25% of today’s 160 players' in e['text'], e['text'][:400])
+        check('one button shares the result and challenges a friend', 'Share your result' in ' '.join(e['btns']) and 'challenge a friend' in ' '.join(e['btns']), e['btns'])
+        await s.page.reload(); await s.page.wait_for_timeout(400); e2 = await screen(s.page)
+        check('coming back later shows the score without the last answer on top', 'end' in e2['cls'] and 'The answer' not in e2['text'] and '1-day streak' in e2['text'] and 'You beat 25%' in e2['text'], e2['text'][:300])
         fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
         check('the score is one complete screen, nothing to scroll', fits)
         st = await store(s.page)
@@ -249,7 +263,7 @@ async def refresh_daily(b):
         await answer(s.page, await wrong_for(s.page, qs[0]))
         vis = await s.page.evaluate("() => { const r = document.querySelector('[data-act=next]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }")
         check('on a short phone Next question is on screen without scrolling', vis)
-        await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next')
+        await press(s.page, 'next'); await answer(s.page, 987654); await press(s.page, 'next'); await answer(s.page, 987654); await onward(s.page)
         fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
         check('on a short phone the score still fits one screen', fits, await s.page.evaluate("() => [document.scrollingElement.scrollHeight, innerHeight]"))
     async with Site(b, w=320, h=480) as s:
@@ -270,10 +284,9 @@ async def out_of_fuel(b):
         await s.page.reload(); await s.page.wait_for_timeout(600)
         a = await screen(s.page)
         if not a['result'] and 'home' in a['cls']: await press(s.page, 'daily'); a = await screen(s.page)
-        check('coming back late shows out of time', a['result'] and 'ran out of time' in a['text'] and a['clock'] == '0:00' and 'NaN' not in a['text'], a['text'][:200])
+        check('coming back late shows out of time', 'end' in a['cls'] and 'out of time' in a['text'].lower() and 'The answer' in a['text'] and 'NaN' not in a['text'], a['text'][:200])
         lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
-        check('with the clock gone, all three lights are red', all('red' in c for c in lights), lights)
-        await press(s.page, 'next')
+        check('with the clock gone, all three lights are red', len(lights) == 3 and all('red' in c for c in lights), lights)
         e = await screen(s.page)
         check('and the day ends there', 'end' in e['cls'] and '0 of 3' in e['text'] and 'in 3:00' in e['text'], e['text'][:160])
         await press(s.page, 'answers')
@@ -295,8 +308,8 @@ async def last_seconds(b):
         check('and every light still to be won flashes red', w['anim'] == ['warnnow', 'warn', 'warn'], w['anim'])
         await s.page.wait_for_timeout(10500)
         a = await screen(s.page)
-        lights = await s.page.evaluate("() => [...document.querySelectorAll('#hud .lt')].map(e => e.className)")
-        check('when it gets there, all three turn red in front of you', a['result'] and all('red' in c for c in lights) and 'out of time' in a['text'].lower(), (lights, a['text'][:60]))
+        lights = await s.page.evaluate("() => [...document.querySelectorAll('#view .lights .lt')].map(e => e.className)")
+        check('when it gets there, all three turn red in front of you', 'end' in a['cls'] and len(lights) == 3 and all('red' in c for c in lights) and 'out of time' in a['text'].lower(), (lights, a['text'][:60]))
         check('no errors in the last seconds', not s.errors, s.errors)
 
 
@@ -449,7 +462,7 @@ async def links(b):
                 await s.page.reload(); await s.page.wait_for_timeout(300)
                 r = await screen(s.page)
                 check('refresh in a private round keeps your place', r['result'] and 'wrong' in r['text'].lower(), r['cls'] + ' | ' + r['text'][:80])
-            await press(s.page, 'next')
+            await onward(s.page)
         e = await screen(s.page)
         check('the private round ends with the duel', 'end' in e['cls'] and ('Your friend' in e['text'] or 'your friend' in e['text']), e['text'][:200])
         await press(s.page, 'home')
@@ -669,7 +682,7 @@ async def midnight(b):
         await answer(s.page, qs[0]['a']); await s.page.wait_for_timeout(5500)      # midnight passes while question two is on screen
         d1 = await s.page.evaluate("() => window.BaitEngine.dayNumber(new Date())")
         await answer(s.page, qs[1]['a']); await s.page.wait_for_timeout(GO)
-        await answer(s.page, 987654); await press(s.page, 'next')
+        await answer(s.page, 987654); await onward(s.page)
         e = await screen(s.page)
         check('a game that crosses midnight finishes as the day it began', d1 == d0 + 1 and 'end' in e['cls'] and ('No. %d' % d0) in e['text'] and '2 of 3' in e['text'] and not s.errors, (d0, d1, e['text'][:80], s.errors))
     async with Site(b, init=(CLOCK,)) as s:      # a phone whose clock says 2019
@@ -791,12 +804,12 @@ async def analytics(b):
         ans = [e[1] for e in ev if e[0] == 'question_answered']
         want = ['right', 'trap' if qs[1]['baits'] else 'wrong', 'wrong']
         check('each answer says which question, how hard, and how it went',
-              [a['slot'] for a in ans] == [1, 2, 3] and [a['grade'] for a in ans] == [2, 3, 4] and [a['verdict'] for a in ans] == want
+              [a['slot'] for a in ans] == [1, 2, 3] and [a['grade'] for a in ans] == [2, 3, 4] and [a['level'] for a in ans] == ['Easy', 'Tricky', 'Hard'] and [a['verdict'] for a in ans] == want
               and all(re.match(r'^[a-z0-9]+$', a['kind']) and a['mode'] == 'daily' and isinstance(a['secs'], int) for a in ans), ans)
         fin = [e[1] for e in ev if e[0] == 'game_finish'][0]
         check('the finish says how the day went', fin['greens'] == 1 and fin['mode'] == 'daily' and fin['timed_out'] is False and fin['game_day'] >= 1, fin)
         check('every event carries where the visit came from', all(e[1]['src'] == 'tiktok' and e[1]['creator'] == 'maya_k' and e[1]['in_app'] == 'TikTok' and e[1]['keypad'] in ('phone', 'computer') for e in ev), ev[0][1])
-        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'verdict', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
+        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'level', 'verdict', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
         extra = sorted({k for e in ev for k in e[1]} - allowed)
         check('no event carries anything about the person', not extra, extra)
         kept = await s.page.evaluate("() => ({ cookies: document.cookie, local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() })")
@@ -831,4 +844,4 @@ async def main():
     for n, _, d in bad: print(' FAIL', n, '::', str(d)[:200])
     sys.exit(1 if bad else 0)
 
-asyncio.run(main())
+if __name__ == '__main__': asyncio.run(main())

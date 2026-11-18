@@ -456,6 +456,21 @@
     return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
   }
 
+  // The same counts, read for one player: how their greens compare with everyone else's today.
+  // `c` already includes this player. Numbers only, so safe to set as HTML.
+  function standingLine(c, mine) {
+    var n = c[0] + c[1] + c[2] + c[3], others = n - 1, below = 0, g;
+    if (n < 1) return '';
+    if (n === 1) return 'You are the first to play today.';
+    if (n < MIN_CROWD) return 'You are one of <b>' + n + '</b> players so far today.';
+    for (g = 0; g < mine; g++) below += c[g];
+    var all = Math.round(c[3] / n * 100), beat = Math.round(below / others * 100), none = Math.round(Math.max(0, c[0] - 1) / others * 100), of = ' of today’s <b>' + E.num(n) + '</b> players';
+    if (mine >= 3) return all < 50 ? 'Top <b>' + all + '%</b>' + of + '.' : '<b>' + all + '%</b>' + of + ' got all three.';
+    if (mine > 0 && beat > 0) return 'You beat <b>' + beat + '%</b>' + of + '.';
+    if (mine === 0 && none > 0) return '<b>' + none + '%</b> of today’s <b>' + E.num(n) + '</b> also got none.';
+    return '<b>' + all + '%</b>' + of + ' got all three.';
+  }
+
   /* ---------- Analytics: who comes, where from, and how they get on ----------
      PostHog, on its EU cloud, in cookieless mode: nothing is stored on the player's device and no
      identifier is kept, so a visitor is counted by a hash that changes every day. Every event carries
@@ -506,7 +521,7 @@
   }
   // The few facts worth knowing about one answer, the same in every mode.
   function trackAnswer(mode, q, r, slot, extra) {
-    var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
+    var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, level: LEVEL[q.level], verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
     for (k in extra) p[k] = extra[k];
     track('question_answered', p);
   }
@@ -823,13 +838,14 @@
       st.idx = ++i; st.qStart = Date.now(); persist(); r = st.res[i];
     }
     var q = game.set[i], budget = Math.max(0, LIMIT - spent(st, i)), last = i >= 2 || !!st.res[i + 1];
+    if (r && last) { game.lastQ = i; finish(); return; }   // a refresh on the last answer: the result screen shows it
     var left = r ? Math.max(0, budget - r.secs) : timeLeft(budget, st.qStart);
     if (!fresh) setRoad(rightCount(st) * STEP);
     view.innerHTML =
       '<section class="play">' +
         hudHtml(left, LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
         plateHtml(q, 'Question ' + (i + 1) + ' of 3') +
-        (r ? resultHtml(q, r, i, last ? 'See your result' : 'Next question') : entryHtml()) +
+        (r ? resultHtml(q, r, i, 'Next question') : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
@@ -842,6 +858,7 @@
         trackAnswer(mode === 'daily' ? 'daily' : 'private', q, res, i + 1, mode === 'daily' ? { game_day: day, clock_left: Math.max(0, budget - res.secs) } : { clock_left: Math.max(0, budget - res.secs) });
       },
       reveal: function (res) {
+        if (res.f !== 'right' && (i >= 2 || st.res[i + 1])) { react(res.f); game.lastQ = i; finish(); return; }   // the last one: straight to the result, which shows its answer
         if (res.f !== 'right') { fresh = true; play(); fresh = false; react(res.f); return; }   // red: stop, and see why
         drive(rightCount(st) * STEP, 1400);                                                    // green: the road moves on
         go(i, function () { if (game && game.st === st) next(); });
@@ -935,21 +952,24 @@
   function end(first) {
     stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
     var st = game.st, n = rightCount(st), daily = game.mode === 'daily', streak = liveStreak();
+    var li = first && typeof game.lastQ === 'number' ? game.lastQ : -1, lr = li >= 0 ? st.res[li] : null, lq = lr && lr.f !== 'right' ? game.set[li] : null;
     setRoad(n * STEP);
     view.innerHTML =
-      '<section class="end">' +
+      '<section class="end' + (lq ? ' haslast' : '') + '">' +
+        (lq ? '<div class="last"><p class="say ' + lightOf(lr) + '" role="status">' + WORD[lr.f] + '</p>' +
+          '<p class="lastans"><span>The answer</span><b>' + esc(E.show(lq, lq.a)) + '</b></p><p class="why">' + esc(lq.why) + '</p></div>' : '') +
         '<div class="score">' +
           '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
           lightsHtml(st.res, -1, 'big' + (first ? ' fresh' : '')) +
           '<p class="tally">' + n + ' of 3</p>' +
-          '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 1 ? ', ' + streak + '-day streak' : '') + '</p>' +
+          '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 0 ? ', <b class="streak">' + streak + '-day streak</b>' : '') + '</p>' +
         '</div>' +
-        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? fieldLine(st.field) : '') + '</p>' : '') +
+        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? standingLine(st.field, n) : '') + '</p>' : '') +
         duelCard() +
-        '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend') + '</button>' +
+        '<div class="endbtns">' + (rivalHere() ? '<button class="btn" data-act="copy">Send your score back</button>' : '<button class="btn two" data-act="copy"><span>Share your result</span><small>and challenge a friend</small></button>') +
           '<div class="pair">' + (daily ? '<button class="btn plate" data-act="run">Endless mode</button><button class="btn plate" data-act="friends">With friends</button>' : '<button class="btn plate" data-act="nextround">Another three</button><button class="btn plate" data-act="home">Home</button>') + '</div>' +
         '</div>' +
-        '<div class="foot">' + (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
+        '<div class="foot">' + (daily ? (streak > 0 ? '<p class="keep">Come back tomorrow to keep your streak.</p>' : '') + '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
           '<button class="linkish quiet" data-act="answers">See the answers</button>' + (daily ? inAppNote() : '') + '</div>' +
       '</section>';
     window.scrollTo(0, 0);
@@ -957,7 +977,7 @@
     if (daily && first && STATS && window.fetch) {
       readField(game.day, n).then(function (c) {
         st.field = c; save();
-        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = fieldLine(c);
+        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = standingLine(c, n);
       }).catch(function () { /* fine without */ });
     }
   }

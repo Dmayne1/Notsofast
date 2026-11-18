@@ -199,6 +199,45 @@ body.desk .result .btn { margin-top: 6px; position: static; }
 .standing { margin-top: 12px; color: #c3c5cc; text-align: center; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
 .standing b { color: var(--fg); font-weight: 700; }
 .standing:empty { display: none; }
+.total .streak { color: var(--fg); font-weight: 700; }
+.btn.two { flex-direction: column; gap: 4px; height: 60px; }
+.btn.two small { font-weight: 600; font-size: 0.84rem; opacity: 0.72; }
+.last { margin: 2px 0 4px; padding: 11px 14px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(8, 9, 13, 0.74); }
+.last .say { font-size: 1.5rem; animation: none; }
+.lastans { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.lastans span { color: var(--mut); font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
+.lastans b { font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1.05; }
+.last .why { margin-top: 5px; font-size: 0.94rem; line-height: 1.38; }
+.end.haslast .score { grid-template-columns: auto auto; grid-template-rows: auto auto auto; justify-content: center; align-items: center; column-gap: 18px; padding: 12px 0 0; text-align: left; justify-items: start; }
+.end.haslast .endno { grid-column: 2; grid-row: 1; margin: 0; font-size: 0.86rem; }
+.end.haslast .lights.big { grid-column: 1; grid-row: 1 / span 3; gap: 10px; }
+.end.haslast .lights.big .lt { width: 34px; height: 34px; }
+.end.haslast .tally { grid-column: 2; grid-row: 2; margin: 0; font-size: 2.5rem; line-height: 1; }
+.end.haslast .total { grid-column: 2; grid-row: 3; margin: 0; font-size: 1rem; }
+.end.haslast .standing { margin-top: 6px; }
+.end.haslast .endbtns { margin-top: 12px; gap: 10px; }
+.end.haslast .foot { padding-top: 10px; }
+.end.haslast .keep { padding-top: 9px; }
+@media (max-height: 640px) {   /* a short phone, with the last answer on the result screen: keep it to one screen */
+  .end.haslast .last { padding: 9px 12px 10px; }
+  .end.haslast .last .say { font-size: 1.3rem; }
+  .end.haslast .lastans b { font-size: 1.6rem; }
+  .end.haslast .last .why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .end.haslast .score { padding-top: 8px; }
+  .end.haslast .lights.big .lt { width: 28px; height: 28px; }
+  .end.haslast .tally { font-size: 2.1rem; }
+  .end.haslast .endbtns { margin-top: 9px; gap: 8px; }
+  .end.haslast .btn.two { height: 54px; }
+  .end.haslast .pair .btn { height: 46px; }
+  .end.haslast .foot { padding-top: 8px; }
+  .end.haslast .keep { padding-top: 7px; font-size: 0.95rem; }
+  .end.haslast .nextset b { font-size: 1.45rem; }
+  .end.haslast .standing { margin-top: 2px; font-size: 0.95rem; }
+  .end.haslast .keep + .nextset { padding-top: 1px; }
+  .end.haslast .foot .quiet { padding: 4px 0 3px; }
+}
+.keep { width: 100%; padding-top: 12px; border-top: 1px solid var(--rule); color: #e6e7ea; font-weight: 600; text-align: center; }
+.keep + .nextset { padding-top: 4px; border-top: 0; }
 .rank { margin-top: 12px; color: var(--sign); font-family: var(--disp); font-weight: 800; font-size: 1.9rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; }
 .endbtns { display: grid; gap: 13px; margin-top: 18px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -1559,6 +1598,21 @@ body.desk .foot { margin-top: 26px; }
     return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
   }
 
+  // The same counts, read for one player: how their greens compare with everyone else's today.
+  // `c` already includes this player. Numbers only, so safe to set as HTML.
+  function standingLine(c, mine) {
+    var n = c[0] + c[1] + c[2] + c[3], others = n - 1, below = 0, g;
+    if (n < 1) return '';
+    if (n === 1) return 'You are the first to play today.';
+    if (n < MIN_CROWD) return 'You are one of <b>' + n + '</b> players so far today.';
+    for (g = 0; g < mine; g++) below += c[g];
+    var all = Math.round(c[3] / n * 100), beat = Math.round(below / others * 100), none = Math.round(Math.max(0, c[0] - 1) / others * 100), of = ' of today’s <b>' + E.num(n) + '</b> players';
+    if (mine >= 3) return all < 50 ? 'Top <b>' + all + '%</b>' + of + '.' : '<b>' + all + '%</b>' + of + ' got all three.';
+    if (mine > 0 && beat > 0) return 'You beat <b>' + beat + '%</b>' + of + '.';
+    if (mine === 0 && none > 0) return '<b>' + none + '%</b> of today’s <b>' + E.num(n) + '</b> also got none.';
+    return '<b>' + all + '%</b>' + of + ' got all three.';
+  }
+
   /* ---------- Analytics: who comes, where from, and how they get on ----------
      PostHog, on its EU cloud, in cookieless mode: nothing is stored on the player's device and no
      identifier is kept, so a visitor is counted by a hash that changes every day. Every event carries
@@ -1609,7 +1663,7 @@ body.desk .foot { margin-top: 26px; }
   }
   // The few facts worth knowing about one answer, the same in every mode.
   function trackAnswer(mode, q, r, slot, extra) {
-    var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
+    var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, level: LEVEL[q.level], verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
     for (k in extra) p[k] = extra[k];
     track('question_answered', p);
   }
@@ -1926,13 +1980,14 @@ body.desk .foot { margin-top: 26px; }
       st.idx = ++i; st.qStart = Date.now(); persist(); r = st.res[i];
     }
     var q = game.set[i], budget = Math.max(0, LIMIT - spent(st, i)), last = i >= 2 || !!st.res[i + 1];
+    if (r && last) { game.lastQ = i; finish(); return; }   // a refresh on the last answer: the result screen shows it
     var left = r ? Math.max(0, budget - r.secs) : timeLeft(budget, st.qStart);
     if (!fresh) setRoad(rightCount(st) * STEP);
     view.innerHTML =
       '<section class="play">' +
         hudHtml(left, LIMIT, lightsHtml(st.res, r ? -1 : i, '', fresh ? i : -1), r) +
         plateHtml(q, 'Question ' + (i + 1) + ' of 3') +
-        (r ? resultHtml(q, r, i, last ? 'See your result' : 'Next question') : entryHtml()) +
+        (r ? resultHtml(q, r, i, 'Next question') : entryHtml()) +
       '</section>';
     if (r) return;
     var mode = game.mode, day = game.day;
@@ -1945,6 +2000,7 @@ body.desk .foot { margin-top: 26px; }
         trackAnswer(mode === 'daily' ? 'daily' : 'private', q, res, i + 1, mode === 'daily' ? { game_day: day, clock_left: Math.max(0, budget - res.secs) } : { clock_left: Math.max(0, budget - res.secs) });
       },
       reveal: function (res) {
+        if (res.f !== 'right' && (i >= 2 || st.res[i + 1])) { react(res.f); game.lastQ = i; finish(); return; }   // the last one: straight to the result, which shows its answer
         if (res.f !== 'right') { fresh = true; play(); fresh = false; react(res.f); return; }   // red: stop, and see why
         drive(rightCount(st) * STEP, 1400);                                                    // green: the road moves on
         go(i, function () { if (game && game.st === st) next(); });
@@ -2038,21 +2094,24 @@ body.desk .foot { margin-top: 26px; }
   function end(first) {
     stopTimers(); ask = null; clearTimeout(toastTimer); toastEl.hidden = true;
     var st = game.st, n = rightCount(st), daily = game.mode === 'daily', streak = liveStreak();
+    var li = first && typeof game.lastQ === 'number' ? game.lastQ : -1, lr = li >= 0 ? st.res[li] : null, lq = lr && lr.f !== 'right' ? game.set[li] : null;
     setRoad(n * STEP);
     view.innerHTML =
-      '<section class="end">' +
+      '<section class="end' + (lq ? ' haslast' : '') + '">' +
+        (lq ? '<div class="last"><p class="say ' + lightOf(lr) + '" role="status">' + WORD[lr.f] + '</p>' +
+          '<p class="lastans"><span>The answer</span><b>' + esc(E.show(lq, lq.a)) + '</b></p><p class="why">' + esc(lq.why) + '</p></div>' : '') +
         '<div class="score">' +
           '<p class="endno">' + (daily ? 'No. ' + game.day : 'Private round ' + esc(game.code) + ', number ' + game.round) + '</p>' +
           lightsHtml(st.res, -1, 'big' + (first ? ' fresh' : '')) +
           '<p class="tally">' + n + ' of 3</p>' +
-          '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 1 ? ', ' + streak + '-day streak' : '') + '</p>' +
+          '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 0 ? ', <b class="streak">' + streak + '-day streak</b>' : '') + '</p>' +
         '</div>' +
-        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? fieldLine(st.field) : '') + '</p>' : '') +
+        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? standingLine(st.field, n) : '') + '</p>' : '') +
         duelCard() +
-        '<div class="endbtns"><button class="btn" data-act="copy">' + (rivalHere() ? 'Send your score back' : 'Challenge a friend') + '</button>' +
+        '<div class="endbtns">' + (rivalHere() ? '<button class="btn" data-act="copy">Send your score back</button>' : '<button class="btn two" data-act="copy"><span>Share your result</span><small>and challenge a friend</small></button>') +
           '<div class="pair">' + (daily ? '<button class="btn plate" data-act="run">Endless mode</button><button class="btn plate" data-act="friends">With friends</button>' : '<button class="btn plate" data-act="nextround">Another three</button><button class="btn plate" data-act="home">Home</button>') + '</div>' +
         '</div>' +
-        '<div class="foot">' + (daily ? '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
+        '<div class="foot">' + (daily ? (streak > 0 ? '<p class="keep">Come back tomorrow to keep your streak.</p>' : '') + '<p class="nextset"><span>Next three in</span><b id="cd">' + untilMidnight() + '</b></p>' : '') +
           '<button class="linkish quiet" data-act="answers">See the answers</button>' + (daily ? inAppNote() : '') + '</div>' +
       '</section>';
     window.scrollTo(0, 0);
@@ -2060,7 +2119,7 @@ body.desk .foot { margin-top: 26px; }
     if (daily && first && STATS && window.fetch) {
       readField(game.day, n).then(function (c) {
         st.field = c; save();
-        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = fieldLine(c);
+        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = standingLine(c, n);
       }).catch(function () { /* fine without */ });
     }
   }
