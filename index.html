@@ -1372,10 +1372,15 @@ body.desk .foot { margin-top: 26px; }
     if (INAPP) return INAPP.toLowerCase();
     try { var h = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; return !h || /playnotsofast\.com$/.test(h) ? 'direct' : h.slice(0, 40); } catch (e) { return 'direct'; }
   })();
+  // Where this visit came from and what it is played on: carried by every event, PostHog's own page views included.
+  function visit() {
+    var p = { src: SRC, in_app: INAPP || 'no', keypad: desk ? 'computer' : 'phone' };
+    if (CREATOR) p.creator = CREATOR;
+    return p;
+  }
   function track(name, props) {
     if (!PH_KEY || !LIVE) return;
-    var p = { src: SRC, in_app: INAPP || 'no', keypad: desk ? 'computer' : 'phone' }, k;
-    if (CREATOR) p.creator = CREATOR;
+    var p = visit(), k;
     for (k in props) p[k] = props[k];
     if (ph) { try { ph.capture(name, p); } catch (e) { /* analytics never breaks the game */ } }
     else if (phq.length < 300) phq.push([name, p]);
@@ -1389,7 +1394,8 @@ body.desk .foot { margin-top: 26px; }
       try {
         var lib = window.posthog;
         lib.init(PH_KEY, { api_host: PH_HOST, defaults: '2026-01-30', cookieless_mode: 'always', person_profiles: 'never',
-          autocapture: false, capture_pageview: true, capture_pageleave: true, disable_session_recording: true, disable_surveys: true, advanced_disable_flags: true });
+          autocapture: false, capture_pageview: true, capture_pageleave: true, disable_session_recording: true, disable_surveys: true, advanced_disable_flags: true,
+          loaded: function (p) { try { p.register(visit()); } catch (e) {} } });   // kept in memory only, so the first page view carries it too
         ph = window.posthog || lib;
         phq.forEach(function (e) { ph.capture(e[0], e[1]); }); phq = [];
       } catch (e) { ph = null; }

@@ -742,7 +742,7 @@ async def analytics(b):
     print('analytics')
     import os
     html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'), encoding='utf-8').read()
-    STUB = "window.posthog = { init: function (k, c) { window.__phInit = [k, c]; }, capture: function (n, p) { (window.__ph = window.__ph || []).push([n, p]); } };"
+    STUB = "window.posthog = { init: function (k, c) { window.__phInit = [k, c]; if (c.loaded) c.loaded(window.posthog); }, register: function (p) { window.__phReg = p; }, capture: function (n, p) { (window.__ph = window.__ph || []).push([n, p]); } };"
     KEYED = "window.__NSF_PH_KEY = 'phc_test';"
     async def live(s, asked):
         async def page(route): await route.fulfill(status=200, content_type='text/html', body=html)
@@ -780,6 +780,8 @@ async def analytics(b):
               bool(cfg) and cfg[0] == 'phc_test' and cfg[1].get('api_host') == 'https://eu.i.posthog.com' and cfg[1].get('cookieless_mode') == 'always'
               and cfg[1].get('person_profiles') == 'never' and cfg[1].get('autocapture') is False and cfg[1].get('disable_session_recording') is True
               and len(asked) == 1 and asked[0].startswith('https://eu-assets.i.posthog.com/static/'), (cfg, asked))
+        reg = await s.page.evaluate("() => window.__phReg")
+        check("PostHog's own page views carry where the visit came from too", reg == {'src': 'tiktok', 'creator': 'maya_k', 'in_app': 'TikTok', 'keypad': 'phone'}, reg)
         qs = await play_day(s, how=('right', 'bait', 'wrong'))
         await press(s.page, 'copy'); await press(s.page, 'close')
         await press(s.page, 'answers'); await press(s.page, 'close')
