@@ -109,13 +109,24 @@ live in (percent, chance, rates and so on). The calendar is built day by day:
 - each slot takes the kind whose idea has been away longest, then the kind that has itself been
   away longest;
 - a day never uses one idea twice, or two ideas from the same corner;
+- questions that look alike on the surface (two about clocks, two about dice, two about trains)
+  are kept a week apart, even when the tricks differ (`LOOKS`);
+- three questions that shared a day are split up the next time round, so a set never comes back
+  as a set;
 - a kind that returns is worded differently from its last outings.
 
-With 53 ideas in the daily bank an idea returns about every 18 days (never sooner than 13), and
-the very same wording not for a month. `node src/test.js` prints these numbers and fails if they
+With 66 ideas in the daily bank an idea returns about every 22 days (never sooner than 17), and
+the very same wording not for five weeks. `node src/test.js` prints these numbers and fails if they
 drop. The only way to push them out is to add new ideas, so a new question should be a new trick,
 not a new costume. Endless mode remembers the kinds a device has been shown and always serves the
 one whose idea was met longest ago.
+
+**A day that has been played never changes.** `SERVED` in `src/engine.js` lists every day already
+live, slot by slot, and the calendar hands those back untouched. Before changing the bank (a new
+kind, a new grade, anything in the calendar rules), run `node src/freeze.js` and paste its output
+over `SERVED`, so today and every earlier day are locked first. The test file checks the lock.
+Rewording a family changes its text on any day, locked or not, so leave today's three families
+alone until tomorrow.
 
 Those grades are estimates. The PostHog dashboard's "Share right by question type" tile shows
 how each kind really plays; change the kind's number in `GRADE` to match, and cut any kind that
@@ -138,7 +149,7 @@ settings or the events are dropped.
 | --- | --- | --- |
 | `$pageview`, `$pageleave` | a visit starts and ends | PostHog's own page fields |
 | `game_start` | a game begins | `mode`, `game_day`, party `players`/`questions` |
-| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `level` (Easy, Tricky, Hard), `verdict` (right, trap, wrong, time), `secs`, `clock_left` |
+| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `level` (Easy, Tricky, Hard), `verdict` (right, trap, wrong, time), `typed` (the number they gave), `secs`, `clock_left` |
 | `game_finish` | a game ends | `mode`, `greens`, `secs`, `timed_out`, `vs_friend` |
 | `share` | a result or challenge is copied or sent | `what` |
 | `challenge_arrived` | someone opens a friend's link | `mode` |

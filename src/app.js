@@ -522,6 +522,7 @@
   // The few facts worth knowing about one answer, the same in every mode.
   function trackAnswer(mode, q, r, slot, extra) {
     var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, level: LEVEL[q.level], verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
+    if (r.f !== 'time' && isFinite(parseFloat(r.t))) p.typed = parseFloat(r.t);   // the number they gave: shows which wrong answers a question really draws
     for (k in extra) p[k] = extra[k];
     track('question_answered', p);
   }

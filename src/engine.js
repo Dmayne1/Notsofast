@@ -149,7 +149,7 @@
     const roll = r();
     if (roll < 0.2) return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. After how many ' + s[3] + ' was the ' + s[1] + ' a quarter full?', suf: s[3], a: D - 2, baits: [D / 4, D / 2], why: 'Work backwards. Half full one ' + s[2] + ' before the end, a quarter full the ' + s[2] + ' before that.', v: { t: 'doubling', mode: 'quarter', D: D } };
     if (roll < 0.7) return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. After how many ' + s[3] + ' was the ' + s[1] + ' half full?', suf: s[3], a: D - 1, baits: [D / 2], why: 'It doubles each ' + s[2] + ', so one ' + s[2] + ' before it was full, it was half full.', v: { t: 'doubling', mode: 'half', D: D } };
-    return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. If you start with two of them, how many ' + s[3] + ' does it take?', suf: s[3], a: D - 1, baits: [D / 2], why: 'Starting with two is the same as starting one ' + s[2] + ' later. You save one ' + s[2] + ', not half the time.', v: { t: 'doubling', mode: 'two', D: D } };
+    return { q: s[0] + ' doubles in size every ' + s[2] + ' and fills the ' + s[1] + ' after ' + D + ' ' + s[3] + '. If it starts out twice as big, how many ' + s[3] + ' does it take to fill the ' + s[1] + '?', suf: s[3], a: D - 1, baits: [D / 2], why: 'Starting twice as big is the same as skipping the first ' + s[2] + '. You save one ' + s[2] + ', not half the time.', v: { t: 'doubling', mode: 'two', D: D } };
   });
 
   fam('intervals', 2, function (r) {
@@ -249,7 +249,7 @@
   });
 
   fam('coins', 2, function (r) {
-    const s = pick(r, [['You roll two dice', 'they show the same number', 6], ['Two friends each pick a day of the week at random', 'they pick the same day', 7], ['Two people each pick a number from 1 to 10', 'they pick the same number', 10], ['Two people play rock, paper, scissors', 'they throw the same thing', 3]]);
+    const s = pick(r, [['You roll two dice', 'they show the same number', 6], ['Two friends each pick a day of the week at random', 'they pick the same day', 7], ['Two people each pick a number from 1 to 10 at random', 'they pick the same number', 10], ['Two people play rock, paper, scissors, each throwing at random', 'they throw the same thing', 3]]);
     return { q: s[0] + '. The chance ' + s[1] + ' is 1 in what?', pre: '1 in ', a: s[2], baits: [s[2] * s[2]], why: 'Whatever the first one is, the second has a 1 in ' + s[2] + ' chance of matching it.', v: { t: 'coins', mode: 'match', n: s[2] } };
   });
 
@@ -309,7 +309,7 @@
   });
 
   fam('fly', 3, function (r) {
-    const p = pick(r, [[100, 50, 75], [120, 30, 40], [200, 50, 80], [90, 45, 60], [60, 30, 50], [240, 60, 90]]);
+    const p = pick(r, [[150, 50, 80], [120, 30, 40], [200, 50, 80], [180, 45, 60], [90, 30, 50], [240, 60, 90]]);
     const d = p[0], v = p[1], f = p[2], hrs = d / (2 * v);
     return { q: 'Two trains ' + d + ' km apart head towards each other at ' + v + ' km/h each. A fly zips back and forth between them at ' + f + ' km/h until they meet. How far does the fly travel?', suf: 'km', a: f * hrs, baits: [d, d / 2], why: 'Ignore the zigzags. The trains meet after ' + hrs + ' ' + pl(hrs, 'hour', 'hours') + ', and the fly is flying at ' + f + ' km/h for all of it.', v: { t: 'fly', d: d, v: v, f: f } };
   });
@@ -337,12 +337,12 @@
 
   fam('till', 3, function (r) {
     const S = pick(r, [100, 50, 20]), G = pick(r, S === 100 ? [60, 70, 80] : S === 50 ? [20, 30, 35] : [8, 12, 15]);
-    return { q: 'A thief steals a ' + eur(S) + ' note from a shop till. He then buys ' + eur(G) + ' of goods there with it and gets ' + eur(S - G) + ' change. How much is the shop down?', pre: '€', a: S, baits: [S + (S - G), S + G, 2 * S, G], why: 'The purchase is a fair swap, so ignore it. The shop is down the ' + eur(S) + ' he stole: ' + eur(G) + ' in goods and ' + eur(S - G) + ' in change.', v: { t: 'till', S: S, G: G } };
+    return { q: 'A thief steals a ' + eur(S) + ' note from a shop till. He then buys ' + eur(G) + ' of goods there with it and gets ' + eur(S - G) + ' change. How much is the shop down?', pre: '€', a: S, baits: [S + (S - G), S + G, 2 * S, G, S - G], why: 'The purchase is a fair swap, so ignore it. The shop is down the ' + eur(S) + ' he stole: ' + eur(G) + ' in goods and ' + eur(S - G) + ' in change.', v: { t: 'till', S: S, G: G } };
   });
 
   fam('speed', 3, function (r) {
     const p = pick(r, [[30, 60, 60], [10, 30, 30], [20, 30, 60], [40, 60, 120], [60, 120, 120], [20, 60, 60]]);
-    const a = p[0], b = p[1], L = p[2], hrs = L / a + L / b, s = pick(r, [['drive to work', 'drive home'], ['cycle to the beach', 'cycle home']]);
+    const a = p[0], b = p[1], L = p[2], hrs = L / a + L / b, s = pick(r, b <= 30 ? [['cycle to the beach', 'cycle home'], ['cycle to school', 'cycle home']] : [['drive to work', 'drive home'], ['drive to the coast', 'drive home']]);
     return { q: 'You ' + s[0] + ' at ' + a + ' km/h and ' + s[1] + ' the same way at ' + b + ' km/h. What is your average speed for the whole trip?', suf: 'km/h', a: 2 * L / hrs, baits: [(a + b) / 2], why: 'You spend longer on the slow leg, so it counts for more. Say it is ' + L + ' km each way: ' + (L / a) + ' ' + pl(L / a, 'hour', 'hours') + ' out, ' + (L / b) + ' back, ' + (2 * L) + ' km in ' + hrs + ' hours.', v: { t: 'speed', mode: 'avg', a: a, b: b } };
   });
 
@@ -425,7 +425,7 @@
 
   fam('string', 1, function (r, turn) {
     const n = walk(r, turn, [1, 2, 1, 3]), strands = Math.pow(2, n);
-    return { q: 'You fold a piece of string in half' + (n === 1 ? '' : n === 2 ? ', then in half again,' : ' three times over') + ' and cut straight through all the strands. How many pieces of string do you have?', suf: 'pieces', a: strands + 1, baits: n === 1 ? [2] : [strands, 2 * strands], why: 'The cut goes through ' + strands + ' strands, so the string is cut in ' + strands + ' places. ' + strands + ' cuts make ' + (strands + 1) + ' pieces.', v: { t: 'string', n: n } };
+    return { q: 'You fold a piece of string in half' + (n === 1 ? '' : n === 2 ? ', then in half again,' : ' three times over') + ' and cut straight through all the strands. How many pieces of string do you have?', suf: 'pieces', a: strands + 1, baits: [strands, 2 * strands], why: 'The cut goes through ' + strands + ' strands, so the string is cut in ' + strands + ' places. ' + strands + ' cuts make ' + (strands + 1) + ' pieces.', v: { t: 'string', n: n } };
   });
 
   fam('jar', 2, function (r, turn) {
@@ -481,7 +481,7 @@
   });
 
   fam('weekend', 2, function (r, turn) {
-    const s = walk(r, turn, [['There is a 50% chance of rain on Saturday and a 50% chance on Sunday. What is the % chance it rains at some point over the weekend?', 'It stays dry only if both days are dry: half of a half, 25%. So rain at some point is 75%.'], ['You flip two coins. What is the % chance that at least one lands heads?', 'Only one of the four outcomes has no head: tails and tails. The other three do, and 3 in 4 is 75%.'], ['A striker scores in half of his games. He plays twice this week. What is the % chance he scores in at least one of them?', 'He draws a blank in both only a quarter of the time: half of a half. So he scores in at least one 75% of the time.']]);
+    const s = walk(r, turn, [['Saturday and Sunday each have a 50% chance of rain, and one day does not affect the other. What is the % chance it rains at some point over the weekend?', 'It stays dry only if both days are dry: half of a half, 25%. So rain at some point is 75%.'], ['You flip two coins. What is the % chance that at least one lands heads?', 'Only one of the four outcomes has no head: tails and tails. The other three do, and 3 in 4 is 75%.'], ['A striker scores in half of his games, whatever happened in the last one. He plays twice this week. What is the % chance he scores in at least one of them?', 'He draws a blank in both only a quarter of the time: half of a half. So he scores in at least one 75% of the time.']]);
     return { q: s[0], suf: '%', a: 75, baits: [100, 50], why: s[1], v: { t: 'weekend' } };
   });
 
@@ -530,6 +530,99 @@
     return { q: 'Four friends cross a bridge at night sharing one torch, two at a time at the slower one’s pace. They take ' + t[0] + ', ' + t[1] + ', ' + t[2] + ' and ' + t[3] + ' minutes. What is the fastest all four can cross?', suf: 'minutes', a: t[4], baits: [t[5]], why: 'Send the two slowest over together, so the slow walk happens once, and let the two fastest ferry the torch back.', v: { t: 'bridge', times: t.slice(0, 4) } };
   });
 
+  /* ---------- Third batch: thirteen more ideas, so an idea takes longer to come round ---------- */
+
+  fam('magnify', 1, function (r, turn) {
+    const p = walk(r, turn, [[30, 3], [20, 2], [15, 10], [45, 2], [25, 4]]);
+    return { q: 'A magnifying glass makes everything look ' + p[1] + ' times bigger. Through it, how big does a ' + p[0] + '° angle look?', suf: '°', a: p[0], baits: [p[0] * p[1]], why: 'The lines look longer, but the corner between them opens no wider. An angle is the same at any size.', v: { t: 'magnify', deg: p[0], k: p[1] } };
+  });
+
+  fam('triple', 1, function (r, turn) {
+    const p = walk(r, turn, [['A price triples', 3, 'has it gone up'], ['A queue grows to 4 times its length', 4, 'has it grown'], ['A town doubles in size', 2, 'has it grown'], ['A video’s views grow to 5 times what they were', 5, 'have they grown'], ['A crowd triples', 3, 'has it grown']]);
+    return { q: p[0] + '. By what % ' + p[2] + '?', suf: '%', a: (p[1] - 1) * 100, baits: [p[1] * 100], why: p[1] + ' times as much is ' + (p[1] * 100) + '% of what it was. The rise is only the part on top of the original 100%: ' + ((p[1] - 1) * 100) + '%.', v: { t: 'triple', k: p[1] } };
+  });
+
+  fam('hourhand', 1, function (r, turn) {
+    const p = walk(r, turn, [['a day', 24, [24, 1, 12]], ['a week', 168, [7, 168]], ['two days', 48, [2, 48]]]);
+    return { q: 'How many times does the hour hand of a clock go all the way round in ' + p[0] + '?', suf: 'times', a: p[1] / 12, baits: p[2], why: 'The hour hand takes 12 hours to go round once, not 24, so it goes round twice a day' + (p[1] > 24 ? ': ' + (p[1] / 12) + ' times in ' + p[0] : '') + '.', v: { t: 'hourhand', hours: p[1] } };
+  });
+
+  fam('decimaltime', 1, function (r, turn) {
+    const p = walk(r, turn, [['A train journey takes', 1, 20], ['A film runs for', 2, 10], ['A flight takes', 1, 40], ['Your timesheet says you worked', 1, 25], ['A marathon runner finishes in', 2, 20]]);
+    const whole = p[1], frac = p[2], hrs = whole + '.' + (frac % 10 === 0 ? frac / 10 : frac), mins = frac * 60 / 100;
+    return { q: p[0] + ' ' + hrs + ' hours. How many minutes is that?', suf: 'minutes', a: whole * 60 + mins, baits: [whole * 60 + frac, whole * 100 + frac], why: 'The part after the point is a fraction of an hour, not minutes: 0.' + (frac % 10 === 0 ? frac / 10 : frac) + ' of 60 minutes is ' + mins + '. So ' + (whole * 60) + ' + ' + mins + ' = ' + (whole * 60 + mins) + ', not ' + whole + ' ' + pl(whole, 'hour', 'hours') + ' ' + frac + '.', v: { t: 'decimaltime', h: hrs } };
+  });
+
+  fam('combos', 2, function (r, turn) {
+    if (walk(r, turn, ['dials', 'scores']) === 'dials') {
+      const p = pick(r, [['A bike lock', 3], ['A suitcase lock', 3], ['A safe', 4], ['A cash box', 2]]), n = p[1], all = Math.pow(10, n);
+      return { q: p[0] + ' has ' + n + ' dials, each numbered 0 to 9. How many different codes can it be set to?', suf: 'codes', a: all, baits: [10 * n, all - 1, Math.pow(9, n)], why: 'Every setting of one dial can go with every setting of the others, so you multiply: ' + new Array(n).fill('10').join(' × ') + ' = ' + num(all) + '. That is every number from ' + new Array(n).fill('0').join('') + ' to ' + new Array(n).fill('9').join('') + '.', v: { t: 'combos', mode: 'dials', n: n } };
+    }
+    const p = pick(r, [[3, 2], [2, 1], [4, 1], [3, 3], [2, 2]]), a = p[0], b = p[1];
+    const list = function (k) { const out = []; for (let i = 0; i <= k; i++) out.push(i); return out.length > 2 ? out.slice(0, -1).join(', ') + ' or ' + k : out.join(' or '); };
+    return { q: 'A football match ends ' + a + '–' + b + '. How many different half-time scores were possible?', suf: 'scores', a: (a + 1) * (b + 1), baits: [a * b, a + b, (a + 1) * (b + 1) - 1], why: 'One side could have had ' + list(a) + ' at half-time, and the other ' + list(b) + '. Any pairing is possible: ' + (a + 1) + ' × ' + (b + 1) + ' = ' + ((a + 1) * (b + 1)) + '. That includes 0–0.', v: { t: 'combos', mode: 'scores', a: a, b: b } };
+  });
+
+  fam('step', 2, function (r, turn) {
+    if (walk(r, turn, ['carpet', 'notch']) === 'carpet') {
+      const p = pick(r, [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 6, 10]]), up = p[0], along = p[1];
+      return { q: 'A carpet runs up a staircase, covering the top and the front of every step. From end to end the staircase goes ' + along + ' m along and ' + up + ' m up. How many metres of carpet does it take?', suf: 'm', a: up + along, baits: [p[2]], why: 'Add up the tops of all the steps and you get the ' + along + ' m along. Add up the fronts and you get the ' + up + ' m up. That is ' + (up + along) + ' m, however many steps there are. The ' + p[2] + ' m slope is a shortcut the carpet does not take.', v: { t: 'step', mode: 'carpet', up: up, along: along } };
+    }
+    const p = pick(r, [[10, 3], [12, 4], [20, 5], [8, 2]]), S = p[0], c = p[1];
+    return { q: 'A square garden is ' + S + ' m by ' + S + ' m. A ' + c + ' m by ' + c + ' m square is cut out of one corner for a pond. How long is the fence round what is left?', suf: 'm', a: 4 * S, baits: [4 * S - 2 * c, 4 * S - 4 * c], why: 'The cut takes ' + c + ' m off each of two sides, but its own two edges put the same ' + c + ' m and ' + c + ' m back. The fence is still 4 × ' + S + ' = ' + (4 * S) + ' m.', v: { t: 'step', mode: 'notch', S: S, c: c } };
+  });
+
+  fam('cake', 2, function (r, turn) {
+    const s = walk(r, turn, ['a round cake', 'a block of cheese', 'a watermelon', 'a square cake']);
+    return { q: 'What is the fewest straight cuts that will divide ' + s + ' into 8 equal pieces?', suf: 'cuts', a: 3, baits: [4, 7, 8], why: 'Two cuts from above make 4 pieces. One more, flat through the middle from the side, turns the 4 into 8. Nobody said every cut had to come from above.', v: { t: 'cake', n: 8 } };
+  });
+
+  fam('eitheror', 2, function (r, turn) {
+    if (walk(r, turn, ['cards', 'numbers']) === 'cards') {
+      const p = pick(r, [['a heart', 'an ace', 13, 4, 1, '13 hearts and 4 aces', 'the ace of hearts is', 'H', 'A'], ['a spade', 'a king', 13, 4, 1, '13 spades and 4 kings', 'the king of spades is', 'S', 'K'], ['red', 'a queen', 26, 4, 2, '26 red cards and 4 queens', 'the two red queens are', 'red', 'Q'], ['a diamond', 'a jack, queen or king', 13, 12, 3, '13 diamonds and 12 jacks, queens and kings', 'the three in diamonds are', 'D', 'pic']]);
+      return { q: 'In a pack of 52 playing cards, how many are ' + p[0] + ' or ' + p[1] + '?', suf: 'cards', a: p[2] + p[3] - p[4], baits: [p[2] + p[3]], why: 'There are ' + p[5] + ', but ' + p[6] + ' in both lists. Count ' + (p[4] === 1 ? 'it' : 'them') + ' once: ' + p[2] + ' + ' + p[3] + ' − ' + p[4] + ' = ' + (p[2] + p[3] - p[4]) + '.', v: { t: 'eitheror', mode: 'cards', suit: p[7], rank: p[8] } };
+    }
+    const p = pick(r, [[2, 5, 100], [5, 10, 100], [2, 3, 30], [3, 5, 30], [2, 10, 100]]), x = p[0], y = p[1], N = p[2];
+    const nx = Math.floor(N / x), ny = Math.floor(N / y), lcm = y % x === 0 ? y : x * y, both = Math.floor(N / lcm);
+    return { q: 'How many of the numbers from 1 to ' + N + ' divide exactly by ' + x + ' or by ' + y + '?', a: nx + ny - both, baits: [nx + ny], why: nx + ' of them divide by ' + x + ' and ' + ny + ' by ' + y + ', but ' + both + ' divide by both and are in each list. Count those once: ' + nx + ' + ' + ny + ' − ' + both + ' = ' + (nx + ny - both) + '.', v: { t: 'eitheror', mode: 'numbers', x: x, y: y, N: N } };
+  });
+
+  fam('headstart', 3, function (r, turn) {
+    const p = walk(r, turn, [[100, 10], [100, 20], [200, 20], [50, 10]]), L = p[0], d = p[1], gap = d * d / L;
+    return { q: 'You beat a friend by ' + d + ' m in a ' + L + ' m race. In the rematch you start ' + d + ' m behind the start line, and you both run exactly as fast as before. How many metres ahead are you when you finish?', suf: 'm', a: gap, baits: [0, d], why: 'It is not a dead heat. You draw level ' + d + ' m from the finish, because that is where you both were when you won the first race. You are still the faster runner over those last ' + d + ' m, so you finish ' + num(gap) + ' m clear.', v: { t: 'headstart', L: L, d: d } };
+  });
+
+  fam('dicestack', 3, function (r, turn) {
+    const n = walk(r, turn, [3, 2, 4, 3]), top = 1 + Math.floor(r() * 6), word = ['Two', 'Three', 'Four'][n - 2];
+    return { q: 'Opposite faces of a dice add up to 7. ' + word + ' dice are stacked in a tower with a ' + top + ' on top. What do the ' + (2 * n - 1) + ' faces hidden between and under the dice add up to?', a: 7 * n - top, baits: [7 * n, 7 * (n - 1)], why: 'The top and bottom of each dice add up to 7, so the ' + word.toLowerCase() + ' pairs make ' + (7 * n) + '. The only one of those faces you can see is the ' + top + ' on top: ' + (7 * n) + ' − ' + top + ' = ' + (7 * n - top) + '.', v: { t: 'dicestack', n: n, top: top } };
+  });
+
+  fam('hat', 3, function (r, turn) {
+    const m = walk(r, turn, [10, 20, 15, 5]);
+    return { q: 'Rowing up a river, you drop your hat in the water. You notice ' + m + ' minutes later, turn round at once and row after it just as hard. How many minutes until you reach the hat?', suf: 'minutes', a: m, baits: [m / 2, 2 * m], why: 'Watch from the water, not the bank. The hat floats where it fell while you row away from it for ' + m + ' minutes, so rowing back takes the same ' + m + '. The current carries you and the hat along equally.', v: { t: 'hat', m: m } };
+  });
+
+  fam('bags', 3, function (r, turn) {
+    const p = walk(r, turn, [[10, 'bags'], [5, 'purses'], [8, 'sacks']]), n = p[0];
+    return { q: n + ' ' + p[1] + ' hold ' + n + ' coins each. A coin weighs 10 g, but in one of the ' + p[1] + ' every coin weighs 11 g. With a scale that shows the weight in grams, what is the fewest weighings sure to find it?', suf: 'weighings', a: 1, baits: [n, n - 1, 4, 3, 2], why: 'Take 1 coin from the first, 2 from the second, 3 from the third and so on, and weigh them all together. The number of grams over tells you which one: 3 g over means the third.', v: { t: 'bags', n: n } };
+  });
+
+  fam('loaves', 3, function (r, turn) {
+    const p = walk(r, turn, [[5, 3], [7, 5], [3, 2], [4, 2]]), a = p[0], b = p[1], ga = 2 * a - b, gb = 2 * b - a;
+    return { q: 'One shepherd has ' + a + ' loaves, another has ' + b + '. A traveller joins them, the three share the bread equally, and he pays ' + (a + b) + ' coins for his share. How many coins should the shepherd with ' + a + ' loaves get?', suf: 'coins', a: ga, baits: [a, (a + b) / 2], why: 'Cut every loaf in three. Each person eats ' + (a + b) + ' thirds. The first shepherd had ' + (3 * a) + ' thirds and gave the traveller ' + ga + '; the other had ' + (3 * b) + ' and gave ' + gb + '. So the coins split ' + ga + ' and ' + gb + ', not ' + a + ' and ' + b + '.', v: { t: 'loaves', a: a, b: b } };
+  });
+
+  fam('untilaboy', 3, function (r, turn) {
+    const p = walk(r, turn, [['a boy', 'boys'], ['a girl', 'girls']]);
+    return { q: 'In one country every couple keeps having children until they have ' + p[0] + ', then stops. Boys and girls are equally likely at every birth. What % of the children are ' + p[1] + '?', suf: '%', a: 50, baits: [33, 25, 67, 75, 100], baitBelow: 50, baitAbove: 50, why: 'Every birth is still a coin flip, whatever rule the parents follow. Half of all first-borns are ' + p[1] + ', half of all second-borns, and so on: 50% overall.', v: { t: 'untilaboy' } };
+  });
+
+  fam('stick', 3, function (r, turn) {
+    const p = walk(r, turn, [['1 m stick', 100, 'shorter'], ['60 cm breadstick', 60, 'shorter'], ['1 m stick', 100, 'longer'], ['2 m plank', 200, 'shorter']]), L = p[1], short = p[2] === 'shorter';
+    return { q: 'A ' + p[0] + ' is snapped in two at a random point. On average, how many cm long is the ' + p[2] + ' piece?', suf: 'cm', a: short ? L / 4 : 3 * L / 4, baits: [L / 2], why: 'The ' + p[2] + ' piece can be anything from ' + (short ? 0 : L / 2) + ' to ' + (short ? L / 2 : L) + ' cm, and every length in that range is equally likely. Its average is the middle of the range: ' + (short ? L / 4 : 3 * L / 4) + ' cm.', v: { t: 'stick', L: L, which: p[2] } };
+  });
+
+
   /* ---------- Grades and sets ---------- */
 
 
@@ -541,13 +634,16 @@
     sumdiff: 2, siblinghalf: 2, siblingtwice: 2, corners: 2, divhalf: 2, doublinghalf: 2, queuequeue: 2, ratestime: 2, socksany: 2, till: 2,
     intervalsfloors: 2, intervalspills: 2, intervalsmonday: 2, scalingsquare: 2, scalingunits: 2,
     addup: 2, bidmas: 2, counttwo: 2, countthree: 2, countodd: 2, tunnel: 2, bogof: 2, eleven: 2, agesum: 2, glue: 2, string: 2,
+    magnify: 2, triple: 2, hourhand: 2, decimaltime: 2, combosdials: 2,
     // 3: the second. Needs a second look.
     coinsmatch: 3, compounddiscount: 3, compoundgrowth: 3, cube: 3, doublingquarter: 3, doublingtwo: 3, downup: 3, intervalslog: 3,
     matchesknockout: 3, matchessnap: 3, matchesshake: 3, pigeon: 3, pigeoncoins: 3, punch: 3, scalingpizza: 3, scalingcube: 3, selfref: 3,
     jar: 3, gridthree: 3, workrate: 3, wavg: 3, liftavg: 3, aroundpath: 3, aroundposts: 3, presale: 3, ladder: 3, weekend: 3, pctpoints: 3,
+    combosscores: 3, stepcarpet: 3, stepnotch: 3, cake: 3, eitherorcards: 3, eitherornumbers: 3,
     // 4: the third. Hard, but a minute of thought gets there.
     balance: 4, clock: 4, digitsappear: 4, fly: 4, intervalsclock: 4, ratescount: 4, ratesworkers: 4, refill: 4, reverse: 4, snail: 4, speedavg: 4, cuts: 4,
     chain: 4, triangle: 4, slowclock: 4, zeros: 4, gridfour: 4, boxes: 4, brothers: 4, tyres: 4, piles: 4,
+    headstart: 4, dicestack: 4, hat: 4, bags: 4, loaves: 4, untilaboy: 4, stick: 4,
     // 5: most people miss these, or they need real working out. Endless mode only.
     baserate: 5, classiccable: 5, classiccards: 5, classiccoinroll: 5, classicmonty: 5, classicrope: 5, classictwokids: 5, clockopposite: 5, clockoverlap: 5,
     dilutionleave: 5, dilutionweigh: 5, lockers: 5, bridge: 5
@@ -567,56 +663,91 @@
     matchesknockout: 'minusone', matchessnap: 'minusone', matchesshake: 'handshake', punch: 'fold', string: 'fold',
     picturecats: 'cats', picturefathers: 'fathers', picturemonths: 'months',
     classiccable: 'cable', classiccoinroll: 'coinroll', classicrope: 'rope', classiccards: 'conditional', classicmonty: 'conditional', classictwokids: 'conditional',
-    clock: 'clockangle', clockopposite: 'clockhands', clockoverlap: 'clockhands'
+    clock: 'clockangle', clockopposite: 'clockhands', clockoverlap: 'clockhands',
+    cake: 'cuts', bags: 'balance'   // near enough in feel to share a slot: fewest cuts, fewest weighings
   };
   function ideaOf(kind) { return IDEA[kind] || (IDEA[kind] = famOf(kind).id); }
   // The corner of maths an idea lives in. A day never takes two from the same corner.
   const CORNER = {
-    percent: ['downup', 'pctbase', 'compound', 'bogof', 'pctpoints', 'dilution', 'baserate'],
-    chance: ['coins', 'weekend', 'conditional', 'pigeonhole'],
+    percent: ['downup', 'pctbase', 'compound', 'bogof', 'pctpoints', 'dilution', 'baserate', 'triple'],
+    chance: ['coins', 'weekend', 'conditional', 'pigeonhole', 'untilaboy', 'stick'],
     average: ['wavg', 'liftavg', 'speed'],
-    rate: ['rates', 'workrate', 'dry', 'tunnel', 'fly', 'slowclock', 'doubling', 'snail', 'tyres'],
-    gaps: ['intervals', 'count', 'around', 'minusone', 'queue', 'handshake'],
-    shape: ['scaling', 'cube', 'grid', 'corners', 'triangle', 'cuts', 'fold', 'glue', 'coinroll', 'rope', 'cable'],
-    halves: ['sumdiff', 'selfref', 'jar', 'divhalf', 'sibling', 'agesum', 'brothers']
+    rate: ['rates', 'workrate', 'dry', 'tunnel', 'fly', 'slowclock', 'doubling', 'snail', 'tyres', 'headstart', 'hat'],
+    gaps: ['intervals', 'count', 'around', 'minusone', 'queue', 'handshake', 'eitheror', 'combos'],
+    shape: ['scaling', 'cube', 'grid', 'corners', 'triangle', 'cuts', 'fold', 'glue', 'coinroll', 'rope', 'cable', 'magnify', 'step', 'dicestack'],
+    halves: ['sumdiff', 'selfref', 'jar', 'divhalf', 'sibling', 'agesum', 'brothers', 'loaves']
   };
   const DOMAIN = {};
   Object.keys(CORNER).forEach(function (c) { CORNER[c].forEach(function (id) { DOMAIN[id] = c; }); });
   function domainOf(kind) { return DOMAIN[ideaOf(kind)] || ''; }
+  // What a question looks like on the surface. Two different tricks about a clock still feel alike
+  // on consecutive days, so the calendar keeps kinds with the same look a week apart when it can.
+  const LOOKS = {
+    clock: ['hourhand', 'clock', 'slowclock', 'intervalsclock'], dice: ['glue', 'dicestack'], cards: ['piles', 'eitherorcards'],
+    train: ['tunnel', 'fly'], age: ['siblinghalf', 'siblingtwice', 'agesum'], sale: ['bogof', 'compounddiscount', 'presale'],
+    coin: ['pigeoncoins', 'balance', 'bags']
+  };
+  const LOOK = {}, LOOK_GAP = 7, JITTER = 3, APART = 5;
+  Object.keys(LOOKS).forEach(function (l) { LOOKS[l].forEach(function (k) { LOOK[k] = l; }); });
 
   // The calendar. Each day takes one kind from grades 2, 3 and 4. For each slot it takes the kind
   // whose idea has been away longest, then the kind that has itself been away longest, so an idea
   // comes round as rarely as the bank allows and in different clothes each time.
   const TIERS = [2, 3, 4];
-  // The first calendar ran for two days before this one took over, and had started a third.
-  const SERVED = { 1: ['socksany', 'downup', 'clock'], 2: ['sumdiff', 'pigeon', 'digitsappear'] };
-  const SEEN = { 3: ['pctbase'] };
-  const plan = { days: [], lastIdea: {}, lastKind: {}, uses: {}, said: {} };
+  // Days that have already been played, exactly as they were served: [kind, seed, turn] for each slot.
+  // A day in this table can never change, whatever is added to the bank later. Before changing the
+  // bank, run `node src/freeze.js` and paste in the days it prints, so nothing already live moves.
+  const SERVED = {
+    1: [['socksany', 'v7-daily-1-0', 0], ['downup', 'v7-daily-1-1', 0], ['clock', 'v7-daily-1-2', 0]],
+    2: [['sumdiff', 'v7-daily-2-0', 0], ['pigeon', 'v7-daily-2-1', 0], ['digitsappear', 'v7-daily-2-2', 0]],
+    3: [['till', 'v8-daily-3-0-0', 0], ['selfref', 'v8-daily-3-1-0', 0], ['slowclock', 'v8-daily-3-2-0', 0]],
+    4: [['divhalf', 'v8-daily-4-0-0', 0], ['gridthree', 'v8-daily-4-1-0', 0], ['speedavg', 'v8-daily-4-2-0', 0]],
+    5: [['doublinghalf', 'v8-daily-5-0-0', 0], ['coinsmatch', 'v8-daily-5-1-0', 0], ['refill', 'v8-daily-5-2-0', 0]],
+    6: [['countodd', 'v8-daily-6-0-0', 0], ['jar', 'v8-daily-6-1-0', 0], ['ratescount', 'v8-daily-6-2-0', 0]],
+    7: [['intervalsmonday', 'v8-daily-7-0-0', 0], ['pctpoints', 'v8-daily-7-1-0', 0], ['snail', 'v8-daily-7-2-0', 0]],
+    8: [['tunnel', 'v8-daily-8-0-0', 0], ['compoundgrowth', 'v8-daily-8-1-0', 0], ['chain', 'v8-daily-8-2-0', 0]],
+    9: [['string', 'v8-daily-9-0-0', 0], ['aroundposts', 'v8-daily-9-1-0', 0], ['tyres', 'v8-daily-9-2-0', 0]],
+    10: [['scalingsquare', 'v8-daily-10-0-0', 0], ['workrate', 'v8-daily-10-1-0', 0], ['boxes', 'v8-daily-10-2-0', 0]]
+  };
+  const SEEN = { 3: ['pctbase'] };   // an idea some players met on day 3, before that day's set was replaced
+  const plan = { days: [], lastIdea: {}, lastKind: {}, lastLook: {}, uses: {}, said: {} };
   function planDay(day) {
     while (plan.days.length < day) {
-      const d = plan.days.length + 1, r = rngFrom('v8-day-' + d), ideas = {}, corners = {}, set = [];
-      if (SERVED[d]) {   // days the first calendar already gave out: keep them as they were, and remember them
-        plan.days.push(SERVED[d].map(function (k, n) {
+      const d = plan.days.length + 1, r = rngFrom('v8-day-' + d), ideas = {}, corners = {}, partners = {}, nudge = {}, set = [];
+      if (SERVED[d]) {   // already played: keep it as it was, and remember it so the calendar steers clear
+        (SEEN[d] || []).forEach(function (id) { plan.lastIdea[id] = d; });
+        plan.days.push(SERVED[d].map(function (s) {
+          const k = s[0];
           plan.lastIdea[ideaOf(k)] = d; plan.lastKind[k] = d; plan.uses[k] = (plan.uses[k] || 0) + 1;
-          (plan.said[k] = plan.said[k] || []).push(makeKind(k, 'v7-daily-' + d + '-' + n, 0).q);
-          return [k, 'v7-daily-' + d + '-' + n, 0];
+          if (LOOK[k]) plan.lastLook[LOOK[k]] = d;
+          (plan.said[k] = plan.said[k] || []).push(makeKind(k, s[1], s[2]).q);
+          return s.slice();
         }));
         continue;
       }
       (SEEN[d] || []).forEach(function (id) { ideas[id] = 1; plan.lastIdea[id] = d; });
       TIERS.forEach(function (grade) {
-        let best = null, top = -1, spare = null, spareTop = -1;
+        let best = null, top = -1, alike = null, alikeTop = -1, spare = null, spareTop = -1;
         kindsAt(grade).forEach(function (k) {
-          const idea = ideaOf(k), c = DOMAIN[idea];
-          const score = Math.min(d - (plan.lastIdea[idea] || -999), 400) * 1000 + Math.min(d - (plan.lastKind[k] || -999), 900) + r();
+          const idea = ideaOf(k), c = DOMAIN[idea], look = LOOK[k];
+          // Days since the idea was last out, nudged by up to JITTER days so the order is not the same
+          // every time round the bank, then days since this very kind.
+          // An idea that was last out on the same day as one already picked today waits APART days longer,
+          // so three questions that once shared a day are split up the next time round.
+          const was = plan.lastIdea[idea] || -999, together = was > 0 && partners[was] ? APART : 0;
+          if (nudge[idea] === undefined) nudge[idea] = r() * JITTER;   // one nudge per idea, so among its kinds the stalest still wins
+          const score = (Math.min(d - was, 400) + nudge[idea] - together) * 1000 + Math.min(d - (plan.lastKind[k] || -999), 900);
           if (ideas[idea]) return;
           if (score > spareTop) { spareTop = score; spare = k; }
           if (c && corners[c]) return;
+          if (score > alikeTop) { alikeTop = score; alike = k; }
+          if (look && d - (plan.lastLook[look] || -999) < LOOK_GAP) return;
           if (score > top) { top = score; best = k; }
         });
-        const k = best || spare, idea = ideaOf(k);
+        const k = best || alike || spare, idea = ideaOf(k);
         ideas[idea] = 1; if (DOMAIN[idea]) corners[DOMAIN[idea]] = 1;
-        plan.lastIdea[idea] = d; plan.lastKind[k] = d;
+        if (plan.lastIdea[idea]) partners[plan.lastIdea[idea]] = 1;
+        plan.lastIdea[idea] = d; plan.lastKind[k] = d; if (LOOK[k]) plan.lastLook[LOOK[k]] = d;
         // Word it differently from this kind's last outings: take the first wording not used lately, or else the stalest one.
         const turn = plan.uses[k] = (plan.uses[k] || 0) + 1, said = plan.said[k] || (plan.said[k] = []);
         let pickSalt = 0, stalest = Infinity;
@@ -711,7 +842,7 @@
     return q.pre + num(v) + (suf ? (tight ? '' : ' ') + suf : '');
   }
 
-  const api = { families: F, GRADE: GRADE, kindsAt: kindsAt, makeKind: makeKind, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, ideaOf: ideaOf, domainOf: domainOf, nextKind: nextKind, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
+  const api = { planDay: planDay, served: SERVED, families: F, GRADE: GRADE, kindsAt: kindsAt, makeKind: makeKind, buildDaily: buildDaily, buildTable: buildTable, buildParty: buildParty, ideaOf: ideaOf, domainOf: domainOf, nextKind: nextKind, kinds: kinds, dayNumber: dayNumber, judge: judge, hasBait: hasBait, show: show, num: num, ord: ord, rngFrom: rngFrom, make: make };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.BaitEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

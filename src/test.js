@@ -34,6 +34,30 @@ const verify = {
   brothers(v) { for (let g = 1; g < 30; g++) for (let b = 2; b < 30; b++) if (b === g - 1 && g === v.k * (b - 1)) return g + b; },
   tyres(v) { const km = [0, 0, 0, 0, 0]; for (let leg = 0; leg < v.D / 100; leg++) for (let t = 0; t < 5; t++) if (t !== leg % 5) km[t] += 100; return km[0]; },
   piles(v) { const mine = { red: v.k, black: 26 - v.k }; return 26 - mine.black; },
+  magnify(v) { const k = v.k, rad = v.deg * Math.PI / 180, ax = k, ay = 0, bx = k * Math.cos(rad), by = k * Math.sin(rad); return Math.round(Math.atan2(ax * by - ay * bx, ax * bx + ay * by) * 180 / Math.PI * 1e6) / 1e6; },   // scale both arms and measure the angle again
+  triple(v) { const before = 100, after = before * v.k; return (after - before) / before * 100; },
+  hourhand(v) { let pos = 0, rounds = 0; for (let h = 0; h < v.hours; h++) { pos++; if (pos === 12) { pos = 0; rounds++; } } return rounds; },
+  decimaltime(v) { let m = 0; for (let secs = 0; secs < parseFloat(v.h) * 3600 - 1e-6; secs += 60) m++; return m; },
+  combos(v) {
+    if (v.mode === 'dials') { let c = 0; const go = left => { if (left === 0) { c++; return; } for (let d = 0; d <= 9; d++) go(left - 1); }; go(v.n); return c; }
+    const seen = new Set(); for (let x = 0; x <= v.a; x++) for (let y = 0; y <= v.b; y++) seen.add(x + '-' + y); return seen.size; },
+  step(v) {
+    if (v.mode === 'carpet') { const n = 16; let len = 0; for (let i = 0; i < n; i++) { len += v.along / n; len += v.up / n; } return Math.round(len * 1e6) / 1e6; }
+    const S = v.S, c = v.c, pts = [[0, 0], [S, 0], [S, S - c], [S - c, S - c], [S - c, S], [0, S]]; let per = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; per += Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]); } return per; },
+  cake(v) { const C = (n, k) => { let x = 1; for (let i = 0; i < k; i++) x = x * (n - i) / (i + 1); return x; }; for (let cuts = 0; cuts < 20; cuts++) if (C(cuts, 0) + C(cuts, 1) + C(cuts, 2) + C(cuts, 3) >= v.n) return cuts; },   // the most pieces c flat cuts can make of a solid
+  eitheror(v) {
+    if (v.mode === 'cards') { let c = 0; for (const suit of 'HDSC') for (const rank of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) { const inSuit = v.suit === 'red' ? (suit === 'H' || suit === 'D') : suit === v.suit; const inRank = v.rank === 'pic' ? 'JQK'.includes(rank) : rank === v.rank; if (inSuit || inRank) c++; } return c; }
+    let c = 0; for (let i = 1; i <= v.N; i++) if (i % v.x === 0 || i % v.y === 0) c++; return c; },
+  headstart(v) { const you = v.L, friend = v.L - v.d; let t = 0; const dt = 1 / 100000; while (you * t < v.L + v.d - 1e-9) t += dt; return Math.round((v.L - friend * t) * 100) / 100; },   // run the rematch: you need L + d, the friend needs L
+  dicestack(v) {   // try every way the lower dice could be lying: the hidden total never changes
+    let ans = null; const go = (i, sum) => { if (i === v.n) { if (ans !== null && ans !== sum) ans = NaN; else if (ans === null) ans = sum; return; } for (let top = 1; top <= 6; top++) go(i + 1, sum + top + (7 - top)); };
+    go(1, 7 - v.top); return ans; },
+  hat(v) { const row = 3, flow = 1.25, dt = 1 / 600; let boat = 0, hat = 0, t = 0; for (; t < v.m - 1e-9; t += dt) { boat += (row - flow) * dt; hat -= flow * dt; } let back = 0; while (boat > hat + 1e-9) { boat -= (row + flow) * dt; hat -= flow * dt; back += dt; } return Math.round(back * 100) / 100; },
+  bags(v) { const weights = new Set(); for (let heavy = 1; heavy <= v.n; heavy++) { let w = 0; for (let b = 1; b <= v.n; b++) w += b * (b === heavy ? 11 : 10); weights.add(w); } return weights.size === v.n ? 1 : 2; },   // one weighing of 1, 2, 3… coins gives a different reading for every bag
+  loaves(v) { const each = (v.a + v.b) / 3, gaveA = v.a - each, gaveB = v.b - each; return Math.round((v.a + v.b) * gaveA / (gaveA + gaveB) * 1e6) / 1e6; },
+  untilaboy() { let boys = 0, girls = 0, p = 1; for (let k = 0; k < 200; k++) { p /= 2; boys += p; girls += p * k; } return Math.round(boys / (boys + girls) * 1e8) / 1e6; },   // a family with k girls then a boy has chance 1/2^(k+1)
+  stick(v) { const n = 2000; let sum = 0; for (let i = 0; i < n; i++) { const x = (i + 0.5) * v.L / n, s = Math.min(x, v.L - x); sum += v.which === 'shorter' ? s : v.L - s; } return Math.round(sum / n * 1e6) / 1e6; },
   sumdiff(v) { for (let x = 0; x <= v.total; x++) if (x + (x + v.diff) === v.total) return x; },
   rates(v) {
     const rate = v.n / (v.n * v.n); // things per maker per time unit
@@ -306,6 +330,9 @@ for (const k of graded) for (let i = 0; i < 40; i++) { const q = E.makeKind(k, '
 for (const k of graded) if (E.GRADE[k] >= 2 && E.GRADE[k] <= 4 && !kindDays[k]) fail('a daily kind never comes up in three years: ' + k);
 for (const k of Object.keys(kindDays)) if (E.GRADE[k] < 2 || E.GRADE[k] > 4) fail('a giveaway or a brutal kind appeared in a daily set: ' + k);
 if (JSON.stringify(E.buildTable('LADS', 1).map(q => q.grade)) !== '[2,3,4]') fail('private round does not climb 2, 3, 4');
+// Days already played are locked: the calendar must hand back exactly what the table says.
+for (const d of Object.keys(E.served)) { const got = E.planDay(Number(d)); if (JSON.stringify(got) !== JSON.stringify(E.served[d])) fail('day ' + d + ' is locked but the calendar changed it'); }
+if (!E.served[E.dayNumber(new Date())] && !E.served[E.dayNumber(new Date()) - 1]) console.log('note: the locked days stop before yesterday; run node src/freeze.js before changing the bank');
 // Day numbering.
 if (E.dayNumber(new Date(2026, 10, 16)) !== 1) fail('epoch day');
 if (E.dayNumber(new Date(2026, 10, 17)) !== 2) fail('day 2');

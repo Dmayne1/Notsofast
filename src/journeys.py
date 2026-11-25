@@ -806,10 +806,11 @@ async def analytics(b):
         check('each answer says which question, how hard, and how it went',
               [a['slot'] for a in ans] == [1, 2, 3] and [a['grade'] for a in ans] == [2, 3, 4] and [a['level'] for a in ans] == ['Easy', 'Tricky', 'Hard'] and [a['verdict'] for a in ans] == want
               and all(re.match(r'^[a-z0-9]+$', a['kind']) and a['mode'] == 'daily' and isinstance(a['secs'], int) for a in ans), ans)
+        check('each answer carries the number that was typed', all(isinstance(a.get('typed'), (int, float)) for a in ans) and ans[0]['typed'] == qs[0]['a'], [a.get('typed') for a in ans])
         fin = [e[1] for e in ev if e[0] == 'game_finish'][0]
         check('the finish says how the day went', fin['greens'] == 1 and fin['mode'] == 'daily' and fin['timed_out'] is False and fin['game_day'] >= 1, fin)
         check('every event carries where the visit came from', all(e[1]['src'] == 'tiktok' and e[1]['creator'] == 'maya_k' and e[1]['in_app'] == 'TikTok' and e[1]['keypad'] in ('phone', 'computer') for e in ev), ev[0][1])
-        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'level', 'verdict', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
+        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'level', 'verdict', 'typed', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
         extra = sorted({k for e in ev for k in e[1]} - allowed)
         check('no event carries anything about the person', not extra, extra)
         kept = await s.page.evaluate("() => ({ cookies: document.cookie, local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() })")
