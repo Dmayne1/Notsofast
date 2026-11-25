@@ -37,6 +37,7 @@ class Site:
     def __init__(self, browser, w=390, h=760, mobile=True, ua=None, counters='ok', init=(), calm=True):
         self.browser, self.w, self.h, self.mobile, self.ua, self.counters, self.init, self.calm = browser, w, h, mobile, ua, counters, init, calm
         self.hits, self.errors = [], []
+        self.values = []     # (pattern, value) pairs tried first against 'hit/…/key' or 'get/…/key'; 404 means the counter does not exist yet
 
     async def __aenter__(self):
         kw = dict(viewport={'width': self.w, 'height': self.h}, device_scale_factor=2, has_touch=self.mobile, is_mobile=self.mobile,
@@ -63,6 +64,11 @@ class Site:
         self.hits.append(url.split('.dev/')[1])
         mode = self.counters
         key = url.rsplit('/', 1)[1]
+        for rx, v in self.values:
+            if re.search(rx, self.hits[-1]):
+                if v == 404: await route.fulfill(status=404, content_type='application/json', headers={'access-control-allow-origin': '*'}, body='{"error":"Key not found"}')
+                else: await route.fulfill(status=200, content_type='application/json', headers={'access-control-allow-origin': '*'}, body=json.dumps({'value': v}))
+                return
         val = 500 if key.endswith('n') else 200 if key.endswith('r') else 250 if key.endswith('t') else 40
         ok = lambda: route.fulfill(status=200, content_type='application/json', headers={'access-control-allow-origin': '*'}, body=json.dumps({'value': val}))
         if mode == 'ok': await ok()
@@ -227,10 +233,10 @@ async def refresh_daily(b):
         check('and the score screen shows that last answer and why', 'The answer' in e['text'] and qs[2]['shown'] in e['text'] and qs[2]['why'][:40] in e['text'], e['text'][:200])
         await s.page.wait_for_timeout(700); e = await screen(s.page)
         check('the score shows the streak and a reason to come back, with nothing to press', '1-day streak' in e['text'] and 'Come back tomorrow to keep your streak' in e['text'] and 'Next three in' in e['text'], e['text'][:400])
-        check('and how you did against everyone else today', 'You beat 25% of today’s 160 players' in e['text'], e['text'][:400])
+        check('and how you did against everyone else today', 'You did better than 25% of players today' in e['text'] and '1 green' in e['text'] and 'you' in e['text'], e['text'][:400])
         check('one button shares the result and challenges a friend', 'Share your result' in ' '.join(e['btns']) and 'challenge a friend' in ' '.join(e['btns']), e['btns'])
         await s.page.reload(); await s.page.wait_for_timeout(400); e2 = await screen(s.page)
-        check('coming back later shows the score without the last answer on top', 'end' in e2['cls'] and 'The answer' not in e2['text'] and '1-day streak' in e2['text'] and 'You beat 25%' in e2['text'], e2['text'][:300])
+        check('coming back later shows the score without the last answer on top', 'end' in e2['cls'] and 'The answer' not in e2['text'] and '1-day streak' in e2['text'] and 'You did better than 25%' in e2['text'], e2['text'][:300])
         fits = await s.page.evaluate("() => document.scrollingElement.scrollHeight <= innerHeight + 1")
         check('the score is one complete screen, nothing to scroll', fits)
         st = await store(s.page)
@@ -424,6 +430,64 @@ async def counters(b):
         await play_day(s, how=('right', 'bait', 'wrong'))
         e = await screen(s.page)
         check('with counters up, the crowd lines appear', 'players' in e['text'], e['text'][:200])
+
+
+async def placing(b):
+    print('where a finished game places among the day')
+    DAY = 24 * 3600 * 1000
+    FIELD = [(r'g3$', 5), (r'g2$', 10), (r'g1$', 6), (r'g0$', 3)]                 # 24 players today, this one included
+    async def finish(s, how, shift=2 * DAY, slow=0):
+        await s.returning()
+        await s.page.evaluate("d => localStorage.setItem('__shift', String(d))", shift)
+        await s.page.reload(); await s.page.wait_for_timeout(250)
+        if slow:                                                               # sit on the first question so the total lands in a later five seconds
+            qs = await today_set(s.page)
+            await press(s.page, 'daily'); await s.page.wait_for_timeout(slow)
+            for i, q in enumerate(qs):
+                await answer(s.page, q['a'] if how[i] == 'right' else await wrong_for(s.page, q))
+                if how[i] == 'right': await s.page.wait_for_timeout(GO)
+                elif i < 2: await press(s.page, 'next')
+        else: await play_day(s, how=how)
+        for _ in range(40):                                                    # the placing waits for room under the service's rate limit
+            if shift < 0 or any(re.search(r'g\dc\d', h) for h in s.hits): break
+            await s.page.wait_for_timeout(400)
+        await s.page.wait_for_timeout(700)
+        return await s.page.evaluate("() => ({ line: (document.getElementById('standing') || {}).innerText || '', rows: [...document.querySelectorAll('#dist .drow')].map(r => r.innerText.replace(/\\s+/g, ' ').trim()), me: (document.querySelector('#dist .drow.me') || {}).innerText || '', over: document.scrollingElement.scrollHeight - innerHeight })")
+    async with Site(b, init=(CLOCK,)) as s:               # three greens, and nobody with three was quicker
+        s.values = FIELD + [(r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
+        e = await finish(s, ('right', 'right', 'right'))
+        check('the fastest three greens of the day is told so', 'Fastest three greens so far today' in e['line'] and 'better than all 23 other players' in e['line'], e['line'])
+        check('the day is drawn as four rows with the player’s own lit', len(e['rows']) == 4 and '3 greens' in e['me'] and 'you' in e['me'] and '21%' in e['me'], (e['rows'], e['me']))
+        bands = [h for h in s.hits if re.search(r'g3c\d', h)]
+        check('a finish adds itself to one wide and one narrow time band', sorted(h.split('/')[0] for h in bands).count('hit') == 2 and all('g3c' in h for h in bands), bands)
+        await s.page.reload(); await s.page.wait_for_timeout(300)
+        again = await s.page.evaluate("() => (document.getElementById('standing') || {}).innerText || ''")
+        n = len(s.hits); await s.page.reload(); await s.page.wait_for_timeout(300)
+        check('the placing survives a reload without asking again', 'Fastest three greens' in again and len([h for h in s.hits[n:] if 'g3c' in h]) == 0, again)
+        check('no errors placing first', not s.errors, s.errors)
+    async with Site(b, init=(CLOCK,)) as s:               # the only one with all three
+        s.values = [(r'g3$', 1), (r'g2$', 10), (r'g1$', 6), (r'g0$', 3), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
+        e = await finish(s, ('right', 'right', 'right'))
+        check('the only player with all three is told so', 'The only one with all three so far today' in e['line'] and 'all 19 other players' in e['line'], e['line'])
+    async with Site(b, init=(CLOCK,)) as s:               # two greens, with five on three greens and three quicker on two, one level
+        s.values = FIELD + [(r'^get/.*g2c0f0$', 3), (r'^hit/.*g2c0f1$', 2), (r'^hit/.*g2c0$', 9), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
+        e = await finish(s, ('right', 'right', 'wrong'), slow=5600)
+        check('a middling result: fewer greens are beaten, and so are slower times on the same greens', e['line'].strip() == 'You did better than 60% of players today.', (e['line'], [h for h in s.hits if 'g2c' in h]))
+        check('its own row is the two-greens one', '2 greens' in e['me'] and '42%' in e['me'], e['me'])
+    async with Site(b, init=(CLOCK,)) as s:               # a quiet day: counts, not percentages, and a counter nobody has hit
+        s.values = [(r'g3$', 1), (r'g2$', 2), (r'g1$', 1), (r'g0$', 404), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
+        e = await finish(s, ('right', 'right', 'wrong'))
+        check('on a quiet day it counts players and shows no percentages', 'better than 2 of the 3 other players so far today' in e['line'] and '%' not in e['line'] and not any('%' in r for r in e['rows']) and '0 greens 0' in ' '.join(e['rows']), (e['line'], e['rows']))
+    async with Site(b, init=(CLOCK,)) as s:               # days before finishing times were counted: no claim about speed
+        s.values = FIELD
+        e = await finish(s, ('right', 'right', 'right'), shift=-4 * DAY)
+        check('days from before times were counted make no claim about speed', 'astest' not in e['line'] and 'better than 82% of players today' in e['line'] and not [h for h in s.hits if re.search(r'c\d', h.rsplit('/', 1)[1][3:])], (e['line'], s.hits[-6:]))
+    for w, h in ((375, 553), (360, 600), (390, 636), (390, 664), (390, 690), (393, 736), (430, 780)):
+        for how in (('right', 'right', 'right'), ('right', 'right', 'wrong')):
+            async with Site(b, w=w, h=h, init=(CLOCK,)) as s:
+                s.values = [(r'g3$', 1204), (r'g2$', 3310), (r'g1$', 2755), (r'g0$', 960), (r'^get/.*c\df\d$', 37), (r'^get/.*c\d$', 140), (r'^hit/.*c\d(f\d)?$', 12)]
+                e = await finish(s, how)
+                check('the result with its placing fits one screen at %d by %d, %s' % (w, h, 'all green' if how[2] == 'right' else 'last one missed'), e['over'] <= 1 and ('better than' in e['line'] or 'astest' in e['line']), (e['over'], e['line']))
 
 
 async def links(b):
@@ -828,7 +892,7 @@ async def analytics(b):
         e = await screen(s.page)
         check('if the analytics library cannot load, the game is untouched', 'end' in e['cls'] and not s.errors, (e['cls'], s.errors))
 
-ALL = [analytics, https, leaving, first_visit, refresh_daily, out_of_fuel, last_seconds, two_tabs, no_storage, counters, links, taps, long_road, party, screens, in_app, midnight, recovery]
+ALL = [analytics, https, leaving, first_visit, refresh_daily, out_of_fuel, last_seconds, two_tabs, no_storage, counters, placing, links, taps, long_road, party, screens, in_app, midnight, recovery]
 
 async def main():
     want = sys.argv[1:]

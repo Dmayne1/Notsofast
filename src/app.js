@@ -16,6 +16,7 @@
   var STATS_NS = 'playnotsofast.com';
   var BUCKETS = [10, 20, 40, 70, 121]; // upper edge, in seconds, of each solve-time band
   var MIN_CROWD = 10;                  // do not show a percentage until this many have answered
+  var PLACE_DAY = 11;                  // finishing times have been counted since day 11; earlier days only have greens
 
   var EMOJI = { right: '🟢', bait: '🔴', wrong: '🔴', time: '🔴' };
   var WORD = { right: 'Correct', bait: 'Not so fast', wrong: 'Wrong', time: 'Out of time' };
@@ -81,6 +82,7 @@
     if (!st || typeof d.v !== 'string' || !isFinite(d.day)) return null;
     st.v = d.v.slice(0, 8); st.day = int(d.day, 1, 1e6, 1);
     if (Array.isArray(d.field) && d.field.length === 4) st.field = d.field.map(function (x) { return int(x, 0, 1e9, 0); });
+    if (st.field && d.place && typeof d.place === 'object') st.place = { faster: int(d.place.faster, 0, 1e9, 0), tie: int(d.place.tie, 0, 1e9, 0) };
     return st;
   }
   function okRival(v) {
@@ -443,6 +445,20 @@
     for (var b = 0; b < 4; b++) jobs.push(api(b === mine ? 'hit' : 'get', SETV + 'd' + day + 'g' + b));
     return Promise.all(jobs);
   }
+  // Where one finished game sits among the day's: more greens first, then the faster time. Each finisher
+  // adds one to a 30-second band and to a 5-second band inside it, under their number of greens; the bands
+  // faster than their own say how many were quicker. Counts only: nothing here says who anyone is.
+  function placeCost(secs) { var t = Math.max(0, Math.min(LIMIT - 1, secs)); return 2 + Math.floor(t / 30) + Math.floor(t % 30 / 5); }   // requests one placing takes
+  function readPlace(day, greens, secs) {
+    var t = Math.max(0, Math.min(LIMIT - 1, secs)), C = Math.floor(t / 30), F = Math.floor(t % 30 / 5), base = SETV + 'd' + day + 'g' + greens + 'c', j;
+    var jobs = [api('hit', base + C), api('hit', base + C + 'f' + F)];
+    for (j = 0; j < C; j++) jobs.push(api('get', base + j));
+    for (j = 0; j < F; j++) jobs.push(api('get', base + C + 'f' + j));
+    return Promise.all(jobs).then(function (v) {
+      var faster = 0; for (var k = 2; k < v.length; k++) faster += v[k];
+      return { faster: faster, tie: Math.max(0, v[1] - 1) };
+    });
+  }
   function fieldNow(day) {   // the front page's read of today's field, kept for a minute so a reload does not ask again
     var k = 'nsf.field', now = Date.now(), d = store.daily;
     if (d && d.done && d.day === day && d.v === SETV && d.field) return Promise.resolve(d.field);
@@ -454,6 +470,39 @@
     if (n < MIN_CROWD) return '';
     var pct = Math.round(c[3] / n * 100);
     return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
+  }
+
+  // How one finished game did against the day so far: more greens first, then the faster time. `c` is the
+  // field by greens, this player included; `p`, when the times could be read, says how many with the same
+  // greens were faster and how many share the same five seconds. Without it, players level on greens count
+  // as level. Numbers only, so safe as HTML.
+  function placeLine(c, mine, p) {
+    var n = c[0] + c[1] + c[2] + c[3], others = n - 1, behind = 0, ahead = 0, g;
+    if (n < 2) return standingLine(c, mine);
+    for (g = 0; g < mine; g++) behind += c[g];
+    for (g = mine + 1; g < 4; g++) ahead += c[g];
+    var level = Math.max(0, c[mine] - 1), faster = p ? Math.min(p.faster, level) : 0, tie = p ? Math.min(p.tie, level - faster) : level;
+    behind += level - faster - tie;
+    var all = others === 1 ? 'the only other player' : 'all <b>' + E.num(others) + '</b> other players';
+    if (p && mine === 3 && ahead + faster === 0) {   // nobody with three greens was quicker
+      if (c[3] === 1) return '<b class="first">The only one with all three so far today.</b> <span class="more">You did better than ' + all + '.</span>';
+      if (!tie) return '<b class="first">Fastest three greens so far today.</b> <span class="more">You did better than ' + all + '.</span>';
+      return '<b class="first">Equal fastest three greens so far today.</b>' + (n >= MIN_CROWD ? ' <span class="more">You did better than <b>' + Math.floor(behind / others * 100) + '%</b> of players.</span>' : '');
+    }
+    if (behind < 1) return standingLine(c, mine);
+    if (n < MIN_CROWD) return 'You did better than <b>' + behind + '</b> of the <b>' + others + '</b> other players so far today.';
+    return 'You did better than <b>' + Math.max(1, Math.floor(behind / others * 100)) + '%</b> of players today.';
+  }
+  // The day's players by how many greens they got, with this player's own row lit. Numbers only.
+  function distHtml(c, mine) {
+    var n = c[0] + c[1] + c[2] + c[3], max = Math.max(c[0], c[1], c[2], c[3]), out = '', g;
+    if (n < 2) return '';
+    for (g = 3; g >= 0; g--) {
+      out += '<div class="drow' + (g === mine ? ' me' : '') + '"><span class="dl">' + g + (g === 1 ? ' green' : ' greens') + '</span>' +
+        '<span class="db"><i style="width:' + Math.round(c[g] / max * 100) + '%"></i></span>' +
+        '<span class="dn">' + (n < MIN_CROWD ? E.num(c[g]) : Math.round(c[g] / n * 100) + '%') + (g === mine ? ' <em>you</em>' : '') + '</span></div>';
+    }
+    return out;
   }
 
   // The same counts, read for one player: how their greens compare with everyone else's today.
@@ -534,14 +583,28 @@
   /* ---------- Live counters ---------- */
   // A refused or garbled reply is a failure, never a zero: a wrong number on screen is worse than none.
   // After any failure the game leaves the service alone for a minute rather than keep knocking.
-  var apiRest = 0;
+  var apiRest = 0, apiLog = [];
+  // The service allows 30 requests in any 10 seconds from one address. Anything that can wait asks for
+  // room first, so a quick finish never trips the limit and loses the numbers for a minute.
+  function room(n) {
+    return new Promise(function (go) {
+      (function wait() {
+        var now = Date.now(); apiLog = apiLog.filter(function (t) { return now - t < 10000; });
+        if (apiLog.length + n <= 28) go(); else setTimeout(wait, 400);
+      })();
+    });
+  }
   function api(kind, key) {
     if (Date.now() < apiRest) return Promise.reject(new Error('resting'));
     var ctl = window.AbortController ? new AbortController() : null, opt = { cache: 'no-store' };
     if (ctl) opt.signal = ctl.signal;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 5000);
+    apiLog.push(Date.now()); if (apiLog.length > 120) apiLog = apiLog.slice(-60);
     return fetch(STATS + '/' + kind + '/' + STATS_NS + '/' + key, opt)
-      .then(function (r) { if (!r.ok) throw new Error('refused'); return r.json(); })
+      .then(function (r) {
+        if (kind === 'get' && r.status === 404) return { value: 0 };   // a counter nobody has hit yet: a true zero, not a failure
+        if (!r.ok) throw new Error('refused'); return r.json();
+      })
       .then(function (j) { clearTimeout(timer); var v = Number(j && j.value); if (!isFinite(v) || v < 0 || v > 1e9) throw new Error('odd'); return Math.round(v); })
       .catch(function (e) { clearTimeout(timer); apiRest = Date.now() + 60000; throw e; });
   }
@@ -931,6 +994,7 @@
   function statsBlock() {
     var s = store.stats, max = Math.max.apply(null, s.dist.concat(1)), bars = '';
     var mine = game && game.mode === 'daily' && game.st.done ? rightCount(game.st) : -1;
+    var d = store.daily, field = d && d.done && d.day === today() && d.v === SETV && d.field ? d.field : null;   // today's field, once this player has finished
     for (var i = 3; i >= 0; i--) bars += '<div><span>' + i + '</span><i class="' + (i === mine ? 'hi' : '') + '" style="width:' + Math.max(10, s.dist[i] / max * 100) + '%">' + s.dist[i] + '</i></div>';
     return '<h2>Your record</h2>' +
       '<div class="nums">' +
@@ -939,7 +1003,8 @@
         '<div><b>' + s.best + '</b><span>Best streak</span></div>' +
         '<div><b>' + s.perfect + '</b><span>All three</span></div>' +
       '</div>' +
-      '<h2>Green lights per day</h2><div class="dist">' + bars + '</div>' +
+      (field ? '<h2>Today’s players</h2><div class="spread">' + distHtml(field, rightCount(d)) + '</div>' : '') +
+      '<h2>Your green lights per day</h2><div class="dist">' + bars + '</div>' +
       '<p class="beaten">' + beatenLine() + (s.runTop ? ' Endless best: ' + s.runTop + ' green.' : '') + '</p>';
   }
   // The score is one complete screen: the three lights, one number, one button, and when the next
@@ -971,7 +1036,8 @@
           '<p class="tally">' + n + ' of 3</p>' +
           '<p class="total">in ' + mmss(totalSecs(st)) + (daily && streak > 0 ? ', <b class="streak">' + streak + '-day streak</b>' : '') + '</p>' +
         '</div>' +
-        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? standingLine(st.field, n) : '') + '</p>' : '') +
+        (daily ? '<p class="standing" id="standing" role="status">' + (st.field ? placeLine(st.field, n, st.place) : '') + '</p>' +
+          '<div class="spread" id="dist" aria-label="How today’s players scored">' + (st.field ? distHtml(st.field, n) : '') + '</div>' : '') +
         duelCard() +
         '<div class="endbtns">' + (rivalHere() ? '<button class="btn" data-act="copy">Send your score back</button>' : '<button class="btn two" data-act="copy"><span>Share your result</span><small>and challenge a friend</small></button>') +
           '<div class="pair">' + (daily ? '<button class="btn plate" data-act="run">Endless mode</button><button class="btn plate" data-act="friends">With friends</button>' : '<button class="btn plate" data-act="nextround">Another three</button><button class="btn plate" data-act="home">Home</button>') + '</div>' +
@@ -982,9 +1048,17 @@
     window.scrollTo(0, 0);
     if (daily) runCountdown();
     if (daily && first && STATS && window.fetch) {
-      readField(game.day, n).then(function (c) {
-        st.field = c; save();
-        var el = document.getElementById('standing'); if (el && game && game.st === st) el.innerHTML = standingLine(c, n);
+      var show = function () {
+        var el = document.getElementById('standing'), ds = document.getElementById('dist');
+        if (!game || game.st !== st || !st.field) return;
+        if (el) el.innerHTML = placeLine(st.field, n, st.place);
+        if (ds) ds.innerHTML = distHtml(st.field, n);
+      };
+      var day = game.day, secs = totalSecs(st);
+      readField(day, n).then(function (c) {
+        st.field = c; save(); show();
+        if (day < PLACE_DAY) return;
+        return room(placeCost(secs)).then(function () { return readPlace(day, n, secs); }).then(function (p) { st.place = p; save(); show(); });
       }).catch(function () { /* fine without */ });
     }
   }

@@ -197,6 +197,24 @@ body.desk .result .btn { margin-top: 6px; position: static; }
 .standing { margin-top: 12px; color: #c3c5cc; text-align: center; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
 .standing b { color: var(--fg); font-weight: 700; }
 .standing:empty { display: none; }
+.standing .first { color: var(--sign); }
+.spread { display: grid; gap: 3px; width: min(100%, 320px); margin: 8px auto 0; font-size: 0.8rem; line-height: 1.15; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
+.spread:empty { display: none; }
+.drow { display: grid; grid-template-columns: 58px 1fr 66px; align-items: center; gap: 8px; color: var(--mut); }
+.drow .db { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.drow .db i { display: block; height: 100%; min-width: 3px; border-radius: 4px; background: #7b7e88; }
+.drow .dn { white-space: nowrap; }
+.drow em { font-style: normal; color: var(--go); }
+.drow.me { color: var(--fg); font-weight: 700; }
+.drow.me .db i { background: var(--go); }
+.sheet .spread { width: 100%; margin: 0; font-size: 0.9rem; }
+/* Making room for the chart on mid-height phones: smaller lights and score first, then one sentence, and on
+   the shortest screens no chart at all (it is also in Your record). */
+@media (max-height: 735px) { .end:not(.haslast) .tally { margin-top: 12px; font-size: 4rem; } .end:not(.haslast) .lights.big .lt { width: 50px; height: 50px; } .end:not(.haslast) .endno { margin-bottom: 12px; } }
+@media (max-height: 689px) { .standing .more { display: none; } }
+@media (max-height: 635px) { .end:not(.haslast) .spread { display: none; } }
+@media (max-height: 619px) { .end.haslast .spread { display: none; } }
+@media (max-height: 600px) { .standing { margin-top: 8px; font-size: 0.95rem; } }
 .total .streak { color: var(--fg); font-weight: 700; }
 .btn.two { flex-direction: column; gap: 4px; height: 60px; }
 .btn.two small { font-weight: 600; font-size: 0.84rem; opacity: 0.72; }
@@ -216,7 +234,7 @@ body.desk .result .btn { margin-top: 6px; position: static; }
 .end.haslast .endbtns { margin-top: 12px; gap: 10px; }
 .end.haslast .foot { padding-top: 10px; }
 .end.haslast .keep { padding-top: 9px; }
-@media (max-height: 640px) {   /* a short phone, with the last answer on the result screen: keep it to one screen */
+@media (max-height: 699px) {   /* a short or mid-height phone, with the last answer on the result screen: keep it to one screen */
   .end.haslast .last { padding: 9px 12px 10px; }
   .end.haslast .last .say { font-size: 1.3rem; }
   .end.haslast .lastans b { font-size: 1.6rem; }

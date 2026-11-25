@@ -75,6 +75,19 @@ Saved data is rebuilt and checked every time it is read, so a damaged or hand-ed
 break the page. The counters are optional: if the service is down, slow or refusing, the game
 carries on and shows no numbers rather than wrong ones, and leaves the service alone for a minute.
 An unexpected error shows a bar with a Reload button and is counted on the `#numbers` page.
+
+**How a result is placed against the day.** The score screen says "You did better than 85% of
+players today" and, on a screen tall enough, draws the day's players by greens with your row lit
+(short phones get the chart under Your record instead). Better means more greens, or the same
+greens in less time. It works on counters alone: every finisher adds one to their greens count,
+to a 30-second time band and to a 5-second band inside it, then reads the bands faster than their
+own. So times are compared to the nearest 5 seconds, and two players in the same 5 seconds are
+level. Three greens with nobody quicker gets "Fastest three greens so far today." It is always
+"so far": the line is fixed when you finish and is not re-read later. Times have been counted
+since day 11 (`PLACE_DAY`); earlier days compare greens only. The counter service allows 30
+requests in 10 seconds from one address, so the placing waits for room rather than risk losing
+the numbers; a whole class on one wifi can still hit that limit, and then the line just does not
+show. A counter nobody has hit yet reads as 404, which the game treats as a true zero.
 Inside TikTok, Instagram, Snapchat or Facebook the score screen explains that the streak is kept
 in that app's own browser. `404.html` sends a mistyped address to the game.
 
