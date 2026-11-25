@@ -809,8 +809,9 @@ async def analytics(b):
         check('each answer carries the number that was typed', all(isinstance(a.get('typed'), (int, float)) for a in ans) and ans[0]['typed'] == qs[0]['a'], [a.get('typed') for a in ans])
         fin = [e[1] for e in ev if e[0] == 'game_finish'][0]
         check('the finish says how the day went', fin['greens'] == 1 and fin['mode'] == 'daily' and fin['timed_out'] is False and fin['game_day'] >= 1, fin)
+        check('the finish carries a streak band and first-or-returning, and each answer its question', fin.get('streak') == '1 day' and fin.get('returning') is False and [e[1] for e in ev if e[0] == 'game_start'][0].get('returning') is False and all(a.get('question') == q['q'] and a.get('answer') == q['a'] for a, q in zip(ans, qs)), fin)
         check('every event carries where the visit came from', all(e[1]['src'] == 'tiktok' and e[1]['creator'] == 'maya_k' and e[1]['in_app'] == 'TikTok' and e[1]['keypad'] in ('phone', 'computer') for e in ev), ev[0][1])
-        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'level', 'verdict', 'typed', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'what'}
+        allowed = {'src', 'creator', 'in_app', 'keypad', 'mode', 'game_day', 'slot', 'kind', 'grade', 'level', 'verdict', 'typed', 'question', 'answer', 'secs', 'clock_left', 'greens', 'timed_out', 'vs_friend', 'streak', 'returning', 'what'}
         extra = sorted({k for e in ev for k in e[1]} - allowed)
         check('no event carries anything about the person', not extra, extra)
         kept = await s.page.evaluate("() => ({ cookies: document.cookie, local: Object.keys(localStorage).sort(), session: Object.keys(sessionStorage).sort() })")

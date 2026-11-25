@@ -148,9 +148,9 @@ settings or the events are dropped.
 | Event | Sent when | Carries |
 | --- | --- | --- |
 | `$pageview`, `$pageleave` | a visit starts and ends | PostHog's own page fields |
-| `game_start` | a game begins | `mode`, `game_day`, party `players`/`questions` |
-| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `level` (Easy, Tricky, Hard), `verdict` (right, trap, wrong, time), `typed` (the number they gave), `secs`, `clock_left` |
-| `game_finish` | a game ends | `mode`, `greens`, `secs`, `timed_out`, `vs_friend` |
+| `game_start` | a game begins | `mode`, `game_day`, `returning` (this device has finished a day before), party `players`/`questions` |
+| `question_answered` | every answer | `mode`, `slot`, `kind`, `grade`, `level` (Easy, Tricky, Hard), `verdict` (right, trap, wrong, time), `typed` (the number they gave), `question` (its text), `answer`, `secs`, `clock_left` |
+| `game_finish` | a game ends | `mode`, `greens`, `secs`, `timed_out`, `vs_friend`, `streak` (a band such as "2 to 3 days", never the exact count), `returning` |
 | `share` | a result or challenge is copied or sent | `what` |
 | `challenge_arrived` | someone opens a friend's link | `mode` |
 | `answers_opened`, `help_opened` | those sheets open | |

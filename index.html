@@ -1793,9 +1793,13 @@ body.desk .foot { margin-top: 26px; }
     document.head.appendChild(s);
   }
   // The few facts worth knowing about one answer, the same in every mode.
+  // Streaks go out as a band, never the exact count: an exact streak would let one device be picked
+  // out from one day to the next, and the game promises it sends nothing that says who you are.
+  function streakBand(n) { return n <= 1 ? '1 day' : n <= 3 ? '2 to 3 days' : n <= 7 ? '4 to 7 days' : n <= 30 ? '8 to 30 days' : 'over 30 days'; }
   function trackAnswer(mode, q, r, slot, extra) {
     var p = { mode: mode, slot: slot, kind: q.kind, grade: q.grade, level: LEVEL[q.level], verdict: r.f === 'bait' ? 'trap' : r.f, secs: r.secs }, k;
     if (r.f !== 'time' && isFinite(parseFloat(r.t))) p.typed = parseFloat(r.t);   // the number they gave: shows which wrong answers a question really draws
+    p.question = String(q.q).slice(0, 200); p.answer = q.a;   // so the dashboard can show the question itself, not a code name
     for (k in extra) p[k] = extra[k];
     track('question_answered', p);
   }
@@ -1915,7 +1919,7 @@ body.desk .foot { margin-top: 26px; }
   function startDaily() {
     if (adopt()) save();   // another tab may have played on
     var d = today();
-    if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); track('game_start', { mode: 'daily', game_day: d }); }
+    if (dailyState() === 'new') { store.daily = { v: SETV, day: d, idx: 0, res: [], qStart: Date.now(), done: false }; save(); track('game_start', { mode: 'daily', game_day: d, returning: store.stats.played > 0 }); }   // returning: this device has finished a day before
     game = { mode: 'daily', day: d, set: E.buildDaily(d), st: store.daily };
     fresh = false;
     if (game.st.done) end(false); else play();
@@ -2159,7 +2163,9 @@ body.desk .foot { margin-top: 26px; }
       }
     }
     var first = !st.done;
-    if (first) track('game_finish', { mode: game.mode === 'daily' ? 'daily' : 'private', game_day: game.day || 0, greens: rightCount(st), secs: totalSecs(st), timed_out: st.res.some(function (r) { return r.f === 'time'; }), vs_friend: !!rivalHere() });
+    if (first) track('game_finish', game.mode === 'daily'
+      ? { mode: 'daily', game_day: game.day || 0, greens: rightCount(st), secs: totalSecs(st), timed_out: st.res.some(function (r) { return r.f === 'time'; }), vs_friend: !!rivalHere(), streak: streakBand(store.stats.streak), returning: store.stats.played > 1 }
+      : { mode: 'private', game_day: 0, greens: rightCount(st), secs: totalSecs(st), timed_out: st.res.some(function (r) { return r.f === 'time'; }), vs_friend: !!rivalHere() });
     st.done = true;
     if (game.mode === 'table' && rivalHere()) store.rival.played = 1;   // the challenge has been answered: do not offer it again
     persist();
