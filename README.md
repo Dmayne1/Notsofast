@@ -82,7 +82,9 @@ players today" and, on a screen tall enough, draws the day's players by greens w
 greens in less time. It works on counters alone: every finisher adds one to their greens count,
 to a 30-second time band and to a 5-second band inside it, then reads the bands faster than their
 own. So times are compared to the nearest 5 seconds, and two players in the same 5 seconds are
-level. Three greens with nobody quicker gets "Fastest three greens so far today." It is always
+level. Three greens with nobody quicker gets "Fastest three greens so far today." The game gives
+shares, never a head count, until 100 have played that day (`COUNT_FROM`); the shares are always
+the real ones, worked out from whoever has played. It is always
 "so far": the line is fixed when you finish and is not re-read later. Times have been counted
 since day 11 (`PLACE_DAY`); earlier days compare greens only. The counter service allows 30
 requests in 10 seconds from one address, so the placing waits for room rather than risk losing

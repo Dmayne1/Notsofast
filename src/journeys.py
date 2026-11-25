@@ -456,7 +456,7 @@ async def placing(b):
     async with Site(b, init=(CLOCK,)) as s:               # three greens, and nobody with three was quicker
         s.values = FIELD + [(r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
         e = await finish(s, ('right', 'right', 'right'))
-        check('the fastest three greens of the day is told so', 'Fastest three greens so far today' in e['line'] and 'better than all 23 other players' in e['line'], e['line'])
+        check('the fastest three greens of the day is told so', 'Fastest three greens so far today' in e['line'] and 'better than every other player' in e['line'] and '23' not in e['line'], e['line'])
         check('the day is drawn as four rows with the player’s own lit', len(e['rows']) == 4 and '3 greens' in e['me'] and 'you' in e['me'] and '21%' in e['me'], (e['rows'], e['me']))
         bands = [h for h in s.hits if re.search(r'g3c\d', h)]
         check('a finish adds itself to one wide and one narrow time band', sorted(h.split('/')[0] for h in bands).count('hit') == 2 and all('g3c' in h for h in bands), bands)
@@ -468,7 +468,7 @@ async def placing(b):
     async with Site(b, init=(CLOCK,)) as s:               # the only one with all three
         s.values = [(r'g3$', 1), (r'g2$', 10), (r'g1$', 6), (r'g0$', 3), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
         e = await finish(s, ('right', 'right', 'right'))
-        check('the only player with all three is told so', 'The only one with all three so far today' in e['line'] and 'all 19 other players' in e['line'], e['line'])
+        check('the only player with all three is told so', 'The only one with all three so far today' in e['line'] and 'every other player' in e['line'] and '19' not in e['line'], e['line'])
     async with Site(b, init=(CLOCK,)) as s:               # two greens, with five on three greens and three quicker on two, one level
         s.values = FIELD + [(r'^get/.*g2c0f0$', 3), (r'^hit/.*g2c0f1$', 2), (r'^hit/.*g2c0$', 9), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
         e = await finish(s, ('right', 'right', 'wrong'), slow=5600)
@@ -477,7 +477,17 @@ async def placing(b):
     async with Site(b, init=(CLOCK,)) as s:               # a quiet day: counts, not percentages, and a counter nobody has hit
         s.values = [(r'g3$', 1), (r'g2$', 2), (r'g1$', 1), (r'g0$', 404), (r'^get/.*c\d(f\d)?$', 404), (r'^hit/.*c\d(f\d)?$', 1)]
         e = await finish(s, ('right', 'right', 'wrong'))
-        check('on a quiet day it counts players and shows no percentages', 'better than 2 of the 3 other players so far today' in e['line'] and '%' not in e['line'] and not any('%' in r for r in e['rows']) and '0 greens 0' in ' '.join(e['rows']), (e['line'], e['rows']))
+        check('on a quiet day it still gives shares and never a head count', e['line'].strip() == 'You did better than 66% of players today.' and e['rows'] == ['3 greens 25%', '2 greens 50% you', '1 green 25%', '0 greens 0%'], (e['line'], e['rows']))
+    async with Site(b) as s:                              # three players so far: every line is a share, none gives the count away
+        s.values = [(r'q\dn$', 3), (r'q\dr$', 1), (r'q\dt$', 2), (r'g3$', 1), (r'g2$', 1), (r'g1$', 1), (r'g0$', 404)]
+        await s.returning()
+        h = await screen(s.page)
+        qs = await today_set(s.page)
+        await press(s.page, 'daily')
+        await answer(s.page, qs[0]['baits'][0] if qs[0]['baits'] else await wrong_for(s.page, qs[0])); await s.page.wait_for_timeout(600)
+        c = await s.page.evaluate("() => (document.getElementById('crowd') || {}).textContent || ''")
+        check('with three players the answer line is a share, not a count', '33% of players got this right' in c and not re.search(r'\b\d+ players|first', c), c)
+        check('and the front page gives a share without saying how few', '33% of players got all three today' in h['text'] and not re.search(r'\b\d+ players', h['text']), h['text'][:200])
     async with Site(b, init=(CLOCK,)) as s:               # days before finishing times were counted: no claim about speed
         s.values = FIELD
         e = await finish(s, ('right', 'right', 'right'), shift=-4 * DAY)

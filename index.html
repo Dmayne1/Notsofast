@@ -1306,7 +1306,7 @@ body.desk .foot { margin-top: 26px; }
   var STATS = 'https://abacus.jasoncameron.dev';
   var STATS_NS = 'playnotsofast.com';
   var BUCKETS = [10, 20, 40, 70, 121]; // upper edge, in seconds, of each solve-time band
-  var MIN_CROWD = 10;                  // do not show a percentage until this many have answered
+  var COUNT_FROM = 100;                // say how many are playing only from this many; below it the game gives shares, never a head count
   var PLACE_DAY = 11;                  // finishing times have been counted since day 11; earlier days only have greens
 
   var EMOJI = { right: '🟢', bait: '🔴', wrong: '🔴', time: '🔴' };
@@ -1758,31 +1758,29 @@ body.desk .foot { margin-top: 26px; }
   }
   function fieldLine(c) {   // numbers only, so safe to set as HTML
     var n = c[0] + c[1] + c[2] + c[3];
-    if (n < MIN_CROWD) return '';
-    var pct = Math.round(c[3] / n * 100);
-    return '<b>' + E.num(n) + '</b> players today. ' + (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b> got all three.';
+    if (n < 2) return '';
+    var pct = Math.round(c[3] / n * 100), got = pct < 1 ? 'Nobody has got all three yet today.' : (pct < 50 ? 'Only ' : '') + '<b>' + pct + '%</b>' + (n < COUNT_FROM ? ' of players' : '') + ' got all three' + (n < COUNT_FROM ? ' today.' : '.');
+    return (n < COUNT_FROM ? '' : '<b>' + E.num(n) + '</b> players today. ') + got;
   }
 
   // How one finished game did against the day so far: more greens first, then the faster time. `c` is the
   // field by greens, this player included; `p`, when the times could be read, says how many with the same
   // greens were faster and how many share the same five seconds. Without it, players level on greens count
-  // as level. Numbers only, so safe as HTML.
+  // as level. Always a share of the other players, never a head count. Numbers only, so safe as HTML.
   function placeLine(c, mine, p) {
     var n = c[0] + c[1] + c[2] + c[3], others = n - 1, behind = 0, ahead = 0, g;
-    if (n < 2) return standingLine(c, mine);
+    if (n < 2) return '';
     for (g = 0; g < mine; g++) behind += c[g];
     for (g = mine + 1; g < 4; g++) ahead += c[g];
     var level = Math.max(0, c[mine] - 1), faster = p ? Math.min(p.faster, level) : 0, tie = p ? Math.min(p.tie, level - faster) : level;
     behind += level - faster - tie;
-    var all = others === 1 ? 'the only other player' : 'all <b>' + E.num(others) + '</b> other players';
+    var pct = Math.floor(behind / others * 100), beat = pct >= 100 ? 'You did better than every other player' : 'You did better than <b>' + Math.max(1, pct) + '%</b> of players';
     if (p && mine === 3 && ahead + faster === 0) {   // nobody with three greens was quicker
-      if (c[3] === 1) return '<b class="first">The only one with all three so far today.</b> <span class="more">You did better than ' + all + '.</span>';
-      if (!tie) return '<b class="first">Fastest three greens so far today.</b> <span class="more">You did better than ' + all + '.</span>';
-      return '<b class="first">Equal fastest three greens so far today.</b>' + (n >= MIN_CROWD ? ' <span class="more">You did better than <b>' + Math.floor(behind / others * 100) + '%</b> of players.</span>' : '');
+      if (c[3] === 1) return '<b class="first">The only one with all three so far today.</b> <span class="more">' + beat + '.</span>';
+      if (!tie) return '<b class="first">Fastest three greens so far today.</b> <span class="more">' + beat + '.</span>';
+      return '<b class="first">Equal fastest three greens so far today.</b>' + (behind > 0 ? ' <span class="more">' + beat + '.</span>' : '');
     }
-    if (behind < 1) return standingLine(c, mine);
-    if (n < MIN_CROWD) return 'You did better than <b>' + behind + '</b> of the <b>' + others + '</b> other players so far today.';
-    return 'You did better than <b>' + Math.max(1, Math.floor(behind / others * 100)) + '%</b> of players today.';
+    return behind > 0 ? beat + ' today.' : standingLine(c, mine);
   }
   // The day's players by how many greens they got, with this player's own row lit. Numbers only.
   function distHtml(c, mine) {
@@ -1791,24 +1789,20 @@ body.desk .foot { margin-top: 26px; }
     for (g = 3; g >= 0; g--) {
       out += '<div class="drow' + (g === mine ? ' me' : '') + '"><span class="dl">' + g + (g === 1 ? ' green' : ' greens') + '</span>' +
         '<span class="db"><i style="width:' + Math.round(c[g] / max * 100) + '%"></i></span>' +
-        '<span class="dn">' + (n < MIN_CROWD ? E.num(c[g]) : Math.round(c[g] / n * 100) + '%') + (g === mine ? ' <em>you</em>' : '') + '</span></div>';
+        '<span class="dn">' + (c[g] > 0 && c[g] / n < 0.005 ? '&lt;1' : Math.round(c[g] / n * 100)) + '%' + (g === mine ? ' <em>you</em>' : '') + '</span></div>';
     }
     return out;
   }
 
-  // The same counts, read for one player: how their greens compare with everyone else's today.
+  // What to say to a player nobody finished behind: something true about the day that is not about them losing.
   // `c` already includes this player. Numbers only, so safe to set as HTML.
   function standingLine(c, mine) {
-    var n = c[0] + c[1] + c[2] + c[3], others = n - 1, below = 0, g;
-    if (n < 1) return '';
-    if (n === 1) return 'You are the first to play today.';
-    if (n < MIN_CROWD) return 'You are one of <b>' + n + '</b> players so far today.';
-    for (g = 0; g < mine; g++) below += c[g];
-    var all = Math.round(c[3] / n * 100), beat = Math.round(below / others * 100), none = Math.round(Math.max(0, c[0] - 1) / others * 100), of = ' of today’s <b>' + E.num(n) + '</b> players';
-    if (mine >= 3) return all < 50 ? 'Top <b>' + all + '%</b>' + of + '.' : '<b>' + all + '%</b>' + of + ' got all three.';
-    if (mine > 0 && beat > 0) return 'You beat <b>' + beat + '%</b>' + of + '.';
-    if (mine === 0 && none > 0) return '<b>' + none + '%</b> of today’s <b>' + E.num(n) + '</b> also got none.';
-    return '<b>' + all + '%</b>' + of + ' got all three.';
+    var n = c[0] + c[1] + c[2] + c[3], others = n - 1;
+    if (n < 2) return '';
+    var all = Math.round(c[3] / n * 100), none = Math.round(Math.max(0, c[0] - 1) / others * 100);
+    if (mine === 0 && none > 0) return '<b>' + none + '%</b> of players also got none today.';
+    if (all < 1) return 'Nobody has got all three yet today.';
+    return (mine < 3 && all < 50 ? 'Only ' : '') + '<b>' + all + '%</b> of players got all three today.';
   }
 
   /* ---------- Analytics: who comes, where from, and how they get on ----------
@@ -1925,15 +1919,14 @@ body.desk .foot { margin-top: 26px; }
       if (el && game && game.mode === 'daily' && game.st.res[i] === r && game.st.idx === i) el.textContent = crowdLine(r);
     }).catch(function () { /* the game works without the numbers */ });
   }
-  function crowdPct(r) { var c = r && r.crowd; return c && c.n >= MIN_CROWD ? Math.round(c.r / c.n * 100) : -1; }
-  function crowdLine(r) {
+  function crowdPct(r) { var c = r && r.crowd; return c && c.n >= 2 ? Math.round(c.r / c.n * 100) : -1; }
+  function crowdLine(r) {   // one answer against everyone else's: shares from two players up, a head count only from COUNT_FROM
     var c = r.crowd;
-    if (!c || !c.n) return '';
-    if (c.n === 1) return 'You are the first to answer this one today.';
-    if (c.n < MIN_CROWD) return 'You are one of the first ' + c.n + ' to answer this one today.';
-    var pct = crowdPct(r), got = (pct < 50 ? 'Only ' : '') + pct + '% of ' + E.num(c.n) + ' players got this right.';
-    if (r.f === 'bait') return 'You are in good company: ' + Math.round((c.t || 0) / c.n * 100) + '% of ' + E.num(c.n) + ' players fell for it too. ' + (pct < 50 ? 'Only ' : '') + pct + '% got it right.';
-    if (r.f === 'right' && c.r >= MIN_CROWD) return got + ' You were faster than ' + Math.min(99, Math.round(c.slower / (c.r - 1) * 100)) + '% of them.';
+    if (!c || c.n < 2) return '';
+    var pct = crowdPct(r), who = (c.n < COUNT_FROM ? '' : E.num(c.n) + ' ') + 'players';
+    var got = pct < 1 ? 'Nobody has got this one right yet today.' : (pct < 50 ? 'Only ' : '') + pct + '% of ' + who + ' got this right.';
+    if (r.f === 'bait') { var fell = Math.round(Math.max(0, (c.t || 0) - 1) / (c.n - 1) * 100); return (fell > 0 ? 'You are in good company: ' + fell + '% of ' + who + ' fell for it too. ' : '') + got; }
+    if (r.f === 'right' && c.r >= 2) { var quick = Math.min(99, Math.round(c.slower / (c.r - 1) * 100)); return got + (quick > 0 ? ' You were faster than ' + quick + '% of them.' : ''); }
     return got;
   }
 
