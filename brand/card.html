@@ -45,6 +45,7 @@ document.getElementById('s'+scene).classList.remove('hide');
 document.getElementById('hookp').textContent='Today’s trick question · No. '+no;
 document.getElementById('tag').textContent='QUESTION OF THE DAY';
 const el=document.getElementById('q'); const m=q.match(/^(What is) (.{1,14}\?)$/); if(m){el.innerHTML='';el.append(m[1],document.createElement('br'),m[2]);}else el.textContent=q; const n=q.length;
-el.style.fontSize=(n<=22?140:n<=48?112:n<=75?92:n<=100?80:70)+'px'; el.style.lineHeight=n<=22?'1.1':'1.22';
+el.style.fontSize=(n<=22?140:n<=48?112:n<=75?92:n<=100?80:n<=115?72:64)+'px'; el.style.lineHeight=n<=22?'1.1':'1.22';
+let fs=parseInt(el.style.fontSize); while(el.offsetHeight>600&&fs>48){fs-=4;el.style.fontSize=fs+'px';}
 if(P.get('bar')==='0')document.getElementById('bar').style.display='none';
 </script></body></html>

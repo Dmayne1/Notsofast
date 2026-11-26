@@ -1,7 +1,7 @@
 import asyncio, json, subprocess, sys, os, urllib.parse
 from playwright.async_api import async_playwright
 D='/home/claude/notsofast/brand'
-qs=json.loads(subprocess.check_output(['node','-e',"const E=require('/home/claude/notsofast/src/engine.js');const o={};for(let d=11;d<=18;d++)o[d]=E.buildDaily(d)[0].q;console.log(JSON.stringify(o))"]))
+qs=json.loads(subprocess.check_output(['node','-e',"const E=require('/home/claude/notsofast/src/engine.js');const o={};const slot={12:0,13:0,14:0,15:1,16:0,17:1,18:2};for(const d in slot)o[d]=E.buildDaily(+d)[slot[d]].q;console.log(JSON.stringify(o))"]))
 only=sys.argv[1:] 
 async def main():
     async with async_playwright() as pw:
