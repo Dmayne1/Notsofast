@@ -4,7 +4,7 @@ set -e
 cd /home/claude/notsofast/brand/video
 ENC="-c:v libx264 -crf 20 -preset veryfast -pix_fmt yuv420p -r 30"
 for d in "$@"; do
-  ffmpeg -y -loglevel error -framerate 30 -i d${d}_s1.png -vf "format=yuv420p,loop=-1:1,trim=duration=2.2,fade=t=in:st=0:d=0.25" $ENC tmp_${d}_1.mp4
+  ffmpeg -y -loglevel error -framerate 30 -i d${d}_s1.png -vf "format=yuv420p,loop=-1:1,trim=duration=2.2" $ENC tmp_${d}_1.mp4
   ffmpeg -y -loglevel error -framerate 30 -i d${d}_s2.png -f lavfi -i "color=c=0x0b0c0f:s=900x24:r=30" -filter_complex "[0]format=yuv420p,loop=-1:1,trim=duration=6.0[bg];[bg][1]overlay=x='990-900*t/6.0':y=1364:shortest=1,fade=t=in:st=0:d=0.15" -t 6.0 $ENC tmp_${d}_2.mp4
   ffmpeg -y -loglevel error -framerate 30 -i d${d}_s3.png -vf "format=yuv420p,loop=-1:1,trim=duration=2.8,fade=t=in:st=0:d=0.15" $ENC tmp_${d}_3.mp4
   printf "file 'tmp_${d}_1.mp4'\nfile 'tmp_${d}_2.mp4'\nfile 'tmp_${d}_3.mp4'\n" > list_${d}.txt
