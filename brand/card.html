@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:"Barlow";font-weight:500;src:url(../src/fonts/Barlow-Medium.woff)}
+@font-face{font-family:"Barlow";font-weight:700;src:url(../src/fonts/Barlow-Bold.woff)}
+@font-face{font-family:"Barlow Condensed";font-weight:800;src:url(../src/fonts/BarlowCondensed-ExtraBold.woff)}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden}
+body{font-family:Barlow,sans-serif;color:#f3f3f1;background:linear-gradient(180deg,#070a14 0%,#101425 34%,#17181a 62%,#101113 100%);position:relative}
+#stars{position:absolute;inset:0}
+.road{position:absolute;left:0;right:0;bottom:0;height:560px}
+.brand{position:absolute;top:236px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:22px;font:800 76px/1 "Barlow Condensed";letter-spacing:1px}
+.brand svg{width:84px;height:84px}
+.lights{position:absolute;top:400px;left:0;right:0;display:flex;justify-content:center;gap:44px}
+.lt{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a4d57,#24262c 70%);box-shadow:inset 0 -8px 16px rgba(0,0,0,.5),0 0 0 6px #0b0c0f}
+.lt.red{background:radial-gradient(circle at 35% 30%,#ff8d84,#ff4133 55%,#b3160c);box-shadow:0 0 70px rgba(255,65,51,.75),0 0 0 6px #0b0c0f}
+.card{position:absolute;left:70px;right:70px;top:600px;min-height:560px;padding:64px 56px;box-sizing:border-box;border-radius:44px;background:rgba(14,15,19,.86);border:2px solid rgba(255,255,255,.14);display:grid;place-items:center;text-align:center;font-weight:700;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.tag{position:absolute;top:548px;left:0;right:0;text-align:center;font:800 44px/1 "Barlow Condensed";letter-spacing:5px;color:#FFD21F}
+.sub{position:absolute;left:0;right:0;top:1228px;text-align:center;font-weight:500;font-size:46px;color:#b9bbc3}
+.band{position:absolute;left:0;right:0;top:1340px;height:72px;background:#0b0c0f}
+.bar{position:absolute;left:90px;top:1364px;width:900px;height:24px;border-radius:0;background:#FFD21F}
+.hook{position:absolute;left:70px;right:70px;top:400px;text-align:center}
+.hook svg{width:250px;height:250px;filter:drop-shadow(0 0 60px rgba(216,40,28,.45))}
+.hook h1{margin:56px 0 0;font:800 168px/0.95 "Barlow Condensed";letter-spacing:1px}
+.hook h1 em{font-style:normal;color:#FFD21F}
+.hook p{margin:44px 0 0;font-weight:500;font-size:50px;color:#b9bbc3}
+.cta{position:absolute;left:70px;right:70px;top:640px;text-align:center}
+.cta h1{margin:0;font:800 190px/0.95 "Barlow Condensed"}
+.cta p{margin:40px 0 0;font-weight:500;font-size:54px;color:#d6d7dc}
+.pill{display:inline-block;margin-top:44px;padding:30px 54px;border-radius:28px;background:#FFD21F;color:#17181a;font-weight:700;font-size:74px;box-shadow:0 12px 0 #b89400,0 30px 60px rgba(0,0,0,.5)}
+.cta small{display:block;margin-top:66px;font-weight:500;font-size:44px;color:#9c9ea6}
+.hide{display:none}
+</style></head><body>
+<svg id="stars" viewBox="0 0 1080 1920"></svg>
+<svg class="road" viewBox="0 0 1080 560" preserveAspectRatio="none"><polygon points="440,0 640,0 1400,560 -320,560" fill="#1c1d22"/><polygon points="440,0 444,0 -300,560 -320,560" fill="#8a8c94"/><polygon points="636,0 640,0 1400,560 1380,560" fill="#8a8c94"/>
+<polygon points="536,30 544,30 548,90 532,90" fill="#FFD21F"/><polygon points="530,150 550,150 556,260 524,260" fill="#FFD21F"/><polygon points="520,340 560,340 572,540 508,540" fill="#FFD21F"/></svg>
+<div id="s1" class="hook hide"><svg viewBox="0 0 120 120"><polygon points="37,6 83,6 114,37 114,83 83,114 37,114 6,83 6,37" fill="#fff"/><polygon points="40,14 80,14 106,40 106,80 80,106 40,106 14,80 14,40" fill="#D8281C"/><rect x="30" y="51" width="60" height="18" rx="4" fill="#fff"/></svg><h1>MOST PEOPLE<br>GET THIS <em>WRONG</em></h1><p id="hookp"></p></div>
+<div id="s2" class="hide"><div class="brand"><svg viewBox="0 0 120 120"><polygon points="37,6 83,6 114,37 114,83 83,114 37,114 6,83 6,37" fill="#fff"/><polygon points="40,14 80,14 106,40 106,80 80,106 40,106 14,80 14,40" fill="#D8281C"/><rect x="30" y="51" width="60" height="18" rx="4" fill="#fff"/></svg>NOT SO FAST</div>
+<div class="lights"><i class="lt"></i><i class="lt"></i><i class="lt"></i></div><div class="tag" id="tag"></div><div class="card" id="q"></div><div class="sub">Think first. The obvious answer is wrong.</div><div class="band"></div><div class="bar" id="bar"></div></div>
+<div id="s3" class="hide"><div class="brand"><svg viewBox="0 0 120 120"><polygon points="37,6 83,6 114,37 114,83 83,114 37,114 6,83 6,37" fill="#fff"/><polygon points="40,14 80,14 106,40 106,80 80,106 40,106 14,80 14,40" fill="#D8281C"/><rect x="30" y="51" width="60" height="18" rx="4" fill="#fff"/></svg>NOT SO FAST</div>
+<div class="lights"><i class="lt red"></i><i class="lt"></i><i class="lt"></i></div><div class="cta"><h1>NOT SO FAST.</h1><p>Check your answer at</p><div class="pill">playnotsofast.com</div><small>3 trick questions a day. Free, no sign-up.</small></div></div>
+<script>
+const P=new URLSearchParams(location.search), scene=P.get('s'), q=P.get('q')||'', no=P.get('no')||'';
+let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; let st='';
+for(let i=0;i<150;i++){const x=rnd()*1080,y=rnd()*1150,r=rnd()*2.4+0.6,o=rnd()*0.7+0.2;st+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="${o}"/>`}
+document.getElementById('stars').innerHTML=st;
+document.getElementById('s'+scene).classList.remove('hide');
+document.getElementById('hookp').textContent='Today’s trick question · No. '+no;
+document.getElementById('tag').textContent='QUESTION OF THE DAY';
+const el=document.getElementById('q'); const m=q.match(/^(What is) (.{1,14}\?)$/); if(m){el.innerHTML='';el.append(m[1],document.createElement('br'),m[2]);}else el.textContent=q; const n=q.length;
+el.style.fontSize=(n<=22?140:n<=48?112:n<=75?92:n<=100?80:70)+'px'; el.style.lineHeight=n<=22?'1.1':'1.22';
+if(P.get('bar')==='0')document.getElementById('bar').style.display='none';
+</script></body></html>

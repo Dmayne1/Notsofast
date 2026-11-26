@@ -707,7 +707,16 @@
     7: [['intervalsmonday', 'v8-daily-7-0-0', 0], ['pctpoints', 'v8-daily-7-1-0', 0], ['snail', 'v8-daily-7-2-0', 0]],
     8: [['tunnel', 'v8-daily-8-0-0', 0], ['compoundgrowth', 'v8-daily-8-1-0', 0], ['chain', 'v8-daily-8-2-0', 0]],
     9: [['string', 'v8-daily-9-0-0', 0], ['aroundposts', 'v8-daily-9-1-0', 0], ['tyres', 'v8-daily-9-2-0', 0]],
-    10: [['scalingsquare', 'v8-daily-10-0-0', 0], ['workrate', 'v8-daily-10-1-0', 0], ['boxes', 'v8-daily-10-2-0', 0]]
+    10: [['scalingsquare', 'v8-daily-10-0-0', 0], ['workrate', 'v8-daily-10-1-0', 0], ['boxes', 'v8-daily-10-2-0', 0]],
+    // Days 12 to 18 are locked ahead of time: a video of one question from each has been made for TikTok.
+    11: [['addup', 'v8-daily-11-0-0', 0], ['eitherorcards', 'v8-daily-11-1-0', 0], ['loaves', 'v8-daily-11-2-0', 0]],
+    12: [['siblinghalf', 'v8-daily-12-0-0', 0], ['weekend', 'v8-daily-12-1-0', 0], ['balance', 'v8-daily-12-2-0', 0]],
+    13: [['triple', 'v8-daily-13-0-0', 0], ['ladder', 'v8-daily-13-1-0', 0], ['brothers', 'v8-daily-13-2-0', 0]],
+    14: [['hourhand', 'v8-daily-14-0-0', 0], ['matchesshake', 'v8-daily-14-1-0', 0], ['stick', 'v8-daily-14-2-0', 0]],
+    15: [['magnify', 'v8-daily-15-0-0', 0], ['wavg', 'v8-daily-15-1-0', 0], ['hat', 'v8-daily-15-2-0', 0]],
+    16: [['combosdials', 'v8-daily-16-0-0', 0], ['stepcarpet', 'v8-daily-16-1-0', 0], ['fly', 'v8-daily-16-2-0', 0]],
+    17: [['bidmas', 'v8-daily-17-0-0', 0], ['matchesknockout', 'v8-daily-17-1-0', 0], ['cuts', 'v8-daily-17-2-0', 0]],
+    18: [['bogof', 'v8-daily-18-0-0', 0], ['liftavg', 'v8-daily-18-1-0', 0], ['zeros', 'v8-daily-18-2-0', 0]]
   };
   const SEEN = { 3: ['pctbase'] };   // an idea some players met on day 3, before that day's set was replaced
   const plan = { days: [], lastIdea: {}, lastKind: {}, lastLook: {}, uses: {}, said: {} };
