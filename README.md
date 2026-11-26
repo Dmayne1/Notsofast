@@ -143,6 +143,10 @@ over `SERVED`, so today and every earlier day are locked first. The test file ch
 Rewording a family changes its text on any day, locked or not, so leave today's three families
 alone until tomorrow.
 
+A day can also be set by hand, as days 12 to 18 were for the first week on TikTok: write its three
+slots into `SERVED` and list the day in `PINNED`, which exempts it from the no-early-return checks.
+Each of those days carries one proven classic, the question in that day's video.
+
 Those grades are estimates. The PostHog dashboard's "Share right by question type" tile shows
 how each kind really plays; change the kind's number in `GRADE` to match, and cut any kind that
 nearly everyone gets right.

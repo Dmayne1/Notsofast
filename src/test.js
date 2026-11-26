@@ -284,9 +284,10 @@ for (let day = 1; day <= 1095; day++) {
   if (set.map(q => q.grade).join('') !== '234') fail('day ' + day + ' grades ' + set.map(q => q.grade).join('') + ': a day must climb 2, 3, 4');
   set.forEach(q => {
     const idea = E.ideaOf(q.kind);
-    if (lastIdea[idea] && day > 2) { minIdea = Math.min(minIdea, day - lastIdea[idea]); ideaGaps.push(day - lastIdea[idea]); }   // days 1 and 2 are the old calendar's, kept as history
-    if (lastKind[q.kind]) minKind = Math.min(minKind, day - lastKind[q.kind]);
-    if (lastText[q.q]) minText = Math.min(minText, day - lastText[q.q]);
+    const byHand = E.pinned[day];   // a day set by hand may bring a classic back early on purpose
+    if (lastIdea[idea] && day > 2 && !byHand) { minIdea = Math.min(minIdea, day - lastIdea[idea]); ideaGaps.push(day - lastIdea[idea]); }   // days 1 and 2 are the old calendar's, kept as history
+    if (lastKind[q.kind] && !byHand) minKind = Math.min(minKind, day - lastKind[q.kind]);
+    if (lastText[q.q] && !byHand) minText = Math.min(minText, day - lastText[q.q]);
     lastIdea[idea] = day; lastKind[q.kind] = day; lastText[q.q] = day; kindDays[q.kind] = (kindDays[q.kind] || 0) + 1;
   });
   const again = E.buildDaily(day);
